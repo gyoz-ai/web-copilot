@@ -66,6 +66,15 @@ export async function removeRecipe(id: string): Promise<void> {
 }
 
 /**
+ * Check if a recipe with the same content hash already exists.
+ */
+export async function recipeExists(xmlContent: string): Promise<boolean> {
+  const id = await hashContent(xmlContent);
+  const recipes = await getRecipes();
+  return recipes.some((r) => r.id === id);
+}
+
+/**
  * Import a recipe XML file. Domain is auto-inferred from the XML's
  * domain="..." attribute. Supports multiple recipes per domain.
  */

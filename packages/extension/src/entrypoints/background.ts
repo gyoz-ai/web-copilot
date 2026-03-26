@@ -6,7 +6,11 @@ import {
   saveConversationHistory,
   clearConversationHistory,
 } from "../lib/storage";
-import { getMergedRecipeForDomain, importRecipeFromFile } from "../lib/recipes";
+import {
+  getMergedRecipeForDomain,
+  importRecipeFromFile,
+  recipeExists,
+} from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
 
@@ -60,15 +64,21 @@ export default defineBackground(() => {
     }
 
     if (message.type === "gyozai_auto_import_recipe") {
-      importRecipeFromFile(message.filename, message.xml).then(() => {
-        // Send notification back to the tab
-        if (sender.tab?.id) {
-          chrome.tabs.sendMessage(sender.tab.id, {
-            type: "gyozai_recipe_auto_added",
-            filename: message.filename,
-          });
+      recipeExists(message.xml).then((exists) => {
+        if (exists) {
+          console.log("[gyoza] Recipe already imported, skipping auto-add");
+          sendResponse({ ok: true, skipped: true });
+          return;
         }
-        sendResponse({ ok: true });
+        importRecipeFromFile(message.filename, message.xml).then(() => {
+          if (sender.tab?.id) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "gyozai_recipe_auto_added",
+              filename: message.filename,
+            });
+          }
+          sendResponse({ ok: true });
+        });
       });
       return true;
     }
