@@ -721,14 +721,20 @@ function GyozaiWidget() {
       // Dispatch current actions (show-message, clarify, etc.)
       await dispatchActionsInOrder(actions);
 
-      if (autoContinue && ctxText) {
+      if (autoContinue) {
+        // If structured capture is empty, fall back to clean HTML
+        const context = ctxText || captureCleanHtml();
+        if (!context) {
+          log("📦 autoContinue but no context captured — waiting");
+          return;
+        }
         // AI wants to continue — re-query with captured context
         console.log(
-          `%c[gyoza] 🔁 AUTO-CONTINUE:%c captured ${ctxText.length} chars, re-querying...`,
+          `%c[gyoza] 🔁 AUTO-CONTINUE:%c captured ${context.length} chars, re-querying...`,
           S.brand,
           "",
         );
-        pendingExtraContext = ctxText;
+        pendingExtraContext = context;
         await handleFullQuery(
           "Now answer my question with the page context provided.",
           false,
@@ -792,7 +798,7 @@ function GyozaiWidget() {
 
     await new Promise((r) => setTimeout(r, 50));
 
-    // DOM actions
+    // DOM actions (messages only from show-message/clarify above, not from DOM actions)
     for (const action of actions) {
       if (
         action.type === "show-message" ||
@@ -800,9 +806,6 @@ function GyozaiWidget() {
         action.type === "fetch"
       ) {
         continue;
-      }
-      if (action.message) {
-        addAssistantMessage(action.message);
       }
 
       const jsError = await dispatchDomAction(action);
