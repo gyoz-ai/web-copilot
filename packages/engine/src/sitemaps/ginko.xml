@@ -1,0 +1,24 @@
+<gyozai-manifest version="1" domain="localhost:4321" prefix="/demos/ginko">
+  <routes>
+    <route path="/demos/ginko" name="ホーム" description="Bank home page with announcements and quick links to main services" />
+    <route path="/demos/ginko/account" name="口座概要" description="Account overview showing current balance and recent transactions" />
+    <route path="/demos/ginko/deposit" name="入金" description="Deposit money into your account — form with amount input" />
+    <route path="/demos/ginko/withdraw" name="出金" description="Withdraw money from your account — form with amount and destination" />
+    <route path="/demos/ginko/history" name="取引履歴" description="Transaction history with filterable table showing all past transactions" />
+  </routes>
+  <ui-elements>
+    <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/deposit']" type="link" label="入金する (Deposit)" action="navigate-deposit" />
+    <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/withdraw']" type="link" label="出金する (Withdraw)" action="navigate-withdraw" />
+    <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/history']" type="link" label="取引履歴を見る (View History)" action="navigate-history" />
+    <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/account']" type="link" label="口座概要 (Account Overview)" action="navigate-account" />
+    <ui-element route="/demos/ginko/deposit" selector="#deposit-form button[type='submit']" type="button" label="入金を確認 (Confirm Deposit)" action="submit-deposit" />
+    <ui-element route="/demos/ginko/withdraw" selector="#withdraw-form button[type='submit']" type="button" label="出金を確認 (Confirm Withdrawal)" action="submit-withdrawal" />
+  </ui-elements>
+  <page-descriptions>
+    <page route="/demos/ginko" summary="Japanese bank landing page. Shows bank name, welcome message, latest announcements, and quick action buttons for deposit, withdraw, and viewing transaction history. All text is in Japanese." />
+    <page route="/demos/ginko/account" summary="Account overview page. Displays current account balance in JPY, account number, and a list of recent transactions with date, description, and amount." />
+    <page route="/demos/ginko/deposit" summary="Deposit page. Contains a form with an amount field (in JPY) and a confirm button." />
+    <page route="/demos/ginko/withdraw" summary="Withdrawal page. Contains a form with amount field (in JPY), destination account field, and a confirm button." />
+    <page route="/demos/ginko/history" summary="Transaction history page. Shows a table of all transactions with columns: date, type, description, and amount." />
+  </page-descriptions>
+</gyozai-manifest>

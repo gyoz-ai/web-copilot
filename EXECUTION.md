@@ -8,7 +8,7 @@ Two repos. One product. Ship fast.
 
 ### Repo 1: `gyoz-ai/web-copilot` (the product)
 
-The browser extension + engine. Everything the user touches.
+The browser extension + engine. Everything the user touches (should use omni framework that compiles extension to safari too)
 
 ```
 web-copilot/
@@ -187,14 +187,13 @@ Stripe handles auth. No separate OAuth system needed.
 ## What's NOT in MVP (roadmap for later)
 
 - Recipe marketplace (browse, buy/sell, ratings) → Phase 2
-- AI recipe generator → Phase 2
-- Enterprise/org mode → Phase 3
-- Canvas feature → Phase 3
-- SSO → Phase 3
-- Safari extension → Phase 2
-- Local model support (Ollama) → Phase 3
 - Streaming responses → Phase 2
-- Persistent DOM edits (IndexedDB) → Phase 3
+- AI recipe generator → Phase 3
+- Enterprise/org mode with okla, sso, etc → Phase 3
+- Persistent DOM edits (IndexedDB) → Phase 4
+- Canvas feature → Phase 4
+- Local model support (Ollama) → Phase 5
+- SDK as seen in app-copilot repo + enterprise SDK offering for integration
 
 ---
 
