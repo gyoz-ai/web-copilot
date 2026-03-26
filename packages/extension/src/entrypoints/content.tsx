@@ -1053,13 +1053,11 @@ const WIDGET_STYLES_BASE = `
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: #E8950A;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
     z-index: 2147483647;
     transition: transform 0.15s ease;
   }
@@ -1246,6 +1244,11 @@ const WIDGET_STYLES_BASE = `
 // ─── Dark theme colors ───────────────────────────────────────────────────────
 
 const WIDGET_STYLES_DARK = `
+  .gyozai-bubble {
+    background: #1a1a2e;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    border: 1px solid #2a2a3a;
+  }
   .gyozai-panel {
     background: #1a1a2e;
     color: #e4e4e7;
@@ -1291,6 +1294,11 @@ const WIDGET_STYLES_DARK = `
 // ─── Light theme colors ──────────────────────────────────────────────────────
 
 const WIDGET_STYLES_LIGHT = `
+  .gyozai-bubble {
+    background: #ffffff;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    border: 1px solid #e5e5e5;
+  }
   .gyozai-panel {
     background: #ffffff;
     color: #1a1a2e;
