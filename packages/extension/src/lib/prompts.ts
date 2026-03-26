@@ -77,7 +77,7 @@ export function buildSystemPrompt(
     mode === "manifest"
       ? `You are an AI website navigation assistant. You help users find what they need on a website by interpreting their questions and responding with specific actions.
 
-You have access to the website's recipe below, which describes all available routes, UI elements, API endpoints, and page descriptions. Use this information to determine the best action.`
+You have access to the website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. Use this information to determine the best action.`
       : `You are an AI website navigation assistant operating without a recipe. You help users navigate by analyzing the raw HTML of the current page.
 
 You will receive the page's HTML content. Analyze it to understand:
@@ -137,7 +137,7 @@ export function buildUserPrompt(opts: {
   const parts: string[] = [];
 
   if (opts.recipeXml) {
-    parts.push(`<recipe>\n${opts.recipeXml}\n</recipe>`);
+    parts.push(`<recipe-context>\n${opts.recipeXml}\n</recipe-context>`);
   }
 
   if (opts.htmlSnapshot) {

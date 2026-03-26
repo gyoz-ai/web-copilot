@@ -64,13 +64,13 @@ export default defineBackground(() => {
     }
 
     if (message.type === "gyozai_auto_import_recipe") {
-      recipeExists(message.xml).then((exists) => {
+      recipeExists(message.content).then((exists) => {
         if (exists) {
           console.log("[gyoza] Recipe already imported, skipping auto-add");
           sendResponse({ ok: true, skipped: true });
           return;
         }
-        importRecipeFromFile(message.filename, message.xml).then(() => {
+        importRecipeFromFile(message.filename, message.content).then(() => {
           if (sender.tab?.id) {
             chrome.tabs.sendMessage(sender.tab.id, {
               type: "gyozai_recipe_auto_added",

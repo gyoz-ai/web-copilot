@@ -202,24 +202,26 @@ export default defineContentScript({
     try {
       const origin = window.location.origin;
       const pathname = window.location.pathname;
-      // Try: /recipe.xml, /current/path/recipe.xml, and path prefixes
+      // Try: /llms.txt, /current/path/llms.txt, and path prefixes
       const pathParts = pathname.split("/").filter(Boolean);
-      const urlsToTry = [`${origin}/recipe.xml`];
-      // Build prefix paths: /demos/ginko/recipe.xml, /demos/recipe.xml, etc.
+      const urlsToTry = [`${origin}/llms.txt`];
+      // Build prefix paths: /demos/ginko/llms.txt, /demos/llms.txt, etc.
       for (let i = pathParts.length; i > 0; i--) {
-        urlsToTry.push(
-          `${origin}/${pathParts.slice(0, i).join("/")}/recipe.xml`,
-        );
+        urlsToTry.push(`${origin}/${pathParts.slice(0, i).join("/")}/llms.txt`);
       }
 
-      let foundXml: string | null = null;
+      let foundContent: string | null = null;
       for (const recipeUrl of urlsToTry) {
         try {
           const response = await fetch(recipeUrl, { method: "GET" });
           if (response.ok) {
             const text = await response.text();
-            if (text.includes("gyozai-manifest")) {
-              foundXml = text;
+            // Validate it's a gyoza recipe: starts with H1 and has expected sections
+            if (
+              text.trimStart().startsWith("# ") &&
+              (text.includes("## Routes") || text.includes("## UI Elements"))
+            ) {
+              foundContent = text;
               break;
             }
           }
@@ -228,14 +230,14 @@ export default defineContentScript({
         }
       }
 
-      if (foundXml) {
+      if (foundContent) {
         const resp = await chrome.runtime.sendMessage({
           type: "gyozai_auto_import_recipe",
-          filename: "recipe.xml",
-          xml: foundXml,
+          filename: "llms.txt",
+          content: foundContent,
         });
         if (!resp?.skipped) {
-          log("📋 New recipe auto-imported for this site");
+          log("New recipe auto-imported for this site");
         }
       }
     } catch {
@@ -447,7 +449,7 @@ function GyozaiWidget() {
       chrome.runtime.sendMessage({ type: "gyozai_get_settings" }),
     ]);
 
-    const manifestMode = !!recipe?.xml;
+    const manifestMode = !!recipe?.content;
 
     // For no-manifest mode, capture clean HTML — DOM structure with
     // meaningful attrs, no scripts/styles/CSS classes/noise.
@@ -461,7 +463,7 @@ function GyozaiWidget() {
       type: "gyozai_query",
       query,
       manifestMode,
-      recipeXml: recipe?.xml,
+      recipeXml: recipe?.content,
       htmlSnapshot: manifestMode ? undefined : pageSnapshot,
       currentRoute,
       tabId: tabIdRef.current,
@@ -507,9 +509,9 @@ function GyozaiWidget() {
       S.req,
       "",
     );
-    if (manifestMode && recipe?.xml) {
+    if (manifestMode && recipe?.content) {
       console.log(
-        `%cRecipe:%c ${recipe.xml.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
+        `%cRecipe:%c ${recipe.content.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
         S.req,
         "",
       );

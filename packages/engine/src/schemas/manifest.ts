@@ -1,8 +1,8 @@
 import { z } from "zod/v4";
 
 // ─── Recipe Manifest Schema ─────────────────────────────────────────────────────
-// XML recipe fed as context TO Claude (not output by Claude).
-// These schemas validate the parsed representation after XML → object conversion.
+// Recipe fed as context TO the AI (not output by the AI).
+// These schemas validate the parsed representation of recipe data.
 
 export const RouteSchema = z.object({
   path: z.string(),

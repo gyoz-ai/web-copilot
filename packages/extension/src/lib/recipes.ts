@@ -13,7 +13,7 @@ export interface StoredRecipe {
   id: string;
   domain: string;
   name: string;
-  xml: string;
+  content: string;
   enabled: boolean;
   installedAt: string;
 }
@@ -26,12 +26,12 @@ export async function getRecipes(): Promise<StoredRecipe[]> {
 /** Get ALL enabled recipes for a domain, merged into one recipe string */
 export async function getMergedRecipeForDomain(
   domain: string,
-): Promise<{ xml: string; names: string[] } | null> {
+): Promise<{ content: string; names: string[] } | null> {
   const recipes = await getRecipes();
   const enabled = recipes.filter((r) => r.domain === domain && r.enabled);
   if (enabled.length === 0) return null;
   return {
-    xml: enabled.map((r) => r.xml).join("\n\n"),
+    content: enabled.map((r) => r.content).join("\n\n"),
     names: enabled.map((r) => r.name),
   };
 }
@@ -68,29 +68,54 @@ export async function removeRecipe(id: string): Promise<void> {
 /**
  * Check if a recipe with the same content hash already exists.
  */
-export async function recipeExists(xmlContent: string): Promise<boolean> {
-  const id = await hashContent(xmlContent);
+export async function recipeExists(recipeContent: string): Promise<boolean> {
+  const id = await hashContent(recipeContent);
   const recipes = await getRecipes();
   return recipes.some((r) => r.id === id);
 }
 
 /**
- * Import a recipe XML file. Domain is auto-inferred from the XML's
- * domain="..." attribute. Supports multiple recipes per domain.
+ * Import a recipe file. Domain is auto-inferred from the content.
+ * Supports both llms.txt Markdown format and legacy XML.
+ * Supports multiple recipes per domain.
  */
 export async function importRecipeFromFile(
   filename: string,
-  xmlContent: string,
+  recipeContent: string,
 ): Promise<void> {
-  const domainMatch = xmlContent.match(/domain="([^"]+)"/);
-  const nameMatch = xmlContent.match(
-    /<gyozai-manifest[^>]*>[\s\S]*?<route[^>]*name="([^"]+)"/,
+  let domain: string | undefined;
+  let name: string | undefined;
+
+  // Try llms.txt Markdown format first: extract from blockquote and H1
+  const h1Match = recipeContent.match(/^#\s+(.+)$/m);
+  const domainBlockquoteMatch = recipeContent.match(
+    /^>\s*domain:\s*([^\s|]+)/m,
   );
 
+  if (h1Match) {
+    name = h1Match[1].trim();
+  }
+  if (domainBlockquoteMatch) {
+    domain = domainBlockquoteMatch[1].trim();
+  }
+
+  // Fallback to legacy XML parsing
+  if (!domain) {
+    const xmlDomainMatch = recipeContent.match(/domain="([^"]+)"/);
+    domain = xmlDomainMatch?.[1];
+  }
+  if (!name) {
+    const xmlNameMatch = recipeContent.match(
+      /<gyozai-manifest[^>]*>[\s\S]*?<route[^>]*name="([^"]+)"/,
+    );
+    name = xmlNameMatch?.[1];
+  }
+
   // Generate deterministic ID from content hash
-  const id = await hashContent(xmlContent);
-  const domain = domainMatch?.[1] || filename.replace(".xml", "");
-  const name = nameMatch?.[1] || filename.replace(".xml", "");
+  const id = await hashContent(recipeContent);
+  const cleanFilename = filename.replace(/\.(xml|txt|md)$/, "");
+  domain = domain || cleanFilename;
+  name = name || cleanFilename;
 
   // If recipe with same ID exists, replace it (same recipe, updated version)
   const existing = await getRecipes();
@@ -100,7 +125,7 @@ export async function importRecipeFromFile(
       id,
       domain,
       name,
-      xml: xmlContent,
+      content: recipeContent,
       enabled: true,
       installedAt: new Date().toISOString(),
     };
@@ -112,7 +137,7 @@ export async function importRecipeFromFile(
     id,
     domain,
     name,
-    xml: xmlContent,
+    content: recipeContent,
     enabled: true,
     installedAt: new Date().toISOString(),
   });

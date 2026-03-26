@@ -294,7 +294,7 @@ export function App() {
   const handleImportRecipe = async () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".xml";
+    input.accept = ".txt,.md";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -474,7 +474,7 @@ export function App() {
           <p style={s.emptyText}>
             {showAllRecipes
               ? "No recipes installed yet."
-              : `No recipes for ${currentDomain || "this site"}. Import an XML recipe to enhance AI navigation.`}
+              : `No recipes for ${currentDomain || "this site"}. Import a recipe to enhance AI navigation.`}
           </p>
         ) : (
           <div style={s.recipeList}>
