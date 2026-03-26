@@ -9,6 +9,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:ext": "cd packages/extension && bunx wxt",
+    "dev:ext:firefox": "cd packages/extension && bunx wxt --browser firefox",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "clean": "turbo clean",
