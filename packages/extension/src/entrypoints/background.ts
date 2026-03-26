@@ -197,6 +197,7 @@ async function handleQuery(message: {
   const systemPrompt = buildSystemPrompt(
     mode as "manifest" | "no-manifest",
     caps,
+    settings.yoloMode,
   );
   const userPrompt = buildUserPrompt({
     query: message.query,

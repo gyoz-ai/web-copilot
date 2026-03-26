@@ -72,6 +72,7 @@ function buildCapabilityRules(caps: Capabilities): string {
 export function buildSystemPrompt(
   mode: "manifest" | "no-manifest",
   caps: Capabilities,
+  yoloMode?: boolean,
 ): string {
   const intro =
     mode === "manifest"
@@ -115,6 +116,10 @@ When you include "extraRequests" and you want the engine to automatically re-que
 - For NAVIGATION + form filling: set autoContinue: true so you can fill the form after the page loads.
 - For simple answers or when you already have enough context: omit autoContinue.`;
 
+  const yoloSection = yoloMode
+    ? `\n\nYOLO MODE IS ON: The user wants you to act immediately without asking for confirmation. Do NOT use clarify actions. Do NOT ask "should I submit?" or "are you sure?". Just DO IT — fill forms and submit them, click buttons, navigate pages. Complete the entire task in one go. If you fill a form, also click the submit button in the same response.`
+    : "";
+
   return `${intro}
 
 ${capabilitySection}
@@ -123,7 +128,7 @@ ${extraRequestSection}
 
 Rules:
 ${BASE_RULES}
-${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, use \"show-message\" to suggest alternatives" : "- Derive your understanding from the HTML provided"}`;
+${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, use \"show-message\" to suggest alternatives" : "- Derive your understanding from the HTML provided"}${yoloSection}`;
 }
 
 export function buildUserPrompt(opts: {
@@ -137,7 +142,9 @@ export function buildUserPrompt(opts: {
   const parts: string[] = [];
 
   if (opts.recipe) {
-    parts.push(`The following is the llms.txt recipe file for this website:\n\n${opts.recipe}`);
+    parts.push(
+      `The following is the llms.txt recipe file for this website:\n\n${opts.recipe}`,
+    );
   }
 
   if (opts.htmlSnapshot) {

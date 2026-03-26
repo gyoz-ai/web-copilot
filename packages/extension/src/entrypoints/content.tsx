@@ -564,11 +564,18 @@ function GyozaiWidget() {
         );
       }
       if (result?.extraRequests?.length) {
+        const ac = (result as { autoContinue?: boolean }).autoContinue;
         console.log(
-          `%c  📋 extraRequests:%c ${result.extraRequests.join(", ")}`,
+          `%c  📋 extraRequests:%c ${result.extraRequests.join(", ")} | autoContinue: ${ac ? "✅ yes" : "❌ no"}`,
           S.action,
           "",
         );
+      }
+      if (
+        (result as { autoContinue?: boolean }).autoContinue &&
+        !result?.extraRequests?.length
+      ) {
+        console.log(`%c  🔁 autoContinue:%c true`, S.action, "");
       }
     }
     console.groupEnd();
