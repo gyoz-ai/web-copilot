@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.output/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage/
+.turbo/
+bun.lockb
+bun.lock
+MVP.md
+testing/
