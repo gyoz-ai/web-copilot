@@ -1,10 +1,13 @@
 import { defineConfig } from "wxt";
-import path from "path";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   srcDir: "src",
   webExt: {
-    chromiumProfile: path.resolve(__dirname, ".chrome-profile"),
+    chromiumProfile: resolve(__dirname, ".chrome-profile"),
     keepProfileChanges: true,
   },
   manifest: {
