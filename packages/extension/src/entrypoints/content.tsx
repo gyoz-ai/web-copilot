@@ -7,20 +7,19 @@ import type { SnapshotType } from "@gyoz-ai/engine";
 let pendingSnapshotTypes: SnapshotType[] | null = null;
 let pendingExtraContext: string | null = null;
 let autoFollowUpUsed = false;
+let queryCounter = 0;
 
-const LOG_PREFIX = "%c[gyozai]";
-const LOG_STYLE = "color: #E8950A; font-weight: bold";
+const S = {
+  brand: "color: #E8950A; font-weight: bold",
+  req: "color: #3b82f6; font-weight: bold",
+  res: "color: #22c55e; font-weight: bold",
+  action: "color: #a855f7; font-weight: bold",
+  err: "color: #ef4444; font-weight: bold",
+  dim: "color: #9ca3af",
+};
 
 function log(...args: unknown[]) {
-  console.log(LOG_PREFIX, LOG_STYLE, ...args);
-}
-
-function logGroup(label: string) {
-  console.group(`%c[gyozai] ${label}`, LOG_STYLE);
-}
-
-function logGroupEnd() {
-  console.groupEnd();
+  console.log("%c[gyozai]", S.brand, ...args);
 }
 
 function mapExtraRequests(extraRequests: string[]): SnapshotType[] {
@@ -291,52 +290,88 @@ function GyozaiWidget() {
     }
 
     // ─── Log request ───────────────────
-    logGroup(
-      `QUERY → "${query.slice(0, 80)}${query.length > 80 ? "..." : ""}"`,
-    );
-    console.log("  Mode:", manifestMode ? "manifest" : "no-manifest");
-    console.log("  Route:", currentRoute);
+    queryCounter++;
+    const qn = queryCounter;
+    console.group(`%c[gyozai] ━━━ REQUEST #${qn} ━━━`, S.req);
     console.log(
-      "  Recipe:",
-      recipe ? `${recipe.name} (${recipe.domain})` : "none",
+      `%cQuery:%c ${query.slice(0, 120)}${query.length > 120 ? "..." : ""}`,
+      S.req,
+      "",
     );
-    if (extraPageContext) {
-      console.log("  Page context:", extraPageContext.length, "chars");
+    console.log(
+      `%cMode:%c ${manifestMode ? "✅ manifest (recipe)" : "⚠️ no-manifest (raw HTML)"}`,
+      S.req,
+      "",
+    );
+    console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
+    console.log(
+      `%cRecipe:%c ${recipe ? `✅ ${recipe.name} (${recipe.domain})` : "❌ none"}`,
+      S.req,
+      "",
+    );
+    if (manifestMode && recipe?.xml) {
+      console.log(
+        `%cSitemap:%c ${recipe.xml.length} chars sent to AI`,
+        S.req,
+        "",
+      );
     }
     if (!manifestMode && htmlSnapshot) {
-      console.log("  HTML snapshot:", htmlSnapshot.length, "chars");
+      console.log(
+        `%cHTML snapshot:%c ${htmlSnapshot.length} chars sent to AI`,
+        S.req,
+        "",
+      );
     }
+    if (extraPageContext) {
+      console.log(
+        `%cPage context:%c ✅ ${extraPageContext.length} chars (from extraRequests capture)`,
+        S.req,
+        "",
+      );
+    }
+    console.groupEnd();
 
+    const start = Date.now();
     const result = (await chrome.runtime.sendMessage(payload)) as ActionResult;
+    const ms = Date.now() - start;
 
     // ─── Log response ──────────────────
+    console.group(`%c[gyozai] ━━━ RESPONSE #${qn} (${ms}ms) ━━━`, S.res);
     if (result?.error) {
-      console.error("  ❌ Error:", result.error);
+      console.log(`%c❌ Error:%c ${result.error}`, S.err, "");
     } else {
       const actions = result?.actions || [];
-      console.log("  Actions:");
       for (const action of actions) {
-        const parts = [`    → ${action.type}`];
+        const parts: string[] = [];
         if (action.target) parts.push(`target="${action.target}"`);
         if (action.selector) parts.push(`selector="${action.selector}"`);
         if (action.url) parts.push(`url="${action.url}"`);
         if (action.code)
           parts.push(
-            `code="${action.code.slice(0, 60)}${action.code.length > 60 ? "..." : ""}"`,
+            `code="${action.code.slice(0, 80)}${action.code.length > 80 ? "..." : ""}"`,
           );
         if (action.message)
           parts.push(
-            `msg="${action.message.slice(0, 60)}${action.message.length > 60 ? "..." : ""}"`,
+            `msg="${action.message.slice(0, 80)}${action.message.length > 80 ? "..." : ""}"`,
           );
         if (action.options)
           parts.push(`options=[${action.options.join(", ")}]`);
-        console.log(parts.join(" "));
+        console.log(
+          `%c  → ${action.type}%c ${parts.join(" ")}`,
+          S.action,
+          S.dim,
+        );
       }
       if (result?.extraRequests?.length) {
-        console.log("  Extra requests:", result.extraRequests.join(", "));
+        console.log(
+          `%c  📋 extraRequests:%c ${result.extraRequests.join(", ")}`,
+          S.action,
+          "",
+        );
       }
     }
-    logGroupEnd();
+    console.groupEnd();
 
     return result;
   }
@@ -366,14 +401,22 @@ function GyozaiWidget() {
         break;
       case "execute-js":
         if (action.code) {
-          log("Execute JS →", action.code.slice(0, 80));
+          console.log(
+            `%c[gyozai] ⚡ execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
+            S.action,
+            S.dim,
+          );
           // Execute in page's main world via background worker (CSP blocks eval in content scripts)
           const result = await chrome.runtime.sendMessage({
             type: "gyozai_exec",
             code: action.code,
           });
           if (result?.error) {
-            console.error(LOG_PREFIX, LOG_STYLE, "JS error:", result.error);
+            console.error(
+              `%c[gyozai] ❌ JS error:%c ${result.error}`,
+              S.err,
+              "",
+            );
             return result.error;
           }
         }
@@ -408,17 +451,22 @@ function GyozaiWidget() {
     if (pendingExtraContext) {
       pageContextForQuery = pendingExtraContext;
       pendingExtraContext = null;
-      log("Using pending extra context:", pageContextForQuery!.length, "chars");
+      log(
+        "📎 Attaching pending extra context:",
+        pageContextForQuery!.length,
+        "chars",
+      );
     }
 
     if (pendingSnapshotTypes && pendingSnapshotTypes.length > 0) {
       const types = pendingSnapshotTypes;
       pendingSnapshotTypes = null;
-      log("Capturing pending snapshots:", types.join(", "));
+      log("📸 Capturing pending snapshots:", types.join(", "));
       const pageCtx = capturePageContext(types);
       const ctxText = formatPageContext(pageCtx);
       if (ctxText) {
         pageContextForQuery = ctxText;
+        log("📎 Captured", ctxText.length, "chars of page context");
       }
     }
 
@@ -435,7 +483,11 @@ function GyozaiWidget() {
     // ─── Handle extraRequests ─────────────────────────────────
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
-      log("AI requested extra context:", extraRequests.join(", "));
+      console.log(
+        `%c[gyozai] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")}`,
+        S.action,
+        "",
+      );
 
       const hasClarify = actions.some((a) => a.type === "clarify");
       // Only navigate and click actually change the page URL.
@@ -445,13 +497,15 @@ function GyozaiWidget() {
       );
 
       if (hasPageChange) {
-        log("Page-changing action + extraRequests → stashing for next query");
+        log(
+          "🔄 navigate/click + extraRequests → stashing capture for NEXT query",
+        );
         pendingSnapshotTypes = snapshotTypes;
         await dispatchActionsInOrder(actions);
         return;
       } else if (hasClarify) {
         log(
-          "Clarify + extraRequests → capturing now, stashing for user response",
+          "🤔 clarify + extraRequests → capturing now, stashing for user response",
         );
         const pageCtx = capturePageContext(snapshotTypes);
         pendingExtraContext = formatPageContext(pageCtx);
@@ -467,7 +521,11 @@ function GyozaiWidget() {
         );
 
         if (hasRealActions || autoFollowUpUsed) {
-          log("Real actions present or already followed up → stashing context");
+          log(
+            "📦 Real actions or already followed up → stashing",
+            ctxText.length,
+            "chars for next query",
+          );
           pendingExtraContext = ctxText;
           autoFollowUpUsed = false;
           await dispatchActionsInOrder(actions);
@@ -481,10 +539,10 @@ function GyozaiWidget() {
           }
           pendingExtraContext = ctxText;
           autoFollowUpUsed = true;
-          log(
-            "Auto-follow-up: captured",
-            ctxText.length,
-            "chars of context, re-querying...",
+          console.log(
+            `%c[gyozai] 🔁 AUTO-FOLLOW-UP:%c captured ${ctxText.length} chars of page context, re-querying with context...`,
+            S.brand,
+            "",
           );
           await handleFullQuery(
             "Now answer my question with the page context provided.",
