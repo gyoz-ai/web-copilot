@@ -184,17 +184,38 @@ Stripe handles auth. No separate OAuth system needed.
 
 ---
 
-## What's NOT in MVP (roadmap for later)
+## Phases
 
-- Recipe marketplace (browse, buy/sell, ratings) → Phase 2
-- Streaming responses → Phase 2
-- AI recipe generator → Phase 3
-- Enterprise/org mode with okla, sso, etc → Phase 3
-- Persistent DOM edits (IndexedDB) → Phase 4
-- Canvas feature → Phase 4
-- Local model support (Ollama) → Phase 5
-- SDK as seen in app-copilot repo + enterprise SDK offering for integration
-- Chat scope setting: option to carry conversation across all tabs (global context) OR per-tab/per-domain isolated chat → Phase 2
+### Phase 1 — Extension MVP (DONE)
+BYOK browser extension with all core features.
+
+### Phase 2 — Platform Website (CURRENT)
+- gyoz.ai homepage (dark theme, Tailwind + shadcn + Aceternity animations)
+- Free recipe directory (browse, publish, one-click install, ratings, download count)
+- Hosted example sites (Ginko, FreshCart, VidFlow)
+- Browser detection for install CTA (Chrome/Firefox/Safari)
+- Chat scope setting: global vs per-tab/per-domain
+
+### Phase 3 — Ship
+- Chrome Web Store submission
+- Firefox Add-ons submission
+- Privacy policy
+- Extension icon + branding polish
+- Streaming responses
+
+### Phase 4 — Managed Key + Billing
+- Stripe auth (checkout → customer → session)
+- Managed inference proxy (POST /v1/inference)
+- Usage metering + plan enforcement
+- Billing dashboard
+
+### Future
+- AI recipe generator
+- Enterprise/org mode (SSO, admin dashboard)
+- Persistent DOM edits (IndexedDB)
+- Canvas feature (AI builds React UI on the fly)
+- Local model support (Ollama)
+- SDK for website embedding
 
 ---
 
