@@ -186,7 +186,7 @@ export default defineContentScript({
     const shadow = host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
-    style.textContent = WIDGET_STYLES;
+    style.textContent = WIDGET_STYLES_BASE + WIDGET_STYLES_DARK;
     shadow.appendChild(style);
 
     const container = document.createElement("div");
@@ -263,6 +263,7 @@ function GyozaiWidget() {
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -278,6 +279,37 @@ function GyozaiWidget() {
     chrome.runtime.onMessage.addListener(handler);
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
+
+  // Load theme on mount and listen for changes from popup settings
+  useEffect(() => {
+    chrome.runtime
+      .sendMessage({ type: "gyozai_get_settings" })
+      .then((s: Record<string, unknown> | undefined) => {
+        if (s?.theme === "light" || s?.theme === "dark") setTheme(s.theme);
+      });
+    const handler = (changes: {
+      [key: string]: chrome.storage.StorageChange;
+    }) => {
+      const newTheme = changes.gyozai_settings?.newValue?.theme;
+      if (newTheme === "light" || newTheme === "dark") {
+        setTheme(newTheme);
+      }
+    };
+    chrome.storage.onChanged.addListener(handler);
+    return () => chrome.storage.onChanged.removeListener(handler);
+  }, []);
+
+  // Update shadow DOM styles when theme changes
+  useEffect(() => {
+    const styleEl = document
+      .querySelector("#gyozai-extension-root")
+      ?.shadowRoot?.querySelector("style");
+    if (styleEl) {
+      styleEl.textContent =
+        WIDGET_STYLES_BASE +
+        (theme === "light" ? WIDGET_STYLES_LIGHT : WIDGET_STYLES_DARK);
+    }
+  }, [theme]);
 
   // Get tab ID, then restore state from chrome.storage.local + check pending nav
   useEffect(() => {
@@ -1015,7 +1047,9 @@ function captureHtml(): string {
 
 // ─── Widget Styles ───────────────────────────────────────────────────────────
 
-const WIDGET_STYLES = `
+// ─── Base styles (shared between themes) ─────────────────────────────────────
+
+const WIDGET_STYLES_BASE = `
   * { box-sizing: border-box; }
 
   .gyozai-bubble {
@@ -1043,16 +1077,12 @@ const WIDGET_STYLES = `
     right: 20px;
     width: 380px;
     max-height: 520px;
-    background: #1a1a2e;
     border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-    border: 1px solid #2a2a3a;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #e4e4e7;
     font-size: 13px;
   }
 
@@ -1061,8 +1091,6 @@ const WIDGET_STYLES = `
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    border-bottom: 1px solid #2a2a3a;
-    background: #12121a;
   }
   .gyozai-header-title {
     display: flex;
@@ -1083,7 +1111,6 @@ const WIDGET_STYLES = `
     border: none;
     background: none;
     cursor: pointer;
-    color: #71717a;
     padding: 4px;
     border-radius: 4px;
     transition: color 0.15s ease;
@@ -1101,7 +1128,6 @@ const WIDGET_STYLES = `
   }
 
   .gyozai-empty {
-    color: #71717a;
     text-align: center;
     padding: 32px 16px;
     font-size: 13px;
@@ -1125,8 +1151,6 @@ const WIDGET_STYLES = `
 
   .gyozai-msg-assistant {
     align-self: flex-start;
-    background: #2a2a3a;
-    color: #e4e4e7;
     border-radius: 12px 12px 12px 4px;
   }
 
@@ -1154,20 +1178,15 @@ const WIDGET_STYLES = `
     display: flex;
     align-items: center;
     padding: 10px 12px;
-    border-top: 1px solid #2a2a3a;
     gap: 8px;
-    background: #12121a;
   }
 
   .gyozai-input {
     flex: 1;
-    border: 1px solid #2a2a3a;
     border-radius: 8px;
     outline: none;
     font-size: 13px;
     font-family: inherit;
-    color: #e4e4e7;
-    background: #1a1a2e;
     padding: 8px 10px;
     transition: border-color 0.15s ease;
   }
@@ -1192,9 +1211,6 @@ const WIDGET_STYLES = `
   .gyozai-error {
     padding: 8px 12px;
     font-size: 12px;
-    color: #f87171;
-    background: #2d1b1b;
-    border-top: 1px solid #4a2020;
   }
 
   .gyozai-clarify {
@@ -1202,7 +1218,6 @@ const WIDGET_STYLES = `
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px 12px;
-    border-top: 1px solid #2a2a3a;
   }
 
   .gyozai-clarify-btn {
@@ -1211,7 +1226,6 @@ const WIDGET_STYLES = `
     font-family: inherit;
     border: 1px solid #E8950A;
     border-radius: 16px;
-    background: #1a1a2e;
     color: #E8950A;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -1225,8 +1239,6 @@ const WIDGET_STYLES = `
     padding: 8px 12px;
     font-size: 12px;
     color: #E8950A;
-    background: #12121a;
-    border-top: 1px solid #2a2a3a;
     text-align: center;
     animation: gyozai-fade-in 0.3s ease;
   }
@@ -1234,5 +1246,95 @@ const WIDGET_STYLES = `
   @keyframes gyozai-fade-in {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+// ─── Dark theme colors ───────────────────────────────────────────────────────
+
+const WIDGET_STYLES_DARK = `
+  .gyozai-panel {
+    background: #1a1a2e;
+    color: #e4e4e7;
+    border: 1px solid #2a2a3a;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  }
+  .gyozai-header {
+    border-bottom: 1px solid #2a2a3a;
+    background: #12121a;
+  }
+  .gyozai-icon-btn { color: #71717a; }
+  .gyozai-empty { color: #71717a; }
+  .gyozai-msg-assistant {
+    background: #2a2a3a;
+    color: #e4e4e7;
+  }
+  .gyozai-input-row {
+    border-top: 1px solid #2a2a3a;
+    background: #12121a;
+  }
+  .gyozai-input {
+    border: 1px solid #2a2a3a;
+    color: #e4e4e7;
+    background: #1a1a2e;
+  }
+  .gyozai-error {
+    color: #f87171;
+    background: #2d1b1b;
+    border-top: 1px solid #4a2020;
+  }
+  .gyozai-clarify {
+    border-top: 1px solid #2a2a3a;
+  }
+  .gyozai-clarify-btn {
+    background: #1a1a2e;
+  }
+  .gyozai-toast {
+    background: #12121a;
+    border-top: 1px solid #2a2a3a;
+  }
+`;
+
+// ─── Light theme colors ──────────────────────────────────────────────────────
+
+const WIDGET_STYLES_LIGHT = `
+  .gyozai-panel {
+    background: #ffffff;
+    color: #1a1a2e;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .gyozai-header {
+    border-bottom: 1px solid #e5e5e5;
+    background: #fafafa;
+  }
+  .gyozai-icon-btn { color: #9ca3af; }
+  .gyozai-empty { color: #9ca3af; }
+  .gyozai-msg-assistant {
+    background: #f3f4f6;
+    color: #1a1a2e;
+  }
+  .gyozai-input-row {
+    border-top: 1px solid #e5e5e5;
+    background: #fafafa;
+  }
+  .gyozai-input {
+    border: 1px solid #e5e5e5;
+    color: #1a1a2e;
+    background: #ffffff;
+  }
+  .gyozai-error {
+    color: #dc2626;
+    background: #fef2f2;
+    border-top: 1px solid #fecaca;
+  }
+  .gyozai-clarify {
+    border-top: 1px solid #e5e5e5;
+  }
+  .gyozai-clarify-btn {
+    background: #ffffff;
+  }
+  .gyozai-toast {
+    background: #fafafa;
+    border-top: 1px solid #e5e5e5;
   }
 `;

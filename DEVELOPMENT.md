@@ -41,6 +41,7 @@ gyozAI is a browser extension that uses AI to navigate any website. The user ask
 ### Where the proxy code went
 
 The original proxy server (`examples/api/`) had three jobs:
+
 1. Hold the API key → now `chrome.storage.local` + `lib/storage.ts`
 2. Build prompts → now `lib/prompts.ts` (identical copy)
 3. Call Claude with structured output → now `lib/providers/claude.ts`
@@ -108,22 +109,26 @@ web-copilot/
 ## Provider Details
 
 ### Claude (BYOK)
+
 - SDK: `@anthropic-ai/sdk`
 - Structured output: `output_config.format` with `json_schema`
 - Models: `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001`
 - Guaranteed valid JSON — no parsing errors possible
 
 ### OpenAI (BYOK)
+
 - SDK: `openai`
 - Structured output: `response_format` with `json_schema` + `strict: true`
 - Models: `gpt-4o`, `gpt-4o-mini`
 
 ### Gemini (BYOK)
+
 - Direct REST API (no SDK — lighter)
 - Structured output: `generationConfig.responseSchema`
 - Models: `gemini-2.5-flash`, `gemini-2.5-pro`
 
 ### Managed (platform)
+
 - Calls `https://api.gyoz.ai/v1/inference`
 - Bearer token auth (from Stripe subscription)
 - Platform chooses the model based on plan tier
@@ -132,15 +137,15 @@ web-copilot/
 
 ## Action Types
 
-| Action | Description | Fields |
-|--------|-------------|--------|
-| `navigate` | Go to a URL | `target` (URL path) |
-| `click` | Click an element | `selector` (CSS) |
-| `execute-js` | Run JavaScript on page | `code` (JS string) |
-| `show-message` | Display a chat message | `message` (text) |
+| Action         | Description            | Fields                                  |
+| -------------- | ---------------------- | --------------------------------------- |
+| `navigate`     | Go to a URL            | `target` (URL path)                     |
+| `click`        | Click an element       | `selector` (CSS)                        |
+| `execute-js`   | Run JavaScript on page | `code` (JS string)                      |
+| `show-message` | Display a chat message | `message` (text)                        |
 | `highlight-ui` | Golden glow on element | `selector` (CSS), auto-removes after 4s |
-| `fetch` | HTTP request for data | `url`, `method` |
-| `clarify` | Ask follow-up question | `message`, `options` (string array) |
+| `fetch`        | HTTP request for data  | `url`, `method`                         |
+| `clarify`      | Ask follow-up question | `message`, `options` (string array)     |
 
 All actions can include an optional `message` field for user-facing text.
 
@@ -174,21 +179,25 @@ Recipes are stored in `chrome.storage.local` keyed by domain. Users import them 
 ## Development Setup
 
 ### Prerequisites
+
 - Bun 1.3+
 - Chrome or Firefox
 
 ### Install
+
 ```bash
 cd ~/Projects/gyozai-web-copilot
 bun install
 ```
 
 ### Build the engine (required before extension dev)
+
 ```bash
 bun turbo build --filter=@gyoz-ai/app-copilot
 ```
 
 ### Run the extension in dev mode
+
 ```bash
 # Chrome (default)
 bun --filter @gyoz-ai/extension dev
@@ -200,6 +209,7 @@ bun --filter @gyoz-ai/extension dev:firefox
 This opens a browser with the extension auto-loaded and hot-reloads on changes.
 
 ### Run example demo sites (for testing)
+
 ```bash
 # In separate terminals:
 bun --filter @gyoz-ai/example-ginko dev       # http://localhost:4321
@@ -254,19 +264,65 @@ Repeat Test 1 with OpenAI key + gpt-4o, then Gemini key + gemini-2.5-flash. Veri
 
 ---
 
+## CI/CD
+
+### GitHub Actions (`.github/workflows/ci.yml`)
+
+Runs on every push to `main` and on pull requests targeting `main`.
+
+**Jobs:**
+
+1. **Typecheck & Test** (`check`)
+   - Installs dependencies with `bun install --frozen-lockfile`
+   - Builds the engine package (required dependency for extension and SDK)
+   - Runs `bun turbo typecheck` across all packages
+   - Runs `bun turbo test` across all packages
+
+2. **Build Extension** (`build-extension`, depends on `check`)
+   - Builds the engine package
+   - Builds Chrome extension: `bunx wxt build`
+   - Uploads Chrome artifact (`packages/extension/.output/chrome-mv3/`)
+   - Builds Firefox extension: `bunx wxt build --browser firefox`
+   - Uploads Firefox artifact (`packages/extension/.output/firefox-mv3/`)
+
+### Building the extension for production
+
+```bash
+# Chrome (Manifest V3)
+cd packages/extension && bunx wxt build
+# Output: packages/extension/.output/chrome-mv3/
+
+# Firefox (Manifest V3)
+cd packages/extension && bunx wxt build --browser firefox
+# Output: packages/extension/.output/firefox-mv3/
+```
+
+The engine must be built first (`bun turbo build --filter=@gyoz-ai/engine`) before building the extension, as the extension imports from it.
+
+### Extension artifacts
+
+CI produces two downloadable artifacts per run:
+
+- `extension-chrome` — ready to upload to Chrome Web Store or load as unpacked extension
+- `extension-firefox` — ready to upload to Firefox Add-ons
+
+Download artifacts from the GitHub Actions run page. For store submission, download the artifact zip and upload it to the respective store's developer console.
+
+---
+
 ## Environment Variables
 
 The extension itself has no env vars — everything is configured via the popup UI and stored in `chrome.storage.local`.
 
 For running the example proxy (only needed for SDK demos, not the extension):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Claude API key | (required) |
-| `PORT` | Proxy server port | `3001` |
-| `ALLOWED_ORIGINS` | CORS origins (comma-separated) | `http://localhost:4321,...` |
-| `MODEL` | Default Claude model | `claude-sonnet-4-20250514` |
-| `SYSTEM_PROMPT` | Custom system prompt prefix | (empty) |
+| Variable            | Description                    | Default                     |
+| ------------------- | ------------------------------ | --------------------------- |
+| `ANTHROPIC_API_KEY` | Claude API key                 | (required)                  |
+| `PORT`              | Proxy server port              | `3001`                      |
+| `ALLOWED_ORIGINS`   | CORS origins (comma-separated) | `http://localhost:4321,...` |
+| `MODEL`             | Default Claude model           | `claude-sonnet-4-20250514`  |
+| `SYSTEM_PROMPT`     | Custom system prompt prefix    | (empty)                     |
 
 ---
 
@@ -299,13 +355,13 @@ Disabled capabilities are excluded from the system prompt entirely, so the AI ne
 
 ## SDK vs Extension
 
-| | SDK (packages/sdk) | Extension (packages/extension) |
-|---|---|---|
-| **Target** | Website owners embed into their site | End users install in browser |
-| **API key** | Stored on proxy server | Stored in chrome.storage |
-| **Works on** | Only the site that embeds it | Any website |
-| **Needs proxy** | Yes | No (BYOK) / Yes (managed mode → platform API) |
-| **UI** | React components (BubbleSearch, SearchBar) | Shadow DOM content script |
-| **Distribution** | npm package | Chrome Web Store / Firefox Add-ons |
+|                  | SDK (packages/sdk)                         | Extension (packages/extension)                |
+| ---------------- | ------------------------------------------ | --------------------------------------------- |
+| **Target**       | Website owners embed into their site       | End users install in browser                  |
+| **API key**      | Stored on proxy server                     | Stored in chrome.storage                      |
+| **Works on**     | Only the site that embeds it               | Any website                                   |
+| **Needs proxy**  | Yes                                        | No (BYOK) / Yes (managed mode → platform API) |
+| **UI**           | React components (BubbleSearch, SearchBar) | Shadow DOM content script                     |
+| **Distribution** | npm package                                | Chrome Web Store / Firefox Add-ons            |
 
 The extension is the primary product. The SDK exists for site owners who want native integration.
