@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom/client";
-import { capturePageContext, formatPageContext } from "@gyoz-ai/engine";
+import {
+  capturePageContext,
+  formatPageContext,
+  captureCleanHtml,
+} from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
 
 // ─── Module-level state (persists for the lifetime of this content script) ────
@@ -429,12 +433,12 @@ function GyozaiWidget() {
 
     const manifestMode = !!recipe?.xml;
 
-    // For no-manifest mode, use structured page context instead of raw HTML
-    // This is smaller and more useful for the AI than 30KB of messy HTML
+    // For no-manifest mode, capture clean HTML — DOM structure with
+    // meaningful attrs, no scripts/styles/CSS classes/noise.
+    // Gives AI both structure and content in a compact format.
     let pageSnapshot: string | undefined;
     if (!manifestMode && !extraPageContext) {
-      const ctx = capturePageContext(["all"] as SnapshotType[]);
-      pageSnapshot = formatPageContext(ctx);
+      pageSnapshot = captureCleanHtml();
     }
 
     const payload: Record<string, unknown> = {
@@ -496,7 +500,7 @@ function GyozaiWidget() {
     }
     if (!manifestMode && pageSnapshot) {
       console.log(
-        `%cPage context (structured):%c ${pageSnapshot.length} chars sent to AI`,
+        `%cClean HTML:%c ${pageSnapshot.length} chars sent to AI`,
         S.req,
         "",
       );
@@ -1033,17 +1037,7 @@ function GyozaiWidget() {
   );
 }
 
-// ─── HTML Capture ────────────────────────────────────────────────────────────
-
-function captureHtml(): string {
-  const clone = document.body.cloneNode(true) as HTMLElement;
-  clone
-    .querySelectorAll("script, style, noscript, #gyozai-extension-root")
-    .forEach((el) => el.remove());
-  let html = clone.innerHTML;
-  if (html.length > 30000) html = html.slice(0, 30000) + "\n<!-- truncated -->";
-  return html;
-}
+// captureCleanHtml is imported from @gyoz-ai/engine
 
 // ─── Widget Styles ───────────────────────────────────────────────────────────
 
