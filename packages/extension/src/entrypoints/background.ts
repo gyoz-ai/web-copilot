@@ -267,14 +267,14 @@ async function handleQuery(message: {
   }
   console.groupEnd();
 
-  // Update conversation history
+  // Update conversation history — store concise summary, not all verbose messages
   history.push({ role: "user", content: message.query });
-  const assistantMsg = result.actions
-    .map((a) => a.message)
-    .filter(Boolean)
-    .join(" ");
-  if (assistantMsg) {
-    history.push({ role: "assistant", content: assistantMsg });
+  const firstMsg = result.actions.find(
+    (a) => a.type === "show-message" && a.message,
+  )?.message;
+  if (firstMsg) {
+    // Store only the first show-message, truncated to avoid bloating context
+    history.push({ role: "assistant", content: firstMsg.slice(0, 300) });
   }
   if (tabId != null) {
     await saveConversationHistory(tabId, history);

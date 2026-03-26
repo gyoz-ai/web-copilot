@@ -377,7 +377,7 @@ function GyozaiWidget() {
         try {
           autoFollowUpUsed = false;
           await handleFullQuery(
-            `I've navigated to this page. Continue with my original request: ${pendingNav.originalQuery}`,
+            `I've already navigated to this page. Complete the remaining task without repeating what was already said. Original request: ${pendingNav.originalQuery}`,
             false,
           );
         } catch (err) {
@@ -580,6 +580,12 @@ function GyozaiWidget() {
     }
     console.groupEnd();
 
+    // Raw payload/response for debugging (collapsed)
+    console.groupCollapsed(`%c[gyoza] 📦 RAW #${qn}`, S.dim);
+    console.log("Request payload:", payload);
+    console.log("Response:", result);
+    console.groupEnd();
+
     return result;
   }
 
@@ -736,7 +742,7 @@ function GyozaiWidget() {
         );
         pendingExtraContext = context;
         await handleFullQuery(
-          "Now answer my question with the page context provided.",
+          "Page context is now available. Complete the task using this context. Do not repeat previous messages.",
           false,
         );
       } else {
@@ -785,15 +791,24 @@ function GyozaiWidget() {
       options?: string[];
     }>,
   ): Promise<void> {
-    // Messages + clarify first
-    for (const action of actions) {
-      if (action.type === "show-message" && action.message) {
-        addAssistantMessage(action.message);
-      }
-      if (action.type === "clarify" && action.message) {
-        addAssistantMessage(action.message);
-        setClarify({ message: action.message, options: action.options || [] });
-      }
+    // Consolidate all show-messages into ONE chat bubble (prevents duplicates)
+    const showMessages = actions
+      .filter((a) => a.type === "show-message" && a.message)
+      .map((a) => a.message!);
+    if (showMessages.length > 0) {
+      addAssistantMessage(showMessages.join("\n\n"));
+    }
+
+    // Clarify stays separate (has options)
+    const clarifyAction = actions.find(
+      (a) => a.type === "clarify" && a.message,
+    );
+    if (clarifyAction) {
+      addAssistantMessage(clarifyAction.message!);
+      setClarify({
+        message: clarifyAction.message!,
+        options: clarifyAction.options || [],
+      });
     }
 
     await new Promise((r) => setTimeout(r, 50));
