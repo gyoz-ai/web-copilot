@@ -1,7 +1,12 @@
 import { defineConfig } from "wxt";
+import path from "path";
 
 export default defineConfig({
   srcDir: "src",
+  webExt: {
+    chromiumProfile: path.resolve(__dirname, ".chrome-profile"),
+    keepProfileChanges: true,
+  },
   manifest: {
     name: "gyozAI — AI Website Navigator",
     description:
