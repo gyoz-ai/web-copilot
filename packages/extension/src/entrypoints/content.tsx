@@ -438,11 +438,10 @@ function GyozaiWidget() {
       log("AI requested extra context:", extraRequests.join(", "));
 
       const hasClarify = actions.some((a) => a.type === "clarify");
+      // Only navigate and click actually change the page URL.
+      // execute-js modifies DOM in-place — doesn't need stashing.
       const hasPageChange = actions.some(
-        (a) =>
-          a.type === "navigate" ||
-          a.type === "click" ||
-          a.type === "execute-js",
+        (a) => a.type === "navigate" || a.type === "click",
       );
 
       if (hasPageChange) {
