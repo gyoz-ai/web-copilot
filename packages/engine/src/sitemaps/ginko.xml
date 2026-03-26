@@ -11,7 +11,11 @@
     <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/withdraw']" type="link" label="出金する (Withdraw)" action="navigate-withdraw" />
     <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/history']" type="link" label="取引履歴を見る (View History)" action="navigate-history" />
     <ui-element route="/demos/ginko" selector="a[href='/demos/ginko/account']" type="link" label="口座概要 (Account Overview)" action="navigate-account" />
+    <ui-element route="/demos/ginko/deposit" selector="#amount" type="input" label="金額（円）(Amount in JPY)" action="enter-deposit-amount" />
+    <ui-element route="/demos/ginko/deposit" selector="#memo" type="input" label="メモ (Memo, optional)" action="enter-deposit-memo" />
     <ui-element route="/demos/ginko/deposit" selector="#deposit-form button[type='submit']" type="button" label="入金を確認 (Confirm Deposit)" action="submit-deposit" />
+    <ui-element route="/demos/ginko/withdraw" selector="#amount" type="input" label="金額（円）(Amount in JPY)" action="enter-withdrawal-amount" />
+    <ui-element route="/demos/ginko/withdraw" selector="#destination1" type="input" label="送金先口座番号 (Destination account number)" action="enter-destination-account" />
     <ui-element route="/demos/ginko/withdraw" selector="#withdraw-form button[type='submit']" type="button" label="出金を確認 (Confirm Withdrawal)" action="submit-withdrawal" />
   </ui-elements>
   <page-descriptions>
