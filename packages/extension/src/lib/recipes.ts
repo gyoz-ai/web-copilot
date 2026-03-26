@@ -1,3 +1,14 @@
+async function hashContent(content: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+}
+
 export interface StoredRecipe {
   id: string;
   domain: string;
@@ -62,13 +73,13 @@ export async function importRecipeFromFile(
   filename: string,
   xmlContent: string,
 ): Promise<void> {
-  const idMatch = xmlContent.match(/id="([^"]+)"/);
   const domainMatch = xmlContent.match(/domain="([^"]+)"/);
   const nameMatch = xmlContent.match(
     /<gyozai-manifest[^>]*>[\s\S]*?<route[^>]*name="([^"]+)"/,
   );
 
-  const id = idMatch?.[1] || crypto.randomUUID();
+  // Generate deterministic ID from content hash
+  const id = await hashContent(xmlContent);
   const domain = domainMatch?.[1] || filename.replace(".xml", "");
   const name = nameMatch?.[1] || filename.replace(".xml", "");
 

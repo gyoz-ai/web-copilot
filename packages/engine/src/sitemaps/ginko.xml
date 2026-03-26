@@ -1,4 +1,4 @@
-<gyozai-manifest id="ginko-bank-v1" version="1" domain="localhost:4321" prefix="/demos/ginko">
+<gyozai-manifest version="1" domain="localhost:4321" prefix="/demos/ginko">
   <routes>
     <route path="/demos/ginko" name="ホーム" description="Bank home page with announcements and quick links to main services" />
     <route path="/demos/ginko/account" name="口座概要" description="Account overview showing current balance and recent transactions" />

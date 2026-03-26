@@ -103,8 +103,12 @@ export function App() {
       {/* Header */}
       <div style={s.header}>
         <div style={s.headerTitle}>
-          <span style={s.logo}>🥟</span>
-          <span style={s.title}>gyozAI</span>
+          <img
+            src="/icon-128.png"
+            alt="gyozAI"
+            style={{ width: 24, height: 24 }}
+          />
+          <span style={s.title}>gyoz.ai</span>
         </div>
         <span style={s.version}>v0.0.1</span>
       </div>

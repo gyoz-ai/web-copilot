@@ -32,7 +32,6 @@ export const PageDescriptionSchema = z.object({
 });
 
 export const ManifestSchema = z.object({
-  id: z.string(),
   version: z.number().int().positive(),
   domain: z.string(),
   prefix: z.string().optional(),
