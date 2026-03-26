@@ -38,6 +38,10 @@ export const ActionResponseSchema = z.object({
   actions: z.array(ActionSchema).min(1),
   // AI can request additional page context before its next response
   extraRequests: z.array(z.enum(EXTRA_REQUEST_TYPES)).optional(),
+  // AI explicitly says whether the engine should auto-continue after dispatching
+  // these actions (e.g. after capturing extraRequests context). If true, the engine
+  // will re-query with the captured context. If false/omitted, it stops and waits.
+  autoContinue: z.boolean().optional(),
 });
 
 // ─── Types ──────────────────────────────────────────────────────────────────────

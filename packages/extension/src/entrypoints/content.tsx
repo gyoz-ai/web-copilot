@@ -220,7 +220,6 @@ export default defineContentScript({
             const text = await response.text();
             if (text.includes("gyozai-manifest")) {
               foundXml = text;
-              log("📋 Auto-detected recipe at", recipeUrl);
               break;
             }
           }
@@ -230,11 +229,14 @@ export default defineContentScript({
       }
 
       if (foundXml) {
-        chrome.runtime.sendMessage({
+        const resp = await chrome.runtime.sendMessage({
           type: "gyozai_auto_import_recipe",
           filename: "recipe.xml",
           xml: foundXml,
         });
+        if (!resp?.skipped) {
+          log("📋 New recipe auto-imported for this site");
+        }
       }
     } catch {
       // No recipe file — that's fine
@@ -675,28 +677,24 @@ function GyozaiWidget() {
 
     const actions = result?.actions || [];
     const extraRequests = result?.extraRequests;
+    const autoContinue = (result as { autoContinue?: boolean }).autoContinue;
 
     // ─── Handle extraRequests ─────────────────────────────────
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
       console.log(
-        `%c[gyoza] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")}`,
+        `%c[gyoza] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")} ${autoContinue ? "(autoContinue)" : "(wait)"}`,
         S.action,
         "",
       );
 
-      const hasClarify = actions.some((a) => a.type === "clarify");
-      // Only navigate and click actually change the page URL.
-      // execute-js modifies DOM in-place — doesn't need stashing.
       const hasPageChange = actions.some(
         (a) => a.type === "navigate" || a.type === "click",
       );
 
       if (hasPageChange) {
-        log(
-          "🔄 navigate/click + extraRequests → saving state for auto-resume after page load",
-        );
-        // Persist to chrome.storage.local so it survives page navigation
+        // Page will change — stash snapshot types for after navigation
+        log("🔄 navigate/click + extraRequests → saving for auto-resume");
         await savePendingNav({
           snapshotTypes,
           originalQuery: query,
@@ -705,55 +703,33 @@ function GyozaiWidget() {
         });
         await dispatchActionsInOrder(actions);
         return;
-      } else if (hasClarify) {
-        log(
-          "🤔 clarify + extraRequests → capturing now, stashing for user response",
-        );
-        const pageCtx = capturePageContext(snapshotTypes);
-        pendingExtraContext = formatPageContext(pageCtx);
-        await dispatchActionsInOrder(actions);
-        return;
-      } else {
-        const pageCtx = capturePageContext(snapshotTypes);
-        const ctxText = formatPageContext(pageCtx);
-
-        const CONTENT_ACTIONS = ["highlight-ui", "navigate", "click"];
-        const hasRealActions = actions.some((a) =>
-          CONTENT_ACTIONS.includes(a.type),
-        );
-
-        if (hasRealActions || autoFollowUpUsed) {
-          log(
-            "📦 Real actions or already followed up → stashing",
-            ctxText.length,
-            "chars for next query",
-          );
-          pendingExtraContext = ctxText;
-          autoFollowUpUsed = false;
-          await dispatchActionsInOrder(actions);
-          return;
-        } else {
-          // Only show-message — auto-follow-up once
-          for (const action of actions) {
-            if (action.type === "show-message" && action.message) {
-              addAssistantMessage(action.message);
-            }
-          }
-          pendingExtraContext = ctxText;
-          autoFollowUpUsed = true;
-          console.log(
-            `%c[gyoza] 🔁 AUTO-FOLLOW-UP:%c captured ${ctxText.length} chars of page context, re-querying with context...`,
-            S.brand,
-            "",
-          );
-          await handleFullQuery(
-            "Now answer my question with the page context provided.",
-            false,
-          );
-          autoFollowUpUsed = false;
-          return;
-        }
       }
+
+      // Capture context now (page isn't changing)
+      const pageCtx = capturePageContext(snapshotTypes);
+      const ctxText = formatPageContext(pageCtx);
+
+      // Dispatch current actions (show-message, clarify, etc.)
+      await dispatchActionsInOrder(actions);
+
+      if (autoContinue && ctxText) {
+        // AI wants to continue — re-query with captured context
+        console.log(
+          `%c[gyoza] 🔁 AUTO-CONTINUE:%c captured ${ctxText.length} chars, re-querying...`,
+          S.brand,
+          "",
+        );
+        pendingExtraContext = ctxText;
+        await handleFullQuery(
+          "Now answer my question with the page context provided.",
+          false,
+        );
+      } else {
+        // AI wants to wait — stash context for next user query
+        log("📦 Stashing", ctxText.length, "chars for next query");
+        pendingExtraContext = ctxText;
+      }
+      return;
     }
 
     // ─── Handle fetch actions ─────────────────────────────────
