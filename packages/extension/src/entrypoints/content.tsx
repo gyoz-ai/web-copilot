@@ -39,14 +39,14 @@ function sanitizeError(error: string): string {
   return firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
 }
 
-// ─── Message storage (chrome.storage.session) ────────────────────────────────
+// ─── Message storage (chrome.storage.local) ────────────────────────────────
 
 const MESSAGES_KEY = "gyozai_ui_messages";
 const EXPANDED_KEY = "gyozai_ui_expanded";
 
 async function loadMessages(): Promise<Message[]> {
   try {
-    const result = await chrome.storage.session.get(MESSAGES_KEY);
+    const result = await chrome.storage.local.get(MESSAGES_KEY);
     return result[MESSAGES_KEY] || [];
   } catch {
     return [];
@@ -55,7 +55,7 @@ async function loadMessages(): Promise<Message[]> {
 
 async function persistMessages(messages: Message[]) {
   try {
-    await chrome.storage.session.set({ [MESSAGES_KEY]: messages });
+    await chrome.storage.local.set({ [MESSAGES_KEY]: messages });
   } catch {
     // storage full
   }
@@ -63,7 +63,7 @@ async function persistMessages(messages: Message[]) {
 
 async function loadExpanded(): Promise<boolean> {
   try {
-    const result = await chrome.storage.session.get(EXPANDED_KEY);
+    const result = await chrome.storage.local.get(EXPANDED_KEY);
     return result[EXPANDED_KEY] === true;
   } catch {
     return false;
@@ -72,7 +72,7 @@ async function loadExpanded(): Promise<boolean> {
 
 async function persistExpanded(expanded: boolean) {
   try {
-    await chrome.storage.session.set({ [EXPANDED_KEY]: expanded });
+    await chrome.storage.local.set({ [EXPANDED_KEY]: expanded });
   } catch {}
 }
 
@@ -191,7 +191,7 @@ function GyozaiWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Restore state from chrome.storage.session on mount
+  // Restore state from chrome.storage.local on mount
   useEffect(() => {
     Promise.all([loadMessages(), loadExpanded()]).then(([msgs, exp]) => {
       setMessages(msgs);
@@ -200,7 +200,7 @@ function GyozaiWidget() {
     });
   }, []);
 
-  // Persist messages to chrome.storage.session
+  // Persist messages to chrome.storage.local
   useEffect(() => {
     if (!initialized) return;
     persistMessages(messages);

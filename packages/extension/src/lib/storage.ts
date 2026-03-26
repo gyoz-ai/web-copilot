@@ -25,7 +25,7 @@ export async function saveSettings(settings: ExtensionSettings): Promise<void> {
 export async function getConversationHistory(): Promise<
   Array<{ role: string; content: string }>
 > {
-  const result = await chrome.storage.session.get("gyozai_history");
+  const result = await chrome.storage.local.get("gyozai_history");
   return result.gyozai_history || [];
 }
 
@@ -33,9 +33,9 @@ export async function saveConversationHistory(
   history: Array<{ role: string; content: string }>,
 ): Promise<void> {
   const capped = history.slice(-20);
-  await chrome.storage.session.set({ gyozai_history: capped });
+  await chrome.storage.local.set({ gyozai_history: capped });
 }
 
 export async function clearConversationHistory(): Promise<void> {
-  await chrome.storage.session.remove("gyozai_history");
+  await chrome.storage.local.remove("gyozai_history");
 }
