@@ -239,6 +239,7 @@ BYOK browser extension with all core features.
 
 ### Future
 
+- Tab history section in extension popup (browse past conversations per tab)
 - AI recipe generator
 - Enterprise/org mode (SSO, admin dashboard)
 - Persistent DOM edits (IndexedDB)
