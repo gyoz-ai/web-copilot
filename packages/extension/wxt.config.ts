@@ -1,7 +1,15 @@
 import { defineConfig } from "wxt";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   srcDir: "src",
+  webExt: {
+    chromiumProfile: resolve(__dirname, ".chrome-profile"),
+    keepProfileChanges: true,
+  },
   manifest: {
     name: "gyozAI — AI Website Navigator",
     description:
@@ -11,6 +19,12 @@ export default defineConfig({
       128: "/icon-128.png",
     },
     permissions: ["activeTab", "storage", "scripting"],
+    web_accessible_resources: [
+      {
+        resources: ["/icon-128.png"],
+        matches: ["<all_urls>"],
+      },
+    ],
     commands: {
       _execute_action: {
         suggested_key: {

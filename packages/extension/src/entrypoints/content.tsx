@@ -760,31 +760,11 @@ function GyozaiWidget() {
     <>
       {/* Floating bubble */}
       <button className="gyozai-bubble" onClick={() => setExpanded(!expanded)}>
-        <svg width="28" height="28" viewBox="0 0 100 80" fill="none">
-          <path
-            d="M50 5C25 5 5 30 5 50C5 65 20 75 50 75C80 75 95 65 95 50C95 30 75 5 50 5Z"
-            stroke="white"
-            strokeWidth="5"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M20 35C30 25 40 20 50 20C60 20 70 25 80 35"
-            stroke="white"
-            strokeWidth="4"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <circle cx="38" cy="48" r="4" fill="white" />
-          <circle cx="62" cy="48" r="4" fill="white" />
-          <path
-            d="M40 58C44 62 56 62 60 58"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </svg>
+        <img
+          src={chrome.runtime.getURL("/icon-128.png")}
+          alt="gyoz.ai"
+          style={{ width: 32, height: 32, borderRadius: "50%" }}
+        />
       </button>
 
       {/* Chat panel */}
@@ -792,7 +772,14 @@ function GyozaiWidget() {
         <div className="gyozai-panel">
           {/* Header */}
           <div className="gyozai-header">
-            <span className="gyozai-header-title">gyozAI</span>
+            <div className="gyozai-header-title">
+              <img
+                src={chrome.runtime.getURL("/icon-128.png")}
+                alt=""
+                style={{ width: 20, height: 20 }}
+              />
+              <span>gyoz.ai</span>
+            </div>
             <div className="gyozai-header-actions">
               <button
                 className="gyozai-icon-btn"
@@ -989,6 +976,9 @@ const WIDGET_STYLES = `
     background: #fafafa;
   }
   .gyozai-header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 700;
     font-size: 14px;
     color: #E8950A;
