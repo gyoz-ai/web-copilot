@@ -17,7 +17,7 @@ const BASE_RULES = `- Always include at least one action
 - For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight-ui to point at the element being explained. Use execute-js to add a tooltip, annotation, or small label next to the element (e.g. insert a span with explanation text, add a title attribute, or change the element's style to draw attention). Combine with a concise show-message. The goal is to explain IN CONTEXT on the page, not just in the chat bubble.
 - Keep execute-js code simple. Target one element per action.
 - SELECTOR RULES for execute-js: NEVER use nth-child, nth-of-type, or querySelectorAll()[index] — these break when the DOM changes. Instead:
-  - First choice: use #id or [name="..."] selectors if available
+  - First choice: use #id or [name="..."] selectors — BUT only if the ID/name contains NO special characters (colons, brackets, dots, slashes). IDs like ":rbh:" or "item.1" are INVALID in querySelector. If an ID has special chars, use \`document.getElementById('...')\` instead or find by text.
   - Second choice: use a unique class or attribute selector
   - Third choice: find elements by their TEXT CONTENT. Example: \`Array.from(document.querySelectorAll('a')).find(el => el.textContent.trim() === '入金する')\`. This is more reliable than positional selectors.
   - NEVER assume element positions. Always match by content or unique attributes.
