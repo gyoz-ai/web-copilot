@@ -1,6 +1,6 @@
 # web-copilot
 
-gyozAI browser extension — AI navigation assistant that works on any website.
+gyoza browser extension — your browser AI copilot that works on any website.
 
 Install the extension, add your API key (Claude, GPT, or Gemini), and get AI-powered navigation everywhere. Community "recipes" (sitemaps) make it work even better on popular sites.
 
@@ -13,7 +13,7 @@ Install the extension, add your API key (Claude, GPT, or Gemini), and get AI-pow
 - BYOK (bring your own key) or managed subscription
 - Translate pages, fill forms, navigate foreign-language sites
 - Canvas: AI builds custom UI on the fly from React components
-- If a site has the gyozAI SDK embedded, the extension defers to it
+- If a site has the gyoza SDK embedded, the extension defers to it
 
 ## Architecture
 

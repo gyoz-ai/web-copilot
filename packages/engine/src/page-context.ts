@@ -402,6 +402,31 @@ export function captureCleanHtml(maxLength: number = 30000): string {
     },
   });
 
+  // Annotate elements with id/name so the AI knows how to target them
+  // Before turndown, add data attributes that survive conversion
+  clone.querySelectorAll("[id], [name], [role], [aria-label]").forEach((el) => {
+    const id = el.getAttribute("id");
+    const name = el.getAttribute("name");
+    const role = el.getAttribute("role");
+    const ariaLabel = el.getAttribute("aria-label");
+    const tag = el.tagName.toLowerCase();
+
+    // Skip if already handled by custom rules (input, button, form)
+    if (["INPUT", "TEXTAREA", "SELECT", "BUTTON", "FORM"].includes(el.tagName))
+      return;
+
+    // Prepend a marker the AI can use
+    const markers: string[] = [];
+    if (id) markers.push(`#${id}`);
+    if (name) markers.push(`name="${name}"`);
+    if (role) markers.push(`role="${role}"`);
+    if (ariaLabel) markers.push(`"${ariaLabel}"`);
+    if (markers.length > 0) {
+      const marker = document.createTextNode(`{${tag} ${markers.join(" ")}} `);
+      el.insertBefore(marker, el.firstChild);
+    }
+  });
+
   let markdown = turndown.turndown(clone.innerHTML);
 
   // Clean up excessive whitespace

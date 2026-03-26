@@ -10,7 +10,7 @@ export type { LLMProvider, Message } from "./types";
 export function createProvider(settings: ExtensionSettings): LLMProvider {
   if (settings.mode === "managed") {
     if (!settings.managedToken) {
-      throw new Error("Not signed in to gyozAI platform");
+      throw new Error("Not signed in to gyoza platform");
     }
     return new ManagedProvider(settings.managedToken);
   }

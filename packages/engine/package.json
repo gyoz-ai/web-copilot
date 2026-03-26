@@ -1,7 +1,7 @@
 {
   "name": "@gyoz-ai/engine",
   "version": "0.0.1",
-  "description": "gyozAI engine — action schemas, page context extractor, action dispatch",
+  "description": "gyoza engine — action schemas, page context extractor, action dispatch",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -326,7 +326,7 @@ export function createEngine(config: EngineConfig) {
           pendingExtraContext = ctxText;
           autoFollowUpUsed = true;
           console.log(
-            "[gyozai] Auto-follow-up: captured context, re-querying...",
+            "[gyoza] Auto-follow-up: captured context, re-querying...",
           );
           const reResult = await query(
             "Now answer my question with the page context provided.",
@@ -334,7 +334,7 @@ export function createEngine(config: EngineConfig) {
           );
           autoFollowUpUsed = false;
           console.log(
-            "[gyozai] Auto-follow-up result:",
+            "[gyoza] Auto-follow-up result:",
             reResult.actions.length,
             "actions",
           );

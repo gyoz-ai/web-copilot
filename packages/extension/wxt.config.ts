@@ -11,7 +11,7 @@ export default defineConfig({
     keepProfileChanges: true,
   },
   manifest: {
-    name: "gyozAI — AI Website Navigator",
+    name: "gyoza — AI Browser Copilot",
     description:
       "AI that navigates any website for you. Ask questions, get answers, let AI click and navigate.",
     version: "0.0.1",
@@ -31,7 +31,7 @@ export default defineConfig({
           default: "Ctrl+Shift+G",
           mac: "Command+Shift+G",
         },
-        description: "Open gyozAI assistant",
+        description: "Open gyoza assistant",
       },
     },
   },

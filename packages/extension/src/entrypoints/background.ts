@@ -16,7 +16,7 @@ const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
 });
 
 export default defineBackground(() => {
-  console.log("[gyozai] Background worker started");
+  console.log("[gyoza] Background worker started");
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "gyozai_get_tab_id") {
@@ -37,7 +37,7 @@ export default defineBackground(() => {
                 chrome.notifications.create({
                   type: "basic",
                   iconUrl: "/icon-128.png",
-                  title: "gyoz.ai",
+                  title: "gyoza",
                   message: msg.slice(0, 100),
                 });
               }
@@ -46,7 +46,7 @@ export default defineBackground(() => {
           sendResponse(result);
         })
         .catch((err) => {
-          console.error("[gyozai] Query error:", err);
+          console.error("[gyoza] Query error:", err);
           sendResponse({
             error: err instanceof Error ? err.message : "Unknown error",
           });
@@ -82,7 +82,7 @@ export default defineBackground(() => {
       const tabId = message.tabId as number | undefined;
       if (tabId != null) {
         clearConversationHistory(tabId).then(() => {
-          console.log(`[gyozai] Conversation history cleared for tab ${tabId}`);
+          console.log(`[gyoza] Conversation history cleared for tab ${tabId}`);
           sendResponse({ ok: true });
         });
       } else {
@@ -201,7 +201,7 @@ async function handleQuery(message: {
 
   // ─── Log request ───────────────────
   console.group(
-    `%c[gyozai] BACKGROUND → LLM`,
+    `%c[gyoza] BACKGROUND → LLM`,
     "color: #E8950A; font-weight: bold",
   );
   console.log(

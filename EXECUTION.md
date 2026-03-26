@@ -1,4 +1,4 @@
-# gyozAI — Execution Plan
+# gyoza — Execution Plan
 
 Two repos. One product. Ship fast.
 
@@ -44,7 +44,7 @@ platform/
 | Repo                  | Action                                                              |
 | --------------------- | ------------------------------------------------------------------- |
 | `gyoz-ai/app-copilot` | Archive. Engine copied to web-copilot. Examples copied to platform. |
-| `kevinfaveri/gyozAI`  | Keep as planning/docs repo. No code changes.                        |
+| `kevinfaveri/gyoza`   | Keep as planning/docs repo. No code changes.                        |
 
 ---
 

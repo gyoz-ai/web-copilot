@@ -884,7 +884,7 @@ function GyozaiWidget() {
       <button className="gyozai-bubble" onClick={() => setExpanded(!expanded)}>
         <img
           src={chrome.runtime.getURL("/icon-128.png")}
-          alt="gyoz.ai"
+          alt="gyoza"
           style={{ width: 32, height: 32, borderRadius: "50%" }}
         />
       </button>
@@ -900,7 +900,7 @@ function GyozaiWidget() {
                 alt=""
                 style={{ width: 20, height: 20 }}
               />
-              <span>gyoz.ai</span>
+              <span>gyoza</span>
             </div>
             <div className="gyozai-header-actions">
               <button

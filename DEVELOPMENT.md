@@ -1,8 +1,8 @@
-# gyozAI Web Copilot — Development Guide
+# gyoza Web Copilot — Development Guide
 
 ## Architecture Overview
 
-gyozAI is a browser extension that uses AI to navigate any website. The user asks a question, the AI reads the page, and responds with actions (navigate, click, highlight elements, run JavaScript, etc.).
+gyoza is a browser extension that uses AI to navigate any website. The user asks a question, the AI reads the page, and responds with actions (navigate, click, highlight elements, run JavaScript, etc.).
 
 ### How it works (no proxy needed)
 

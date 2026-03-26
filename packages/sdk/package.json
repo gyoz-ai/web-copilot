@@ -1,7 +1,7 @@
 {
   "name": "@gyoz-ai/sdk",
   "version": "0.0.1",
-  "description": "gyozAI React components — BubbleSearch and SearchBar",
+  "description": "gyoza React components — BubbleSearch and SearchBar",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
