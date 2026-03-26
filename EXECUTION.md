@@ -194,6 +194,7 @@ Stripe handles auth. No separate OAuth system needed.
 - Canvas feature → Phase 4
 - Local model support (Ollama) → Phase 5
 - SDK as seen in app-copilot repo + enterprise SDK offering for integration
+- Chat scope setting: option to carry conversation across all tabs (global context) OR per-tab/per-domain isolated chat → Phase 2
 
 ---
 
