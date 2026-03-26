@@ -342,12 +342,12 @@ function GyozaiWidget() {
   }
 
   // Dispatch a single DOM action; returns error string if execute-js fails
-  function dispatchDomAction(action: {
+  async function dispatchDomAction(action: {
     type: string;
     target?: string;
     selector?: string;
     code?: string;
-  }): string | undefined {
+  }): Promise<string | undefined> {
     switch (action.type) {
       case "navigate":
         if (action.target) {
@@ -367,12 +367,14 @@ function GyozaiWidget() {
       case "execute-js":
         if (action.code) {
           log("Execute JS →", action.code.slice(0, 80));
-          try {
-            new Function(action.code)();
-          } catch (e) {
-            const errMsg = e instanceof Error ? e.message : String(e);
-            console.error(LOG_PREFIX, LOG_STYLE, "JS error:", errMsg);
-            return errMsg;
+          // Execute in page's main world via background worker (CSP blocks eval in content scripts)
+          const result = await chrome.runtime.sendMessage({
+            type: "gyozai_exec",
+            code: action.code,
+          });
+          if (result?.error) {
+            console.error(LOG_PREFIX, LOG_STYLE, "JS error:", result.error);
+            return result.error;
           }
         }
         break;
@@ -559,7 +561,7 @@ function GyozaiWidget() {
         addAssistantMessage(action.message);
       }
 
-      const jsError = dispatchDomAction(action);
+      const jsError = await dispatchDomAction(action);
 
       if (jsError && action.type === "execute-js") {
         const errorMsg = sanitizeError(jsError);

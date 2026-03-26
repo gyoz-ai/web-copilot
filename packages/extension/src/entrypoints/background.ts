@@ -47,6 +47,37 @@ export default defineBackground(() => {
       chrome.action.openPopup();
       return false;
     }
+
+    if (message.type === "gyozai_exec") {
+      chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+        if (!tab?.id) {
+          sendResponse({ error: "No active tab" });
+          return;
+        }
+        chrome.scripting
+          .executeScript({
+            target: { tabId: tab.id },
+            world: "MAIN",
+            func: (code: string) => {
+              try {
+                new Function(code)();
+                return null;
+              } catch (e) {
+                return e instanceof Error ? e.message : String(e);
+              }
+            },
+            args: [message.code],
+          })
+          .then((results) => {
+            const error = results?.[0]?.result;
+            sendResponse(error ? { error } : { ok: true });
+          })
+          .catch((err) => {
+            sendResponse({ error: err.message });
+          });
+      });
+      return true;
+    }
   });
 
   chrome.commands.onCommand.addListener((command) => {
