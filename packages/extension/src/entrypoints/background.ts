@@ -54,6 +54,11 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === "gyozai_get_settings") {
+      getSettings().then(sendResponse);
+      return true;
+    }
+
     if (message.type === "gyozai_auto_import_recipe") {
       importRecipeFromFile(message.filename, message.xml).then(() => {
         // Send notification back to the tab

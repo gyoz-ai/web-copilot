@@ -196,7 +196,7 @@ export default defineContentScript({
 
     // Auto-detect recipe from website
     try {
-      const recipeUrl = `${window.location.origin}/recipellm.xml`;
+      const recipeUrl = `${window.location.origin}/recipe.xml`;
       const response = await fetch(recipeUrl, { method: "GET" });
       if (response.ok) {
         const contentType = response.headers.get("content-type") || "";
@@ -206,7 +206,7 @@ export default defineContentScript({
             // Auto-import this recipe
             chrome.runtime.sendMessage({
               type: "gyozai_auto_import_recipe",
-              filename: "recipellm.xml",
+              filename: "recipe.xml",
               xml,
             });
             console.log(
@@ -387,10 +387,13 @@ function GyozaiWidget() {
   ): Promise<ActionResult> {
     const currentRoute = window.location.pathname;
 
-    const recipe = await chrome.runtime.sendMessage({
-      type: "gyozai_get_recipe",
-      domain: window.location.host,
-    });
+    const [recipe, extSettings] = await Promise.all([
+      chrome.runtime.sendMessage({
+        type: "gyozai_get_recipe",
+        domain: window.location.host,
+      }),
+      chrome.runtime.sendMessage({ type: "gyozai_get_settings" }),
+    ]);
 
     const manifestMode = !!recipe?.xml;
 
@@ -424,7 +427,7 @@ function GyozaiWidget() {
         executeJs: true,
         highlightUi: true,
         fetch: false,
-        clarify: true,
+        clarify: !extSettings?.yoloMode,
       },
     };
 

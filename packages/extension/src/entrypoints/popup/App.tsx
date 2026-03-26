@@ -40,6 +40,219 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
+function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
+  const BRAND = "#E8950A";
+
+  return {
+    container: {
+      padding: 0,
+      display: "flex",
+      flexDirection: "column",
+      background: isDark ? "#0a0a0f" : "#ffffff",
+    },
+    loading: {
+      padding: 40,
+      textAlign: "center",
+      color: isDark ? "#71717a" : "#9ca3af",
+    },
+    header: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "16px 16px 12px",
+      borderBottom: isDark ? "1px solid #2a2a3a" : "1px solid #e5e5e5",
+      background: "inherit",
+    },
+    headerTitle: { display: "flex", alignItems: "center", gap: 8 },
+    logo: { fontSize: 24 },
+    title: { fontSize: 18, fontWeight: 700, color: BRAND },
+    version: { fontSize: 11, color: isDark ? "#71717a" : "#9ca3af" },
+    section: {
+      padding: "12px 16px",
+      borderBottom: isDark ? "1px solid #1a1a2e" : "1px solid #f3f4f6",
+    },
+    modeToggle: {
+      display: "flex",
+      gap: 0,
+      borderRadius: 8,
+      overflow: "hidden",
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #e5e5e5",
+    },
+    modeBtn: {
+      flex: 1,
+      padding: "8px 0",
+      border: "none",
+      background: isDark ? "#12121a" : "#fff",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 500,
+      color: isDark ? "#71717a" : "#6b7280",
+    },
+    modeActive: {
+      flex: 1,
+      padding: "8px 0",
+      border: "none",
+      background: BRAND,
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#fff",
+    },
+    label: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 500,
+      color: isDark ? "#a1a1aa" : "#374151",
+      marginBottom: 4,
+      marginTop: 10,
+    },
+    select: {
+      width: "100%",
+      padding: "8px 10px",
+      borderRadius: 6,
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
+      fontSize: 13,
+      background: isDark ? "#12121a" : "#fff",
+      color: isDark ? "#e4e4e7" : "#1a1a2e",
+      outline: "none",
+    },
+    input: {
+      flex: 1,
+      padding: "8px 10px",
+      borderRadius: 6,
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
+      fontSize: 13,
+      background: isDark ? "#12121a" : "#fff",
+      color: isDark ? "#e4e4e7" : "#1a1a2e",
+      outline: "none",
+    },
+    keyRow: { display: "flex", gap: 6, alignItems: "center" },
+    eyeBtn: {
+      border: "none",
+      background: "none",
+      cursor: "pointer",
+      fontSize: 16,
+      padding: "4px",
+    },
+    saveBtn: {
+      width: "100%",
+      padding: "10px 0",
+      borderRadius: 8,
+      border: "none",
+      background: BRAND,
+      color: "#fff",
+      fontSize: 14,
+      fontWeight: 600,
+      cursor: "pointer",
+      marginTop: 14,
+    },
+    desc: {
+      fontSize: 13,
+      color: isDark ? "#71717a" : "#9ca3af",
+      marginBottom: 12,
+      lineHeight: "1.4",
+    },
+    statusRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontSize: 13,
+      marginBottom: 10,
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: "#22c55e",
+    },
+    signOutBtn: {
+      width: "100%",
+      padding: "8px 0",
+      borderRadius: 8,
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
+      background: isDark ? "#12121a" : "#fff",
+      color: isDark ? "#71717a" : "#6b7280",
+      fontSize: 13,
+      cursor: "pointer",
+    },
+    sectionHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    sectionTitle: {
+      fontSize: 14,
+      fontWeight: 600,
+      color: isDark ? undefined : "#1a1a2e",
+    },
+    importBtn: {
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
+      borderRadius: 6,
+      padding: "4px 10px",
+      fontSize: 12,
+      cursor: "pointer",
+      background: isDark ? "#12121a" : "#fff",
+      color: isDark ? "#a1a1aa" : "#374151",
+    },
+    emptyText: {
+      fontSize: 12,
+      color: isDark ? "#71717a" : "#9ca3af",
+      lineHeight: "1.4",
+    },
+    recipeList: { display: "flex", flexDirection: "column", gap: 6 },
+    recipeItem: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "8px 10px",
+      borderRadius: 6,
+      background: isDark ? "#12121a" : "#f9fafb",
+      border: isDark ? "1px solid #1a1a2e" : "1px solid #f3f4f6",
+    },
+    recipeName: {
+      fontSize: 13,
+      fontWeight: 500,
+      color: isDark ? "#e4e4e7" : "#1a1a2e",
+    },
+    recipeDomain: { fontSize: 11, color: isDark ? "#71717a" : "#9ca3af" },
+    toggleBtn: {
+      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
+      borderRadius: 4,
+      padding: "2px 6px",
+      fontSize: 10,
+      fontWeight: 600,
+      cursor: "pointer",
+      background: isDark ? "#12121a" : "#fff",
+      color: isDark ? "#71717a" : "#6b7280",
+    },
+    deleteBtn: {
+      border: "none",
+      background: "none",
+      cursor: "pointer",
+      fontSize: 14,
+      color: isDark ? "#71717a" : "#9ca3af",
+      padding: "4px",
+    },
+    settingRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    settingLabel: {
+      fontSize: 13,
+      fontWeight: 500,
+      color: isDark ? "#e4e4e7" : "#1a1a2e",
+    },
+    settingDesc: {
+      fontSize: 11,
+      color: isDark ? "#71717a" : "#9ca3af",
+      marginTop: 2,
+    },
+  };
+}
+
 export function App() {
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
@@ -60,6 +273,15 @@ export function App() {
       }
     });
   }, []);
+
+  const isDark = !settings || settings.theme !== "light";
+  const s = getStyles(isDark);
+
+  // Sync body background/color with theme so scrollbar and any uncovered areas match
+  useEffect(() => {
+    document.body.style.background = isDark ? "#0a0a0f" : "#ffffff";
+    document.body.style.color = isDark ? "#e4e4e7" : "#1a1a2e";
+  }, [isDark]);
 
   if (!settings) return <div style={s.loading}>Loading...</div>;
 
@@ -163,7 +385,7 @@ export function App() {
               placeholder={`Enter ${PROVIDERS.find((p) => p.id === settings.provider)?.name} API key`}
             />
             <button style={s.eyeBtn} onClick={() => setShowKey(!showKey)}>
-              {showKey ? "🙈" : "👁️"}
+              {showKey ? "\u{1F648}" : "\u{1F441}\uFE0F"}
             </button>
           </div>
 
@@ -183,7 +405,7 @@ export function App() {
           </select>
 
           <button style={s.saveBtn} onClick={handleSave}>
-            {saved ? "✓ Saved" : "Save Settings"}
+            {saved ? "\u2713 Saved" : "Save Settings"}
           </button>
         </div>
       )}
@@ -231,7 +453,7 @@ export function App() {
           <span style={s.sectionTitle}>
             {showAllRecipes
               ? "All Recipes"
-              : `Recipes${currentDomain ? ` — ${currentDomain}` : ""}`}
+              : `Recipes${currentDomain ? ` \u2014 ${currentDomain}` : ""}`}
           </span>
           <div style={{ display: "flex", gap: 4 }}>
             <button
@@ -241,7 +463,7 @@ export function App() {
                 showAllRecipes ? "Show current site" : "Manage all recipes"
               }
             >
-              {showAllRecipes ? "← Back" : "📓"}
+              {showAllRecipes ? "\u2190 Back" : "\u{1F4D3}"}
             </button>
             <button style={s.importBtn} onClick={handleImportRecipe}>
               + Import
@@ -279,185 +501,77 @@ export function App() {
                   style={s.deleteBtn}
                   onClick={() => handleDeleteRecipe(r.id)}
                 >
-                  ✕
+                  {"\u2715"}
                 </button>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Settings */}
+      <div style={s.section}>
+        <div style={s.sectionHeader}>
+          <span style={s.sectionTitle}>Settings</span>
+        </div>
+
+        {/* Yolo Mode */}
+        <div style={s.settingRow}>
+          <div>
+            <div style={s.settingLabel}>Yolo Mode</div>
+            <div style={s.settingDesc}>
+              Skip confirmations — AI acts immediately without asking
+            </div>
+          </div>
+          <button
+            style={s.toggleBtn}
+            onClick={() => {
+              const updated = { ...settings, yoloMode: !settings.yoloMode };
+              setSettings(updated);
+              saveSettings(updated);
+            }}
+          >
+            {settings.yoloMode ? "ON" : "OFF"}
+          </button>
+        </div>
+
+        {/* Theme */}
+        <div style={s.settingRow}>
+          <div style={s.settingLabel}>Theme</div>
+          <div style={s.modeToggle}>
+            <button
+              style={
+                settings.theme === "dark" || !settings.theme
+                  ? s.modeActive
+                  : s.modeBtn
+              }
+              onClick={() => {
+                const updated = {
+                  ...settings,
+                  theme: "dark" as const,
+                };
+                setSettings(updated);
+                saveSettings(updated);
+              }}
+            >
+              Dark
+            </button>
+            <button
+              style={settings.theme === "light" ? s.modeActive : s.modeBtn}
+              onClick={() => {
+                const updated = {
+                  ...settings,
+                  theme: "light" as const,
+                };
+                setSettings(updated);
+                saveSettings(updated);
+              }}
+            >
+              Light
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
-// ─── Inline Styles ────────────────────────────────────────────
-const BRAND = "#E8950A";
-
-const s: Record<string, React.CSSProperties> = {
-  container: {
-    padding: 0,
-    display: "flex",
-    flexDirection: "column",
-    background: "#0a0a0f",
-  },
-  loading: { padding: 40, textAlign: "center", color: "#71717a" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "16px 16px 12px",
-    borderBottom: "1px solid #2a2a3a",
-    background: "inherit",
-  },
-  headerTitle: { display: "flex", alignItems: "center", gap: 8 },
-  logo: { fontSize: 24 },
-  title: { fontSize: 18, fontWeight: 700, color: "#E8950A" },
-  version: { fontSize: 11, color: "#71717a" },
-  section: { padding: "12px 16px", borderBottom: "1px solid #1a1a2e" },
-  modeToggle: {
-    display: "flex",
-    gap: 0,
-    borderRadius: 8,
-    overflow: "hidden",
-    border: "1px solid #2a2a3a",
-  },
-  modeBtn: {
-    flex: 1,
-    padding: "8px 0",
-    border: "none",
-    background: "#12121a",
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 500,
-    color: "#71717a",
-  },
-  modeActive: {
-    flex: 1,
-    padding: "8px 0",
-    border: "none",
-    background: BRAND,
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#fff",
-  },
-  label: {
-    display: "block",
-    fontSize: 12,
-    fontWeight: 500,
-    color: "#a1a1aa",
-    marginBottom: 4,
-    marginTop: 10,
-  },
-  select: {
-    width: "100%",
-    padding: "8px 10px",
-    borderRadius: 6,
-    border: "1px solid #2a2a3a",
-    fontSize: 13,
-    background: "#12121a",
-    color: "#e4e4e7",
-    outline: "none",
-  },
-  input: {
-    flex: 1,
-    padding: "8px 10px",
-    borderRadius: 6,
-    border: "1px solid #2a2a3a",
-    fontSize: 13,
-    background: "#12121a",
-    color: "#e4e4e7",
-    outline: "none",
-  },
-  keyRow: { display: "flex", gap: 6, alignItems: "center" },
-  eyeBtn: {
-    border: "none",
-    background: "none",
-    cursor: "pointer",
-    fontSize: 16,
-    padding: "4px",
-  },
-  saveBtn: {
-    width: "100%",
-    padding: "10px 0",
-    borderRadius: 8,
-    border: "none",
-    background: BRAND,
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    marginTop: 14,
-  },
-  desc: { fontSize: 13, color: "#71717a", marginBottom: 12, lineHeight: "1.4" },
-  statusRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    fontSize: 13,
-    marginBottom: 10,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    background: "#22c55e",
-  },
-  signOutBtn: {
-    width: "100%",
-    padding: "8px 0",
-    borderRadius: 8,
-    border: "1px solid #2a2a3a",
-    background: "#12121a",
-    color: "#71717a",
-    fontSize: 13,
-    cursor: "pointer",
-  },
-  sectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  sectionTitle: { fontSize: 14, fontWeight: 600 },
-  importBtn: {
-    border: "1px solid #2a2a3a",
-    borderRadius: 6,
-    padding: "4px 10px",
-    fontSize: 12,
-    cursor: "pointer",
-    background: "#12121a",
-    color: "#a1a1aa",
-  },
-  emptyText: { fontSize: 12, color: "#71717a", lineHeight: "1.4" },
-  recipeList: { display: "flex", flexDirection: "column", gap: 6 },
-  recipeItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "8px 10px",
-    borderRadius: 6,
-    background: "#12121a",
-    border: "1px solid #1a1a2e",
-  },
-  recipeName: { fontSize: 13, fontWeight: 500, color: "#e4e4e7" },
-  recipeDomain: { fontSize: 11, color: "#71717a" },
-  toggleBtn: {
-    border: "1px solid #2a2a3a",
-    borderRadius: 4,
-    padding: "2px 6px",
-    fontSize: 10,
-    fontWeight: 600,
-    cursor: "pointer",
-    background: "#12121a",
-    color: "#71717a",
-  },
-  deleteBtn: {
-    border: "none",
-    background: "none",
-    cursor: "pointer",
-    fontSize: 14,
-    color: "#71717a",
-    padding: "4px",
-  },
-};

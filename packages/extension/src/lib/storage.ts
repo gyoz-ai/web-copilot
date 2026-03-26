@@ -4,6 +4,8 @@ export interface ExtensionSettings {
   apiKey: string;
   model: string;
   managedToken?: string;
+  yoloMode: boolean;
+  theme: "dark" | "light";
 }
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -11,6 +13,8 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   provider: "claude",
   apiKey: "",
   model: "claude-haiku-4-5-20251001",
+  yoloMode: false,
+  theme: "dark",
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
