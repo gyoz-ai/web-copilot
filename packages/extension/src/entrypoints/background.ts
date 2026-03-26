@@ -60,7 +60,28 @@ export default defineBackground(() => {
             world: "MAIN",
             func: (code: string) => {
               try {
-                new Function(code)();
+                // Auto-fix selectors with special characters before executing
+                // Replace #id selectors containing special chars with CSS.escape'd versions
+                const fixedCode = code.replace(
+                  /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
+                  (match, selector: string) => {
+                    // If selector has an ID part with special chars, escape it
+                    const fixed = selector.replace(
+                      /#([^.\s#\[>~+,]+)/g,
+                      (_: string, id: string) => {
+                        if (/[^a-zA-Z0-9_-]/.test(id)) {
+                          return "#" + CSS.escape(id);
+                        }
+                        return "#" + id;
+                      },
+                    );
+                    if (fixed !== selector) {
+                      return match.replace(selector, fixed);
+                    }
+                    return match;
+                  },
+                );
+                new Function(fixedCode)();
                 return null;
               } catch (e) {
                 return e instanceof Error ? e.message : String(e);
