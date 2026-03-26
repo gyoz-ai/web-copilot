@@ -32,7 +32,7 @@ export const DEFAULT_CAPABILITIES: Required<Capabilities> = {
 
 export interface EngineConfig {
   proxyUrl: string;
-  recipeXml?: string;
+  recipe?: string;
   manifestMode?: boolean;
   // What the AI is allowed to do — disabled actions won't appear in prompt and are dropped client-side
   capabilities?: Capabilities;
@@ -163,8 +163,8 @@ export function createEngine(config: EngineConfig) {
       payload.pageContext = pageContextForQuery;
     }
 
-    if (manifestMode && config.recipeXml) {
-      payload.recipeXml = config.recipeXml;
+    if (manifestMode && config.recipe) {
+      payload.recipe = config.recipe;
     }
 
     if (!manifestMode) {

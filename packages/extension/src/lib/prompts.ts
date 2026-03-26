@@ -128,7 +128,7 @@ ${mode === "manifest" ? "- If the user's query doesn't match anything in the rec
 
 export function buildUserPrompt(opts: {
   query: string;
-  recipeXml?: string;
+  recipe?: string;
   htmlSnapshot?: string;
   currentRoute?: string;
   context?: Record<string, unknown>;
@@ -136,8 +136,8 @@ export function buildUserPrompt(opts: {
 }): string {
   const parts: string[] = [];
 
-  if (opts.recipeXml) {
-    parts.push(`<recipe-context>\n${opts.recipeXml}\n</recipe-context>`);
+  if (opts.recipe) {
+    parts.push(`The following is the llms.txt recipe file for this website:\n\n${opts.recipe}`);
   }
 
   if (opts.htmlSnapshot) {

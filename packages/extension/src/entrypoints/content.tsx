@@ -463,7 +463,7 @@ function GyozaiWidget() {
       type: "gyozai_query",
       query,
       manifestMode,
-      recipeXml: recipe?.content,
+      recipe: recipe?.content,
       htmlSnapshot: manifestMode ? undefined : pageSnapshot,
       currentRoute,
       tabId: tabIdRef.current,

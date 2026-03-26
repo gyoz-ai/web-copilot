@@ -70,15 +70,21 @@ export default defineBackground(() => {
           sendResponse({ ok: true, skipped: true });
           return;
         }
-        importRecipeFromFile(message.filename, message.content).then(() => {
-          if (sender.tab?.id) {
-            chrome.tabs.sendMessage(sender.tab.id, {
-              type: "gyozai_recipe_auto_added",
-              filename: message.filename,
-            });
-          }
-          sendResponse({ ok: true });
-        });
+        // Use the tab's actual host as domain (not what's in the file)
+        const tabHost = sender.tab?.url
+          ? new URL(sender.tab.url).host
+          : undefined;
+        importRecipeFromFile(message.filename, message.content, tabHost).then(
+          () => {
+            if (sender.tab?.id) {
+              chrome.tabs.sendMessage(sender.tab.id, {
+                type: "gyozai_recipe_auto_added",
+                filename: message.filename,
+              });
+            }
+            sendResponse({ ok: true });
+          },
+        );
       });
       return true;
     }
@@ -173,7 +179,7 @@ export default defineBackground(() => {
 async function handleQuery(message: {
   query: string;
   manifestMode: boolean;
-  recipeXml?: string;
+  recipe?: string;
   htmlSnapshot?: string;
   currentRoute?: string;
   pageContext?: string;
@@ -194,7 +200,7 @@ async function handleQuery(message: {
   );
   const userPrompt = buildUserPrompt({
     query: message.query,
-    recipeXml: message.recipeXml,
+    recipe: message.recipe,
     htmlSnapshot: message.htmlSnapshot,
     currentRoute: message.currentRoute,
     context: message.context,

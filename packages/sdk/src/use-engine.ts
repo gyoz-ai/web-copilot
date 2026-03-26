@@ -9,7 +9,7 @@ import {
 
 export interface UseEngineConfig {
   proxyUrl: string;
-  recipeXml?: string;
+  recipe?: string;
   manifestMode?: boolean;
   capabilities?: Capabilities;
   httpClient?: (url: string, method: string) => Promise<unknown>;
@@ -60,7 +60,7 @@ export function useEngine(config: UseEngineConfig) {
   useEffect(() => {
     const engineConfig: EngineConfig = {
       proxyUrl: config.proxyUrl,
-      recipeXml: config.recipeXml,
+      recipe: config.recipe,
       manifestMode: config.manifestMode ?? true,
       capabilities: config.capabilities,
       httpClient: config.httpClient,
@@ -85,7 +85,7 @@ export function useEngine(config: UseEngineConfig) {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [config.proxyUrl, config.recipeXml, config.manifestMode]);
+  }, [config.proxyUrl, config.recipe, config.manifestMode]);
 
   const query = useCallback(async (text: string) => {
     if (!engineRef.current) return;

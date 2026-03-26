@@ -42,7 +42,7 @@ describe("engine.query", () => {
     const engine = createEngine({
       proxyUrl: "http://localhost:3001",
       manifestMode: true,
-      recipeXml: "<manifest />",
+      recipe: "<manifest />",
       onNavigate: (t) => navigated.push(t),
       onMessage: (m) => messages.push(m),
     });
@@ -75,7 +75,7 @@ describe("engine.query", () => {
     const engine = createEngine({
       proxyUrl: "http://localhost:3001",
       manifestMode: true,
-      recipeXml: "<test-recipe />",
+      recipe: "<test-recipe />",
     });
 
     await engine.query("test query", { currentRoute: "/page" });
@@ -83,7 +83,7 @@ describe("engine.query", () => {
     const body = capturedBody as Record<string, unknown>;
     expect(body.query).toBe("test query");
     expect(body.manifestMode).toBe(true);
-    expect(body.recipeXml).toBe("<test-recipe />");
+    expect(body.recipe).toBe("<test-recipe />");
     expect(body.currentRoute).toBe("/page");
     expect(body.conversationHistory).toEqual([]);
   });

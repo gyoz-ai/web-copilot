@@ -6,7 +6,7 @@ describe("QueryPayloadSchema", () => {
     const result = validateQuery({
       query: "where is dairy?",
       manifestMode: true,
-      recipeXml: "<gyozai-manifest>...</gyozai-manifest>",
+      recipe: "<gyozai-manifest>...</gyozai-manifest>",
     });
     expect(result.success).toBe(true);
   });

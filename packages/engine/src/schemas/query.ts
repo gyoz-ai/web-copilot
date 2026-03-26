@@ -7,7 +7,7 @@ export const QueryPayloadSchema = z
   .object({
     query: z.string().min(1),
     manifestMode: z.boolean(),
-    recipeXml: z.string().optional(),
+    recipe: z.string().optional(),
     htmlSnapshot: z.string().optional(),
     currentRoute: z.string().optional(),
     conversationHistory: z

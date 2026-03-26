@@ -82,8 +82,9 @@ export async function recipeExists(recipeContent: string): Promise<boolean> {
 export async function importRecipeFromFile(
   filename: string,
   recipeContent: string,
+  overrideDomain?: string,
 ): Promise<void> {
-  let domain: string | undefined;
+  let domain: string | undefined = overrideDomain;
   let name: string | undefined;
 
   // Try llms.txt Markdown format first: extract from blockquote and H1
@@ -95,7 +96,7 @@ export async function importRecipeFromFile(
   if (h1Match) {
     name = h1Match[1].trim();
   }
-  if (domainBlockquoteMatch) {
+  if (!domain && domainBlockquoteMatch) {
     domain = domainBlockquoteMatch[1].trim();
   }
 
