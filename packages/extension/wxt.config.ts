@@ -6,6 +6,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   srcDir: "src",
+  dev: {
+    server: {
+      port: 3100,
+    },
+  },
   webExt: {
     chromiumProfile: resolve(__dirname, ".chrome-profile"),
     keepProfileChanges: true,
