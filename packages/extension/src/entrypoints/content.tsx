@@ -198,29 +198,43 @@ export default defineContentScript({
 
     ReactDOM.createRoot(container).render(<GyozaiWidget />);
 
-    // Auto-detect recipe from website
+    // Auto-detect recipe from website — check multiple locations
     try {
-      const recipeUrl = `${window.location.origin}/recipe.xml`;
-      const response = await fetch(recipeUrl, { method: "GET" });
-      if (response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        if (contentType.includes("xml") || contentType.includes("text")) {
-          const xml = await response.text();
-          if (xml.includes("gyozai-manifest")) {
-            // Auto-import this recipe
-            chrome.runtime.sendMessage({
-              type: "gyozai_auto_import_recipe",
-              filename: "recipe.xml",
-              xml,
-            });
-            console.log(
-              "%c[gyoza]",
-              "color: #E8950A; font-weight: bold",
-              "Auto-detected recipe at",
-              recipeUrl,
-            );
+      const origin = window.location.origin;
+      const pathname = window.location.pathname;
+      // Try: /recipe.xml, /current/path/recipe.xml, and path prefixes
+      const pathParts = pathname.split("/").filter(Boolean);
+      const urlsToTry = [`${origin}/recipe.xml`];
+      // Build prefix paths: /demos/ginko/recipe.xml, /demos/recipe.xml, etc.
+      for (let i = pathParts.length; i > 0; i--) {
+        urlsToTry.push(
+          `${origin}/${pathParts.slice(0, i).join("/")}/recipe.xml`,
+        );
+      }
+
+      let foundXml: string | null = null;
+      for (const recipeUrl of urlsToTry) {
+        try {
+          const response = await fetch(recipeUrl, { method: "GET" });
+          if (response.ok) {
+            const text = await response.text();
+            if (text.includes("gyozai-manifest")) {
+              foundXml = text;
+              log("📋 Auto-detected recipe at", recipeUrl);
+              break;
+            }
           }
+        } catch {
+          // skip this URL
         }
+      }
+
+      if (foundXml) {
+        chrome.runtime.sendMessage({
+          type: "gyozai_auto_import_recipe",
+          filename: "recipe.xml",
+          xml: foundXml,
+        });
       }
     } catch {
       // No recipe file — that's fine
