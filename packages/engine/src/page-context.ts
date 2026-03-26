@@ -326,140 +326,91 @@ function findLabel(input: HTMLInputElement): string | undefined {
   return input.getAttribute("aria-label") || undefined;
 }
 
-// ─── Clean HTML Snapshot ─────────────────────────────────────────────────────
-// Captures the DOM structure with meaningful attributes but strips all noise:
-// scripts, styles, CSS classes, data-* attrs, inline styles, SVGs, comments.
-// Keeps: tag structure, id, name, href, src, alt, type, placeholder, value,
-// role, aria-label, for, action, method. Much smaller than raw HTML, but
-// preserves hierarchy that structured extraction loses.
+// ─── Clean Page Snapshot (HTML → Markdown via Turndown) ──────────────────────
+// Converts the page to Markdown for LLM context using Turndown.
+// Much more token-efficient than raw HTML. Preserves:
+// - Headings, links, lists, bold/italic, images, forms
+// Strips all scripts, styles, SVGs, CSS noise.
+// LLMs understand Markdown natively — trained on tons of it.
 
-const REMOVE_TAGS = new Set([
-  "SCRIPT",
-  "STYLE",
-  "NOSCRIPT",
-  "SVG",
-  "LINK",
-  "META",
-  "TEMPLATE",
-  "ASTRO-ISLAND",
-  "IFRAME",
-]);
-
-const KEEP_ATTRS = new Set([
-  "id",
-  "name",
-  "href",
-  "src",
-  "alt",
-  "type",
-  "placeholder",
-  "value",
-  "role",
-  "aria-label",
-  "for",
-  "action",
-  "method",
-  "title",
-  "lang",
-  "min",
-  "max",
-  "checked",
-  "disabled",
-  "readonly",
-  "required",
-  "selected",
-  "open",
-]);
-
-const SKIP_EMPTY_TAGS = new Set([
-  "DIV",
-  "SPAN",
-  "SECTION",
-  "ARTICLE",
-  "HEADER",
-  "FOOTER",
-  "NAV",
-  "MAIN",
-  "ASIDE",
-]);
+import TurndownService from "turndown";
 
 export function captureCleanHtml(maxLength: number = 30000): string {
   if (typeof document === "undefined") return "";
 
-  const body = document.body;
-  const lines: string[] = [];
-  let totalLen = 0;
+  // Clone body and strip noise before converting
+  const clone = document.body.cloneNode(true) as HTMLElement;
+  clone
+    .querySelectorAll(
+      "script, style, noscript, svg, link, meta, template, iframe, #gyozai-extension-root",
+    )
+    .forEach((el) => el.remove());
 
-  function walk(node: Node, depth: number) {
-    if (totalLen >= maxLength) return;
-
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = (node.textContent || "").trim();
-      if (text.length > 1) {
-        const truncated = text.length > 200 ? text.slice(0, 200) + "…" : text;
-        lines.push("  ".repeat(depth) + truncated);
-        totalLen += truncated.length + depth * 2;
-      }
-      return;
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-    const el = node as Element;
-    const tag = el.tagName;
-
-    // Skip noisy elements
-    if (REMOVE_TAGS.has(tag)) return;
-    if (el.id === "gyozai-extension-root") return;
-
-    // Build clean tag with only meaningful attributes
-    const tagLower = tag.toLowerCase();
-    const attrs: string[] = [];
-    for (const attr of KEEP_ATTRS) {
-      const val = el.getAttribute(attr);
-      if (val != null && val !== "") {
-        // Truncate long values (like src URLs)
-        const truncVal = val.length > 100 ? val.slice(0, 100) + "…" : val;
-        attrs.push(`${attr}="${truncVal}"`);
+  // Remove all inline styles and class attributes to reduce noise
+  clone.querySelectorAll("*").forEach((el) => {
+    el.removeAttribute("style");
+    el.removeAttribute("class");
+    // Remove data-* attributes
+    const attrs = Array.from(el.attributes);
+    for (const attr of attrs) {
+      if (attr.name.startsWith("data-") && attr.name !== "data-gyozai") {
+        el.removeAttribute(attr.name);
       }
     }
+  });
 
-    const attrStr = attrs.length > 0 ? " " + attrs.join(" ") : "";
-    const indent = "  ".repeat(depth);
+  const turndown = new TurndownService({
+    headingStyle: "atx",
+    bulletListMarker: "-",
+    codeBlockStyle: "fenced",
+  });
 
-    // Self-closing tags
-    if (["BR", "HR", "IMG", "INPUT"].includes(tag)) {
-      lines.push(`${indent}<${tagLower}${attrStr} />`);
-      totalLen += tagLower.length + attrStr.length + depth * 2 + 5;
-      return;
-    }
+  // Add custom rules for form elements (turndown ignores them by default)
+  turndown.addRule("input", {
+    filter: ["input", "textarea", "select"],
+    replacement: (_content, node) => {
+      const el = node as HTMLElement;
+      const type = el.getAttribute("type") || el.tagName.toLowerCase();
+      const id = el.getAttribute("id") || "";
+      const name = el.getAttribute("name") || "";
+      const placeholder = el.getAttribute("placeholder") || "";
+      const parts = [`[${type}`];
+      if (id) parts.push(`id="${id}"`);
+      if (name) parts.push(`name="${name}"`);
+      if (placeholder) parts.push(`placeholder="${placeholder}"`);
+      return parts.join(" ") + "]\n";
+    },
+  });
 
-    // Check children
-    const children = Array.from(el.childNodes);
-    const hasContent = children.some((c) => {
-      if (c.nodeType === Node.TEXT_NODE)
-        return (c.textContent || "").trim().length > 1;
-      if (c.nodeType === Node.ELEMENT_NODE)
-        return !REMOVE_TAGS.has((c as Element).tagName);
-      return false;
-    });
+  turndown.addRule("button", {
+    filter: "button",
+    replacement: (content, node) => {
+      const el = node as HTMLElement;
+      const id = el.getAttribute("id") || "";
+      const type = el.getAttribute("type") || "button";
+      return `[button${id ? ` id="${id}"` : ""} type="${type}"]: ${content.trim()}\n`;
+    },
+  });
 
-    // Skip empty wrapper divs/spans to reduce noise
-    if (!hasContent && SKIP_EMPTY_TAGS.has(tag) && attrs.length === 0) return;
+  turndown.addRule("form", {
+    filter: "form",
+    replacement: (content, node) => {
+      const el = node as HTMLElement;
+      const id = el.getAttribute("id") || "";
+      const action = el.getAttribute("action") || "";
+      return `\n---form${id ? ` id="${id}"` : ""}${action ? ` action="${action}"` : ""}---\n${content}\n---/form---\n`;
+    },
+  });
 
-    lines.push(`${indent}<${tagLower}${attrStr}>`);
-    totalLen += tagLower.length + attrStr.length + depth * 2 + 3;
+  let markdown = turndown.turndown(clone.innerHTML);
 
-    for (const child of children) {
-      if (totalLen >= maxLength) break;
-      walk(child, depth + 1);
-    }
+  // Clean up excessive whitespace
+  markdown = markdown.replace(/\n{3,}/g, "\n\n").trim();
 
-    lines.push(`${indent}</${tagLower}>`);
-    totalLen += tagLower.length + depth * 2 + 4;
+  // Truncate if needed
+  if (markdown.length > maxLength) {
+    markdown = markdown.slice(0, maxLength) + "\n\n[truncated]";
   }
 
-  walk(body, 0);
-
-  return lines.join("\n");
+  return markdown;
 }

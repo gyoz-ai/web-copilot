@@ -23,7 +23,7 @@ const S = {
 };
 
 function log(...args: unknown[]) {
-  console.log("%c[gyozai]", S.brand, ...args);
+  console.log("%c[gyoza]", S.brand, ...args);
 }
 
 function mapExtraRequests(extraRequests: string[]): SnapshotType[] {
@@ -214,7 +214,7 @@ export default defineContentScript({
               xml,
             });
             console.log(
-              "%c[gyozai]",
+              "%c[gyoza]",
               "color: #E8950A; font-weight: bold",
               "Auto-detected recipe at",
               recipeUrl,
@@ -474,7 +474,7 @@ function GyozaiWidget() {
     // ─── Log request ───────────────────
     queryCounter++;
     const qn = queryCounter;
-    console.group(`%c[gyozai] ━━━ REQUEST #${qn} ━━━`, S.req);
+    console.group(`%c[gyoza] ━━━ REQUEST #${qn} ━━━`, S.req);
     console.log(
       `%cQuery:%c ${query.slice(0, 120)}${query.length > 120 ? "..." : ""}`,
       S.req,
@@ -519,7 +519,7 @@ function GyozaiWidget() {
     const ms = Date.now() - start;
 
     // ─── Log response ──────────────────
-    console.group(`%c[gyozai] ━━━ RESPONSE #${qn} (${ms}ms) ━━━`, S.res);
+    console.group(`%c[gyoza] ━━━ RESPONSE #${qn} (${ms}ms) ━━━`, S.res);
     if (result?.error) {
       console.log(`%c❌ Error:%c ${result.error}`, S.err, "");
     } else {
@@ -584,7 +584,7 @@ function GyozaiWidget() {
       case "execute-js":
         if (action.code) {
           console.log(
-            `%c[gyozai] ⚡ execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
+            `%c[gyoza] ⚡ execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
             S.action,
             S.dim,
           );
@@ -595,7 +595,7 @@ function GyozaiWidget() {
           });
           if (result?.error) {
             console.error(
-              `%c[gyozai] ❌ JS error:%c ${result.error}`,
+              `%c[gyoza] ❌ JS error:%c ${result.error}`,
               S.err,
               "",
             );
@@ -666,7 +666,7 @@ function GyozaiWidget() {
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
       console.log(
-        `%c[gyozai] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")}`,
+        `%c[gyoza] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")}`,
         S.action,
         "",
       );
@@ -728,7 +728,7 @@ function GyozaiWidget() {
           pendingExtraContext = ctxText;
           autoFollowUpUsed = true;
           console.log(
-            `%c[gyozai] 🔁 AUTO-FOLLOW-UP:%c captured ${ctxText.length} chars of page context, re-querying with context...`,
+            `%c[gyoza] 🔁 AUTO-FOLLOW-UP:%c captured ${ctxText.length} chars of page context, re-querying with context...`,
             S.brand,
             "",
           );

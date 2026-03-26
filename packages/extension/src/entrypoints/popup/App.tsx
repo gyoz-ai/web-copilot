@@ -327,10 +327,10 @@ export function App() {
         <div style={s.headerTitle}>
           <img
             src="/icon-128.png"
-            alt="gyozAI"
+            alt="gyoza"
             style={{ width: 24, height: 24 }}
           />
-          <span style={s.title}>gyoz.ai</span>
+          <span style={s.title}>gyoza</span>
         </div>
         <span style={s.version}>v0.0.1</span>
       </div>
@@ -417,7 +417,7 @@ export function App() {
             <div>
               <div style={s.statusRow}>
                 <span style={s.statusDot} />
-                <span>Connected to gyozAI platform</span>
+                <span>Connected to gyoza platform</span>
               </div>
               <button
                 style={s.signOutBtn}
@@ -432,7 +432,7 @@ export function App() {
           ) : (
             <div>
               <p style={s.desc}>
-                Subscribe to use gyozAI without your own API key.
+                Subscribe to use gyoza without your own API key.
               </p>
               <button
                 style={s.saveBtn}
