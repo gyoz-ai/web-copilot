@@ -1,4 +1,5 @@
 export interface StoredRecipe {
+  id: string;
   domain: string;
   name: string;
   xml: string;
@@ -11,22 +12,20 @@ export async function getRecipes(): Promise<StoredRecipe[]> {
   return result.gyozai_recipes || [];
 }
 
-export async function getRecipeForDomain(
+/** Get ALL enabled recipes for a domain, merged into one sitemap string */
+export async function getMergedSitemapForDomain(
   domain: string,
-): Promise<StoredRecipe | null> {
+): Promise<{ xml: string; names: string[] } | null> {
   const recipes = await getRecipes();
-  return recipes.find((r) => r.domain === domain && r.enabled) || null;
+  const enabled = recipes.filter((r) => r.domain === domain && r.enabled);
+  if (enabled.length === 0) return null;
+  return {
+    xml: enabled.map((r) => r.xml).join("\n\n"),
+    names: enabled.map((r) => r.name),
+  };
 }
 
-export async function toggleRecipe(domain: string): Promise<boolean> {
-  const recipes = await getRecipes();
-  const recipe = recipes.find((r) => r.domain === domain);
-  if (!recipe) return false;
-  recipe.enabled = !recipe.enabled;
-  await chrome.storage.local.set({ gyozai_recipes: recipes });
-  return recipe.enabled;
-}
-
+/** Get all recipes for a specific domain */
 export async function getRecipesForDomain(
   domain: string,
 ): Promise<StoredRecipe[]> {
@@ -34,26 +33,30 @@ export async function getRecipesForDomain(
   return recipes.filter((r) => r.domain === domain);
 }
 
-export async function saveRecipe(recipe: StoredRecipe): Promise<void> {
+export async function toggleRecipe(id: string): Promise<boolean> {
   const recipes = await getRecipes();
-  const existing = recipes.findIndex((r) => r.domain === recipe.domain);
-  if (existing >= 0) {
-    recipes[existing] = recipe;
-  } else {
-    recipes.push(recipe);
-  }
+  const recipe = recipes.find((r) => r.id === id);
+  if (!recipe) return false;
+  recipe.enabled = !recipe.enabled;
+  await chrome.storage.local.set({ gyozai_recipes: recipes });
+  return recipe.enabled;
+}
+
+export async function addRecipe(recipe: StoredRecipe): Promise<void> {
+  const recipes = await getRecipes();
+  recipes.push(recipe);
   await chrome.storage.local.set({ gyozai_recipes: recipes });
 }
 
-export async function removeRecipe(domain: string): Promise<void> {
+export async function removeRecipe(id: string): Promise<void> {
   const recipes = await getRecipes();
-  const filtered = recipes.filter((r) => r.domain !== domain);
+  const filtered = recipes.filter((r) => r.id !== id);
   await chrome.storage.local.set({ gyozai_recipes: filtered });
 }
 
 /**
  * Import a recipe XML file. Domain is auto-inferred from the XML's
- * domain="..." attribute. Falls back to filename if not found.
+ * domain="..." attribute. Supports multiple recipes per domain.
  */
 export async function importRecipeFromFile(
   filename: string,
@@ -67,7 +70,8 @@ export async function importRecipeFromFile(
   const domain = domainMatch?.[1] || filename.replace(".xml", "");
   const name = nameMatch?.[1] || filename.replace(".xml", "");
 
-  await saveRecipe({
+  await addRecipe({
+    id: crypto.randomUUID(),
     domain,
     name,
     xml: xmlContent,

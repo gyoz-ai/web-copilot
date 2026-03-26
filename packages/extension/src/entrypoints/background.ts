@@ -5,7 +5,7 @@ import {
   getConversationHistory,
   saveConversationHistory,
 } from "../lib/storage";
-import { getRecipeForDomain } from "../lib/recipes";
+import { getMergedSitemapForDomain } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
 
@@ -31,7 +31,7 @@ export default defineBackground(() => {
     }
 
     if (message.type === "gyozai_get_recipe") {
-      getRecipeForDomain(message.domain).then(sendResponse);
+      getMergedSitemapForDomain(message.domain).then(sendResponse);
       return true;
     }
 

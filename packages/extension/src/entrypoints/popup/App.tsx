@@ -6,6 +6,7 @@ import {
 } from "../../lib/storage";
 import {
   getRecipes,
+  getRecipesForDomain,
   removeRecipe,
   importRecipeFromFile,
   toggleRecipe,
@@ -42,12 +43,22 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
 export function App() {
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
+  const [currentDomain, setCurrentDomain] = useState<string>("");
+  const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     getSettings().then(setSettings);
     getRecipes().then(setRecipes);
+    // Get current tab's domain
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.url) {
+        try {
+          setCurrentDomain(new URL(tabs[0].url).host);
+        } catch {}
+      }
+    });
   }, []);
 
   if (!settings) return <div style={s.loading}>Loading...</div>;
@@ -72,10 +83,18 @@ export function App() {
     input.click();
   };
 
-  const handleDeleteRecipe = async (domain: string) => {
-    await removeRecipe(domain);
+  const handleDeleteRecipe = async (id: string) => {
+    await removeRecipe(id);
     setRecipes(await getRecipes());
   };
+
+  const handleToggleRecipe = async (id: string) => {
+    await toggleRecipe(id);
+    setRecipes(await getRecipes());
+  };
+
+  const domainRecipes = recipes.filter((r) => r.domain === currentDomain);
+  const displayRecipes = showAllRecipes ? recipes : domainRecipes;
 
   const models = MODELS[settings.provider] || [];
 
@@ -205,21 +224,37 @@ export function App() {
       {/* Recipes */}
       <div style={s.section}>
         <div style={s.sectionHeader}>
-          <span style={s.sectionTitle}>Recipes</span>
-          <button style={s.importBtn} onClick={handleImportRecipe}>
-            + Import
-          </button>
+          <span style={s.sectionTitle}>
+            {showAllRecipes
+              ? "All Recipes"
+              : `Recipes${currentDomain ? ` — ${currentDomain}` : ""}`}
+          </span>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button
+              style={s.importBtn}
+              onClick={() => setShowAllRecipes(!showAllRecipes)}
+              title={
+                showAllRecipes ? "Show current site" : "Manage all recipes"
+              }
+            >
+              {showAllRecipes ? "← Back" : "📓"}
+            </button>
+            <button style={s.importBtn} onClick={handleImportRecipe}>
+              + Import
+            </button>
+          </div>
         </div>
-        {recipes.length === 0 ? (
+        {displayRecipes.length === 0 ? (
           <p style={s.emptyText}>
-            No recipes installed. Import an XML recipe file to enhance AI
-            navigation on specific sites.
+            {showAllRecipes
+              ? "No recipes installed yet."
+              : `No recipes for ${currentDomain || "this site"}. Import an XML recipe to enhance AI navigation.`}
           </p>
         ) : (
           <div style={s.recipeList}>
-            {recipes.map((r) => (
+            {displayRecipes.map((r) => (
               <div
-                key={r.domain}
+                key={r.id}
                 style={{
                   ...s.recipeItem,
                   opacity: r.enabled === false ? 0.5 : 1,
@@ -232,16 +267,13 @@ export function App() {
                 <button
                   style={s.toggleBtn}
                   title={r.enabled !== false ? "Disable" : "Enable"}
-                  onClick={async () => {
-                    await toggleRecipe(r.domain);
-                    setRecipes(await getRecipes());
-                  }}
+                  onClick={() => handleToggleRecipe(r.id)}
                 >
                   {r.enabled !== false ? "ON" : "OFF"}
                 </button>
                 <button
                   style={s.deleteBtn}
-                  onClick={() => handleDeleteRecipe(r.domain)}
+                  onClick={() => handleDeleteRecipe(r.id)}
                 >
                   ✕
                 </button>

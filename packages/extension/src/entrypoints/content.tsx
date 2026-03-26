@@ -369,13 +369,13 @@ function GyozaiWidget() {
     );
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
     console.log(
-      `%cRecipe:%c ${recipe ? `✅ ${recipe.name} (${recipe.domain})` : "❌ none"}`,
+      `%cRecipe:%c ${recipe ? `✅ ${recipe.names.join(", ")}` : "❌ none"}`,
       S.req,
       "",
     );
     if (manifestMode && recipe?.xml) {
       console.log(
-        `%cSitemap:%c ${recipe.xml.length} chars sent to AI`,
+        `%cSitemap:%c ${recipe.xml.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
         S.req,
         "",
       );
