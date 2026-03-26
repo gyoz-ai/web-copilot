@@ -62,16 +62,34 @@ export async function importRecipeFromFile(
   filename: string,
   xmlContent: string,
 ): Promise<void> {
+  const idMatch = xmlContent.match(/id="([^"]+)"/);
   const domainMatch = xmlContent.match(/domain="([^"]+)"/);
   const nameMatch = xmlContent.match(
     /<gyozai-manifest[^>]*>[\s\S]*?<route[^>]*name="([^"]+)"/,
   );
 
+  const id = idMatch?.[1] || crypto.randomUUID();
   const domain = domainMatch?.[1] || filename.replace(".xml", "");
   const name = nameMatch?.[1] || filename.replace(".xml", "");
 
+  // If recipe with same ID exists, replace it (same recipe, updated version)
+  const existing = await getRecipes();
+  const existingIdx = existing.findIndex((r) => r.id === id);
+  if (existingIdx >= 0) {
+    existing[existingIdx] = {
+      id,
+      domain,
+      name,
+      xml: xmlContent,
+      enabled: true,
+      installedAt: new Date().toISOString(),
+    };
+    await chrome.storage.local.set({ gyozai_recipes: existing });
+    return;
+  }
+
   await addRecipe({
-    id: crypto.randomUUID(),
+    id,
     domain,
     name,
     xml: xmlContent,

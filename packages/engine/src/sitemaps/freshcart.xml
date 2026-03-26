@@ -1,4 +1,4 @@
-<gyozai-manifest version="1" domain="localhost:4321" prefix="/demos/grocery">
+<gyozai-manifest id="freshcart-grocery-v1" version="1" domain="localhost:4322" prefix="/demos/grocery">
   <routes>
     <route path="/demos/grocery" name="Home" description="Grocery store home page with featured products and category links" />
     <route path="/demos/grocery/category/produce" name="Produce" description="Fresh fruits and vegetables" />
