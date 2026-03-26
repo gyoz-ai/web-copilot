@@ -566,6 +566,8 @@ function GyozaiWidget() {
       if (jsError && action.type === "execute-js") {
         const errorMsg = sanitizeError(jsError);
         addAssistantMessage(`Code execution failed: ${errorMsg}`);
+        // Reset so the error re-query gets its own auto-follow-up allowance
+        autoFollowUpUsed = false;
         await handleFullQuery(
           `The code you tried to execute failed with this error: "${errorMsg}". Please try a different approach or explain what went wrong.`,
           false,
