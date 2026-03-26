@@ -43,6 +43,33 @@ function sanitizeError(error: string): string {
 
 const MESSAGES_KEY = "gyozai_ui_messages";
 const EXPANDED_KEY = "gyozai_ui_expanded";
+const PENDING_NAV_KEY = "gyozai_pending_nav";
+
+interface PendingNavState {
+  snapshotTypes: SnapshotType[];
+  originalQuery: string;
+  timestamp: number;
+}
+
+async function savePendingNav(state: PendingNavState) {
+  await chrome.storage.local.set({ [PENDING_NAV_KEY]: state });
+}
+
+async function loadAndClearPendingNav(): Promise<PendingNavState | null> {
+  try {
+    const result = await chrome.storage.local.get(PENDING_NAV_KEY);
+    const state = result[PENDING_NAV_KEY] as PendingNavState | undefined;
+    if (state) {
+      await chrome.storage.local.remove(PENDING_NAV_KEY);
+      // Expire after 30s (in case of stale state)
+      if (Date.now() - state.timestamp > 30000) return null;
+      return state;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 async function loadMessages(): Promise<Message[]> {
   try {
@@ -191,12 +218,49 @@ function GyozaiWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Restore state from chrome.storage.local on mount
+  // Restore state from chrome.storage.local on mount + check for pending navigation
   useEffect(() => {
-    Promise.all([loadMessages(), loadExpanded()]).then(([msgs, exp]) => {
+    Promise.all([loadMessages(), loadExpanded()]).then(async ([msgs, exp]) => {
       setMessages(msgs);
       setExpanded(exp);
       setInitialized(true);
+
+      // Check if we arrived here from a navigate + extraRequests
+      const pendingNav = await loadAndClearPendingNav();
+      if (pendingNav) {
+        log(
+          "🔄 Resuming after navigation — capturing",
+          pendingNav.snapshotTypes.join(", "),
+          "for query:",
+          pendingNav.originalQuery.slice(0, 60),
+        );
+        setExpanded(true);
+        setLoading(true);
+
+        // Small delay to let the new page render fully
+        await new Promise((r) => setTimeout(r, 500));
+
+        // Capture the requested snapshots on the NEW page
+        const pageCtx = capturePageContext(pendingNav.snapshotTypes);
+        const ctxText = formatPageContext(pageCtx);
+
+        if (ctxText) {
+          pendingExtraContext = ctxText;
+          log("📎 Captured", ctxText.length, "chars from new page");
+        }
+
+        try {
+          autoFollowUpUsed = false;
+          await handleFullQuery(
+            `I've navigated to this page. Continue with my original request: ${pendingNav.originalQuery}`,
+            false,
+          );
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Something went wrong");
+        } finally {
+          setLoading(false);
+        }
+      }
     });
   }, []);
 
@@ -498,9 +562,14 @@ function GyozaiWidget() {
 
       if (hasPageChange) {
         log(
-          "🔄 navigate/click + extraRequests → stashing capture for NEXT query",
+          "🔄 navigate/click + extraRequests → saving state for auto-resume after page load",
         );
-        pendingSnapshotTypes = snapshotTypes;
+        // Persist to chrome.storage.local so it survives page navigation
+        await savePendingNav({
+          snapshotTypes,
+          originalQuery: query,
+          timestamp: Date.now(),
+        });
         await dispatchActionsInOrder(actions);
         return;
       } else if (hasClarify) {
