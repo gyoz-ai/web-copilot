@@ -1,8 +1,8 @@
-import type { ActionResponse } from '@gyoz-ai/engine'
+import type { ActionResponse } from "@gyoz-ai/engine";
 
 export interface Message {
-  role: 'user' | 'assistant'
-  content: string
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface LLMProvider {
@@ -10,5 +10,5 @@ export interface LLMProvider {
     system: string,
     messages: Message[],
     schema: Record<string, unknown>,
-  ): Promise<ActionResponse>
+  ): Promise<ActionResponse>;
 }

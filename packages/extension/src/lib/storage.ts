@@ -22,20 +22,24 @@ export async function saveSettings(settings: ExtensionSettings): Promise<void> {
   await chrome.storage.local.set({ gyozai_settings: settings });
 }
 
-export async function getConversationHistory(): Promise<
-  Array<{ role: string; content: string }>
-> {
-  const result = await chrome.storage.local.get("gyozai_history");
-  return result.gyozai_history || [];
+export async function getConversationHistory(
+  tabId: number,
+): Promise<Array<{ role: string; content: string }>> {
+  const key = `gyozai_history_${tabId}`;
+  const result = await chrome.storage.local.get(key);
+  return result[key] || [];
 }
 
 export async function saveConversationHistory(
+  tabId: number,
   history: Array<{ role: string; content: string }>,
 ): Promise<void> {
+  const key = `gyozai_history_${tabId}`;
   const capped = history.slice(-20);
-  await chrome.storage.local.set({ gyozai_history: capped });
+  await chrome.storage.local.set({ [key]: capped });
 }
 
-export async function clearConversationHistory(): Promise<void> {
-  await chrome.storage.local.remove("gyozai_history");
+export async function clearConversationHistory(tabId: number): Promise<void> {
+  const key = `gyozai_history_${tabId}`;
+  await chrome.storage.local.remove(key);
 }

@@ -23,8 +23,8 @@ export async function getRecipes(): Promise<StoredRecipe[]> {
   return result.gyozai_recipes || [];
 }
 
-/** Get ALL enabled recipes for a domain, merged into one sitemap string */
-export async function getMergedSitemapForDomain(
+/** Get ALL enabled recipes for a domain, merged into one recipe string */
+export async function getMergedRecipeForDomain(
   domain: string,
 ): Promise<{ xml: string; names: string[] } | null> {
   const recipes = await getRecipes();

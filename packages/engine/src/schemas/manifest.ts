@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
-// ─── Sitemap Manifest Schema ────────────────────────────────────────────────────
-// XML sitemap fed as context TO Claude (not output by Claude).
+// ─── Recipe Manifest Schema ─────────────────────────────────────────────────────
+// XML recipe fed as context TO Claude (not output by Claude).
 // These schemas validate the parsed representation after XML → object conversion.
 
 export const RouteSchema = z.object({

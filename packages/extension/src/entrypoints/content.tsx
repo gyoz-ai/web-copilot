@@ -39,28 +39,32 @@ function sanitizeError(error: string): string {
   return firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
 }
 
-// ─── Message storage (chrome.storage.local) ────────────────────────────────
-
-const MESSAGES_KEY = "gyozai_ui_messages";
-const EXPANDED_KEY = "gyozai_ui_expanded";
-const PENDING_NAV_KEY = "gyozai_pending_nav";
+// ─── Message storage (chrome.storage.local, per-tab) ─────────────────────
 
 interface PendingNavState {
   snapshotTypes: SnapshotType[];
   originalQuery: string;
+  tabId: number;
   timestamp: number;
 }
 
-async function savePendingNav(state: PendingNavState) {
-  await chrome.storage.local.set({ [PENDING_NAV_KEY]: state });
+function pendingNavKey(tabId: number) {
+  return `gyozai_pending_nav_${tabId}`;
 }
 
-async function loadAndClearPendingNav(): Promise<PendingNavState | null> {
+async function savePendingNav(state: PendingNavState) {
+  await chrome.storage.local.set({ [pendingNavKey(state.tabId)]: state });
+}
+
+async function loadAndClearPendingNav(
+  tabId: number,
+): Promise<PendingNavState | null> {
+  const key = pendingNavKey(tabId);
   try {
-    const result = await chrome.storage.local.get(PENDING_NAV_KEY);
-    const state = result[PENDING_NAV_KEY] as PendingNavState | undefined;
+    const result = await chrome.storage.local.get(key);
+    const state = result[key] as PendingNavState | undefined;
     if (state) {
-      await chrome.storage.local.remove(PENDING_NAV_KEY);
+      await chrome.storage.local.remove(key);
       // Expire after 30s (in case of stale state)
       if (Date.now() - state.timestamp > 30000) return null;
       return state;
@@ -71,36 +75,51 @@ async function loadAndClearPendingNav(): Promise<PendingNavState | null> {
   }
 }
 
-async function loadMessages(): Promise<Message[]> {
+async function loadMessages(tabId: number): Promise<Message[]> {
+  const key = `gyozai_ui_messages_${tabId}`;
   try {
-    const result = await chrome.storage.local.get(MESSAGES_KEY);
-    return result[MESSAGES_KEY] || [];
+    const result = await chrome.storage.local.get(key);
+    return result[key] || [];
   } catch {
     return [];
   }
 }
 
-async function persistMessages(messages: Message[]) {
+async function persistMessages(tabId: number, messages: Message[]) {
+  const key = `gyozai_ui_messages_${tabId}`;
   try {
-    await chrome.storage.local.set({ [MESSAGES_KEY]: messages });
+    await chrome.storage.local.set({ [key]: messages });
   } catch {
     // storage full
   }
 }
 
-async function loadExpanded(): Promise<boolean> {
+async function loadExpanded(tabId: number): Promise<boolean> {
+  const key = `gyozai_ui_expanded_${tabId}`;
   try {
-    const result = await chrome.storage.local.get(EXPANDED_KEY);
-    return result[EXPANDED_KEY] === true;
+    const result = await chrome.storage.local.get(key);
+    return result[key] === true;
   } catch {
     return false;
   }
 }
 
-async function persistExpanded(expanded: boolean) {
+async function persistExpanded(tabId: number, expanded: boolean) {
+  const key = `gyozai_ui_expanded_${tabId}`;
   try {
-    await chrome.storage.local.set({ [EXPANDED_KEY]: expanded });
+    await chrome.storage.local.set({ [key]: expanded });
   } catch {}
+}
+
+async function getTabId(): Promise<number | null> {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "gyozai_get_tab_id",
+    });
+    return response?.tabId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Lightweight markdown renderer (ported from SDK) ─────────────────────────
@@ -174,6 +193,34 @@ export default defineContentScript({
     shadow.appendChild(container);
 
     ReactDOM.createRoot(container).render(<GyozaiWidget />);
+
+    // Auto-detect recipe from website
+    try {
+      const recipeUrl = `${window.location.origin}/recipellm.xml`;
+      const response = await fetch(recipeUrl, { method: "GET" });
+      if (response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("xml") || contentType.includes("text")) {
+          const xml = await response.text();
+          if (xml.includes("gyozai-manifest")) {
+            // Auto-import this recipe
+            chrome.runtime.sendMessage({
+              type: "gyozai_auto_import_recipe",
+              filename: "recipellm.xml",
+              xml,
+            });
+            console.log(
+              "%c[gyozai]",
+              "color: #E8950A; font-weight: bold",
+              "Auto-detected recipe at",
+              recipeUrl,
+            );
+          }
+        }
+      }
+    } catch {
+      // No recipe file — that's fine
+    }
   },
 });
 
@@ -215,18 +262,42 @@ function GyozaiWidget() {
   const [error, setError] = useState<string | null>(null);
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Restore state from chrome.storage.local on mount + check for pending navigation
+  // Listen for auto-imported recipe notification
   useEffect(() => {
-    Promise.all([loadMessages(), loadExpanded()]).then(async ([msgs, exp]) => {
+    const handler = (msg: { type: string; filename?: string }) => {
+      if (msg.type === "gyozai_recipe_auto_added" && msg.filename) {
+        setToast(`Recipe auto-imported from ${msg.filename}`);
+        setTimeout(() => setToast(null), 4000);
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
+  }, []);
+
+  // Get tab ID, then restore state from chrome.storage.local + check pending nav
+  useEffect(() => {
+    getTabId().then(async (tid) => {
+      tabIdRef.current = tid;
+      if (tid == null) {
+        setInitialized(true);
+        return;
+      }
+
+      const [msgs, exp] = await Promise.all([
+        loadMessages(tid),
+        loadExpanded(tid),
+      ]);
       setMessages(msgs);
       setExpanded(exp);
       setInitialized(true);
 
       // Check if we arrived here from a navigate + extraRequests
-      const pendingNav = await loadAndClearPendingNav();
+      const pendingNav = await loadAndClearPendingNav(tid);
       if (pendingNav) {
         log(
           "🔄 Resuming after navigation — capturing",
@@ -264,16 +335,16 @@ function GyozaiWidget() {
     });
   }, []);
 
-  // Persist messages to chrome.storage.local
+  // Persist messages to chrome.storage.local (per-tab)
   useEffect(() => {
-    if (!initialized) return;
-    persistMessages(messages);
+    if (!initialized || tabIdRef.current == null) return;
+    persistMessages(tabIdRef.current, messages);
   }, [messages, initialized]);
 
-  // Persist expanded state
+  // Persist expanded state (per-tab)
   useEffect(() => {
-    if (!initialized) return;
-    persistExpanded(expanded);
+    if (!initialized || tabIdRef.current == null) return;
+    persistExpanded(tabIdRef.current, expanded);
   }, [expanded, initialized]);
 
   // Listen for toggle command from background
@@ -314,7 +385,6 @@ function GyozaiWidget() {
     query: string,
     extraPageContext?: string,
   ): Promise<ActionResult> {
-    const htmlSnapshot = captureHtml();
     const currentRoute = window.location.pathname;
 
     const recipe = await chrome.runtime.sendMessage({
@@ -324,13 +394,22 @@ function GyozaiWidget() {
 
     const manifestMode = !!recipe?.xml;
 
+    // For no-manifest mode, use structured page context instead of raw HTML
+    // This is smaller and more useful for the AI than 30KB of messy HTML
+    let pageSnapshot: string | undefined;
+    if (!manifestMode && !extraPageContext) {
+      const ctx = capturePageContext(["all"] as SnapshotType[]);
+      pageSnapshot = formatPageContext(ctx);
+    }
+
     const payload: Record<string, unknown> = {
       type: "gyozai_query",
       query,
       manifestMode,
-      sitemapXml: recipe?.xml,
-      htmlSnapshot: manifestMode ? undefined : htmlSnapshot,
+      recipeXml: recipe?.xml,
+      htmlSnapshot: manifestMode ? undefined : pageSnapshot,
       currentRoute,
+      tabId: tabIdRef.current,
       context: {
         currentUrl: window.location.href,
         pageTitle: document.title,
@@ -375,14 +454,14 @@ function GyozaiWidget() {
     );
     if (manifestMode && recipe?.xml) {
       console.log(
-        `%cSitemap:%c ${recipe.xml.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
+        `%cRecipe:%c ${recipe.xml.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
         S.req,
         "",
       );
     }
-    if (!manifestMode && htmlSnapshot) {
+    if (!manifestMode && pageSnapshot) {
       console.log(
-        `%cHTML snapshot:%c ${htmlSnapshot.length} chars sent to AI`,
+        `%cPage context (structured):%c ${pageSnapshot.length} chars sent to AI`,
         S.req,
         "",
       );
@@ -568,6 +647,7 @@ function GyozaiWidget() {
         await savePendingNav({
           snapshotTypes,
           originalQuery: query,
+          tabId: tabIdRef.current ?? 0,
           timestamp: Date.now(),
         });
         await dispatchActionsInOrder(actions);
@@ -752,7 +832,10 @@ function GyozaiWidget() {
     setMessages([]);
     setError(null);
     setClarify(null);
-    chrome.runtime.sendMessage({ type: "gyozai_clear_history" });
+    chrome.runtime.sendMessage({
+      type: "gyozai_clear_history",
+      tabId: tabIdRef.current,
+    });
     log("Chat cleared");
   };
 
@@ -871,6 +954,9 @@ function GyozaiWidget() {
           {/* Error */}
           {error && <div className="gyozai-error">{error}</div>}
 
+          {/* Toast */}
+          {toast && <div className="gyozai-toast">{toast}</div>}
+
           {/* Input */}
           <div className="gyozai-input-row">
             <input
@@ -954,16 +1040,16 @@ const WIDGET_STYLES = `
     right: 20px;
     width: 380px;
     max-height: 520px;
-    background: #fff;
+    background: #1a1a2e;
     border-radius: 12px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-    border: 1px solid #e5e5e5;
+    border: 1px solid #2a2a3a;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #1a1a2e;
+    color: #e4e4e7;
     font-size: 13px;
   }
 
@@ -972,8 +1058,8 @@ const WIDGET_STYLES = `
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    border-bottom: 1px solid #e5e5e5;
-    background: #fafafa;
+    border-bottom: 1px solid #2a2a3a;
+    background: #12121a;
   }
   .gyozai-header-title {
     display: flex;
@@ -994,7 +1080,7 @@ const WIDGET_STYLES = `
     border: none;
     background: none;
     cursor: pointer;
-    color: #9ca3af;
+    color: #71717a;
     padding: 4px;
     border-radius: 4px;
     transition: color 0.15s ease;
@@ -1012,7 +1098,7 @@ const WIDGET_STYLES = `
   }
 
   .gyozai-empty {
-    color: #9ca3af;
+    color: #71717a;
     text-align: center;
     padding: 32px 16px;
     font-size: 13px;
@@ -1036,8 +1122,8 @@ const WIDGET_STYLES = `
 
   .gyozai-msg-assistant {
     align-self: flex-start;
-    background: #f3f4f6;
-    color: #1a1a2e;
+    background: #2a2a3a;
+    color: #e4e4e7;
     border-radius: 12px 12px 12px 4px;
   }
 
@@ -1050,7 +1136,7 @@ const WIDGET_STYLES = `
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #9ca3af;
+    background: #71717a;
     animation: gyozai-bounce 1.4s infinite ease-in-out both;
   }
   .gyozai-typing span:nth-child(1) { animation-delay: -0.32s; }
@@ -1065,20 +1151,20 @@ const WIDGET_STYLES = `
     display: flex;
     align-items: center;
     padding: 10px 12px;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid #2a2a3a;
     gap: 8px;
-    background: #fafafa;
+    background: #12121a;
   }
 
   .gyozai-input {
     flex: 1;
-    border: 1px solid #e5e5e5;
+    border: 1px solid #2a2a3a;
     border-radius: 8px;
     outline: none;
     font-size: 13px;
     font-family: inherit;
-    color: #1a1a2e;
-    background: #fff;
+    color: #e4e4e7;
+    background: #1a1a2e;
     padding: 8px 10px;
     transition: border-color 0.15s ease;
   }
@@ -1103,9 +1189,9 @@ const WIDGET_STYLES = `
   .gyozai-error {
     padding: 8px 12px;
     font-size: 12px;
-    color: #dc2626;
-    background: #fef2f2;
-    border-top: 1px solid #fecaca;
+    color: #f87171;
+    background: #2d1b1b;
+    border-top: 1px solid #4a2020;
   }
 
   .gyozai-clarify {
@@ -1113,7 +1199,7 @@ const WIDGET_STYLES = `
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px 12px;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid #2a2a3a;
   }
 
   .gyozai-clarify-btn {
@@ -1122,7 +1208,7 @@ const WIDGET_STYLES = `
     font-family: inherit;
     border: 1px solid #E8950A;
     border-radius: 16px;
-    background: #fff;
+    background: #1a1a2e;
     color: #E8950A;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -1130,5 +1216,20 @@ const WIDGET_STYLES = `
   .gyozai-clarify-btn:hover {
     background: #E8950A;
     color: #fff;
+  }
+
+  .gyozai-toast {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #E8950A;
+    background: #12121a;
+    border-top: 1px solid #2a2a3a;
+    text-align: center;
+    animation: gyozai-fade-in 0.3s ease;
+  }
+
+  @keyframes gyozai-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 `;

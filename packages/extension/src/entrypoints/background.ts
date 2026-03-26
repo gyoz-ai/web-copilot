@@ -4,8 +4,9 @@ import {
   getSettings,
   getConversationHistory,
   saveConversationHistory,
+  clearConversationHistory,
 } from "../lib/storage";
-import { getMergedSitemapForDomain } from "../lib/recipes";
+import { getMergedRecipeForDomain, importRecipeFromFile } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
 
@@ -17,10 +18,33 @@ const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
 export default defineBackground(() => {
   console.log("[gyozai] Background worker started");
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "gyozai_get_tab_id") {
+      sendResponse({ tabId: sender.tab?.id ?? null });
+      return false;
+    }
+
     if (message.type === "gyozai_query") {
       handleQuery(message)
-        .then(sendResponse)
+        .then((result) => {
+          // Feature 3: Desktop notification when tab is not focused
+          if (sender?.tab?.id) {
+            chrome.tabs.get(sender.tab.id, (tab) => {
+              if (!tab.active) {
+                const msg =
+                  result.actions.find((a: { message?: string }) => a.message)
+                    ?.message || "Action completed";
+                chrome.notifications.create({
+                  type: "basic",
+                  iconUrl: "/icon-128.png",
+                  title: "gyoz.ai",
+                  message: msg.slice(0, 100),
+                });
+              }
+            });
+          }
+          sendResponse(result);
+        })
         .catch((err) => {
           console.error("[gyozai] Query error:", err);
           sendResponse({
@@ -30,16 +54,35 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === "gyozai_auto_import_recipe") {
+      importRecipeFromFile(message.filename, message.xml).then(() => {
+        // Send notification back to the tab
+        if (sender.tab?.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "gyozai_recipe_auto_added",
+            filename: message.filename,
+          });
+        }
+        sendResponse({ ok: true });
+      });
+      return true;
+    }
+
     if (message.type === "gyozai_get_recipe") {
-      getMergedSitemapForDomain(message.domain).then(sendResponse);
+      getMergedRecipeForDomain(message.domain).then(sendResponse);
       return true;
     }
 
     if (message.type === "gyozai_clear_history") {
-      saveConversationHistory([]).then(() => {
-        console.log("[gyozai] Conversation history cleared");
+      const tabId = message.tabId as number | undefined;
+      if (tabId != null) {
+        clearConversationHistory(tabId).then(() => {
+          console.log(`[gyozai] Conversation history cleared for tab ${tabId}`);
+          sendResponse({ ok: true });
+        });
+      } else {
         sendResponse({ ok: true });
-      });
+      }
       return true;
     }
 
@@ -115,16 +158,18 @@ export default defineBackground(() => {
 async function handleQuery(message: {
   query: string;
   manifestMode: boolean;
-  sitemapXml?: string;
+  recipeXml?: string;
   htmlSnapshot?: string;
   currentRoute?: string;
   pageContext?: string;
   context?: Record<string, unknown>;
   capabilities?: Record<string, boolean>;
+  tabId?: number;
 }) {
   const settings = await getSettings();
   const provider = createProvider(settings);
-  const history = await getConversationHistory();
+  const tabId = message.tabId;
+  const history = tabId != null ? await getConversationHistory(tabId) : [];
 
   const caps = message.capabilities || {};
   const mode = message.manifestMode ? "manifest" : "no-manifest";
@@ -134,7 +179,7 @@ async function handleQuery(message: {
   );
   const userPrompt = buildUserPrompt({
     query: message.query,
-    sitemapXml: message.sitemapXml,
+    recipeXml: message.recipeXml,
     htmlSnapshot: message.htmlSnapshot,
     currentRoute: message.currentRoute,
     context: message.context,
@@ -164,6 +209,7 @@ async function handleQuery(message: {
   );
   console.log("  Query:", message.query.slice(0, 100));
   console.log("  Manifest mode:", message.manifestMode);
+  console.log("  Tab ID:", tabId ?? "unknown");
   console.log("  Conversation history:", history.length, "messages");
   console.log("  System prompt:", systemPrompt.slice(0, 100) + "...");
   console.log("  User prompt:", userPrompt.slice(0, 150) + "...");
@@ -208,7 +254,9 @@ async function handleQuery(message: {
   if (assistantMsg) {
     history.push({ role: "assistant", content: assistantMsg });
   }
-  await saveConversationHistory(history);
+  if (tabId != null) {
+    await saveConversationHistory(tabId, history);
+  }
 
   return result;
 }

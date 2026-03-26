@@ -18,7 +18,7 @@ export default defineConfig({
     icons: {
       128: "/icon-128.png",
     },
-    permissions: ["activeTab", "storage", "scripting"],
+    permissions: ["activeTab", "storage", "scripting", "notifications"],
     web_accessible_resources: [
       {
         resources: ["/icon-128.png"],
