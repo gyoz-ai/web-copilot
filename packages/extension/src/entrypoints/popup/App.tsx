@@ -8,6 +8,7 @@ import {
   getRecipes,
   removeRecipe,
   importRecipeFromFile,
+  toggleRecipe,
   type StoredRecipe,
 } from "../../lib/recipes";
 
@@ -217,11 +218,27 @@ export function App() {
         ) : (
           <div style={s.recipeList}>
             {recipes.map((r) => (
-              <div key={r.domain} style={s.recipeItem}>
-                <div>
+              <div
+                key={r.domain}
+                style={{
+                  ...s.recipeItem,
+                  opacity: r.enabled === false ? 0.5 : 1,
+                }}
+              >
+                <div style={{ flex: 1 }}>
                   <div style={s.recipeName}>{r.name}</div>
                   <div style={s.recipeDomain}>{r.domain}</div>
                 </div>
+                <button
+                  style={s.toggleBtn}
+                  title={r.enabled !== false ? "Disable" : "Enable"}
+                  onClick={async () => {
+                    await toggleRecipe(r.domain);
+                    setRecipes(await getRecipes());
+                  }}
+                >
+                  {r.enabled !== false ? "ON" : "OFF"}
+                </button>
                 <button
                   style={s.deleteBtn}
                   onClick={() => handleDeleteRecipe(r.domain)}
@@ -380,6 +397,16 @@ const s: Record<string, React.CSSProperties> = {
   },
   recipeName: { fontSize: 13, fontWeight: 500 },
   recipeDomain: { fontSize: 11, color: "#9ca3af" },
+  toggleBtn: {
+    border: "1px solid #d1d5db",
+    borderRadius: 4,
+    padding: "2px 6px",
+    fontSize: 10,
+    fontWeight: 600,
+    cursor: "pointer",
+    background: "#fff",
+    color: "#6b7280",
+  },
   deleteBtn: {
     border: "none",
     background: "none",

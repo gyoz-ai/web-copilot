@@ -2,6 +2,7 @@ export interface StoredRecipe {
   domain: string;
   name: string;
   xml: string;
+  enabled: boolean;
   installedAt: string;
 }
 
@@ -14,7 +15,16 @@ export async function getRecipeForDomain(
   domain: string,
 ): Promise<StoredRecipe | null> {
   const recipes = await getRecipes();
-  return recipes.find((r) => r.domain === domain) || null;
+  return recipes.find((r) => r.domain === domain && r.enabled) || null;
+}
+
+export async function toggleRecipe(domain: string): Promise<boolean> {
+  const recipes = await getRecipes();
+  const recipe = recipes.find((r) => r.domain === domain);
+  if (!recipe) return false;
+  recipe.enabled = !recipe.enabled;
+  await chrome.storage.local.set({ gyozai_recipes: recipes });
+  return recipe.enabled;
 }
 
 export async function getRecipesForDomain(
@@ -61,6 +71,7 @@ export async function importRecipeFromFile(
     domain,
     name,
     xml: xmlContent,
+    enabled: true,
     installedAt: new Date().toISOString(),
   });
 }
