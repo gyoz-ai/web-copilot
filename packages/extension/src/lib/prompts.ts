@@ -9,7 +9,7 @@ export interface Capabilities {
 }
 
 const BASE_RULES = `- Always include at least one action
-- For batch operations (e.g. translating multiple elements), only the FINAL action should have a "message" summarizing what was done. Intermediate execute-js/click actions should have NO message (omit the field or set to empty string). This avoids spamming the user with one bubble per action. Example: 5 execute-js to translate elements → no message on any of them, then 1 show-message "Page translated to English!"
+- EVERY response MUST include a show-message action explaining what you're doing or what you found. NEVER perform navigate, click, execute-js, or highlight-ui without also including a show-message. The user must always see feedback in the chat. The only exception: batch operations (e.g. translating multiple elements) where only the FINAL action should have a show-message summarizing what was done.
 - Be concise in messages
 - Use the user context (language, timezone, current URL, page title, screen size, and any custom user info) to give relevant responses
 - If the user is already on the page they're asking about, help them USE the page rather than navigating to it
