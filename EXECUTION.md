@@ -246,6 +246,7 @@ BYOK browser extension with all core features.
 - Canvas feature (AI builds React UI on the fly)
 - Local model support (Ollama)
 - SDK for website embedding
+- **Claude Code API integration** — Connect gyoza extension to a locally running Claude Code instance. Based on [Cline's approach](https://github.com/cline/cline): the extension acts as a client that sends queries to Claude Code's local API, allowing the extension to leverage Claude Code's tool use capabilities (file editing, terminal commands, MCP servers) while the extension handles browser-side actions. This creates a powerful loop: Claude Code handles code/system tasks, gyoza handles browser tasks, and they coordinate through a shared context. Implementation: extension settings page to configure local Claude Code API endpoint, message protocol for delegating tasks between extension and Claude Code, shared conversation context.
 
 ---
 
