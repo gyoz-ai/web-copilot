@@ -6,6 +6,7 @@ import {
   captureCleanHtml,
 } from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
+import type { Conversation, ConversationSummary } from "../lib/storage";
 
 // ─── Module-level state (persists for the lifetime of this content script) ────
 let pendingSnapshotTypes: SnapshotType[] | null = null;
@@ -43,11 +44,12 @@ function sanitizeError(error: string): string {
   return firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
 }
 
-// ─── Message storage (chrome.storage.local, per-tab) ─────────────────────
+// ─── Pending navigation state (per-tab, for cross-page auto-resume) ─────────
 
 interface PendingNavState {
   snapshotTypes: SnapshotType[];
   originalQuery: string;
+  conversationId: string;
   tabId: number;
   timestamp: number;
 }
@@ -79,42 +81,6 @@ async function loadAndClearPendingNav(
   }
 }
 
-async function loadMessages(tabId: number): Promise<Message[]> {
-  const key = `gyozai_ui_messages_${tabId}`;
-  try {
-    const result = await chrome.storage.local.get(key);
-    return result[key] || [];
-  } catch {
-    return [];
-  }
-}
-
-async function persistMessages(tabId: number, messages: Message[]) {
-  const key = `gyozai_ui_messages_${tabId}`;
-  try {
-    await chrome.storage.local.set({ [key]: messages });
-  } catch {
-    // storage full
-  }
-}
-
-async function loadExpanded(tabId: number): Promise<boolean> {
-  const key = `gyozai_ui_expanded_${tabId}`;
-  try {
-    const result = await chrome.storage.local.get(key);
-    return result[key] === true;
-  } catch {
-    return false;
-  }
-}
-
-async function persistExpanded(tabId: number, expanded: boolean) {
-  const key = `gyozai_ui_expanded_${tabId}`;
-  try {
-    await chrome.storage.local.set({ [key]: expanded });
-  } catch {}
-}
-
 async function getTabId(): Promise<number | null> {
   try {
     const response = await chrome.runtime.sendMessage({
@@ -124,6 +90,60 @@ async function getTabId(): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+// ─── Conversation storage helpers (talk to chrome.storage.local) ────────────
+
+async function loadConversationIndex(): Promise<ConversationSummary[]> {
+  const result = await chrome.storage.local.get("gyozai_conv_index");
+  const index: ConversationSummary[] = result.gyozai_conv_index || [];
+  return index.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+async function loadConversation(id: string): Promise<Conversation | null> {
+  const key = `gyozai_conv_${id}`;
+  const result = await chrome.storage.local.get(key);
+  return result[key] || null;
+}
+
+async function persistConversation(conv: Conversation): Promise<void> {
+  const key = `gyozai_conv_${conv.id}`;
+  await chrome.storage.local.set({ [key]: conv });
+
+  // Update index
+  const index = await loadConversationIndex();
+  const existing = index.findIndex((c) => c.id === conv.id);
+  const summary: ConversationSummary = {
+    id: conv.id,
+    title: conv.title,
+    createdAt: conv.createdAt,
+    updatedAt: conv.updatedAt,
+    domain: conv.domain,
+    messageCount: conv.messages.length,
+  };
+
+  if (existing >= 0) {
+    index[existing] = summary;
+  } else {
+    index.unshift(summary);
+  }
+
+  // Cap at 50 conversations
+  if (index.length > 50) {
+    const removed = index.splice(50);
+    for (const r of removed) {
+      await chrome.storage.local.remove(`gyozai_conv_${r.id}`);
+    }
+  }
+
+  await chrome.storage.local.set({ gyozai_conv_index: index });
+}
+
+async function removeConversation(id: string): Promise<void> {
+  await chrome.storage.local.remove(`gyozai_conv_${id}`);
+  const index = await loadConversationIndex();
+  const filtered = index.filter((c) => c.id !== id);
+  await chrome.storage.local.set({ gyozai_conv_index: filtered });
 }
 
 // ─── Lightweight markdown renderer (ported from SDK) ─────────────────────────
@@ -274,6 +294,8 @@ interface ActionResult {
   error?: string;
 }
 
+type ViewMode = "chat" | "history";
+
 // ─── Widget Component ────────────────────────────────────────────────────────
 
 function GyozaiWidget() {
@@ -286,6 +308,11 @@ function GyozaiWidget() {
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [viewMode, setViewMode] = useState<ViewMode>("chat");
+  const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
+
+  // Active conversation tracking — null means fresh/new conversation
+  const activeConvIdRef = useRef<string | null>(null);
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -333,32 +360,31 @@ function GyozaiWidget() {
     }
   }, [theme]);
 
-  // Get tab ID, then restore state from chrome.storage.local + check pending nav
+  // Get tab ID on mount + check for pending navigation (cross-page resume)
   useEffect(() => {
     getTabId().then(async (tid) => {
       tabIdRef.current = tid;
-      if (tid == null) {
-        setInitialized(true);
-        return;
-      }
-
-      const [msgs, exp] = await Promise.all([
-        loadMessages(tid),
-        loadExpanded(tid),
-      ]);
-      setMessages(msgs);
-      setExpanded(exp);
       setInitialized(true);
+
+      if (tid == null) return;
 
       // Check if we arrived here from a navigate + extraRequests
       const pendingNav = await loadAndClearPendingNav(tid);
       if (pendingNav) {
         log(
-          "🔄 Resuming after navigation — capturing",
+          "Resuming after navigation — capturing",
           pendingNav.snapshotTypes.join(", "),
           "for query:",
           pendingNav.originalQuery.slice(0, 60),
         );
+
+        // Restore the conversation that was in progress
+        activeConvIdRef.current = pendingNav.conversationId;
+        const conv = await loadConversation(pendingNav.conversationId);
+        if (conv) {
+          setMessages(conv.messages);
+        }
+
         setExpanded(true);
         setLoading(true);
 
@@ -371,7 +397,7 @@ function GyozaiWidget() {
 
         if (ctxText) {
           pendingExtraContext = ctxText;
-          log("📎 Captured", ctxText.length, "chars from new page");
+          log("Captured", ctxText.length, "chars from new page");
         }
 
         try {
@@ -389,22 +415,19 @@ function GyozaiWidget() {
     });
   }, []);
 
-  // Persist messages to chrome.storage.local (per-tab)
-  useEffect(() => {
-    if (!initialized || tabIdRef.current == null) return;
-    persistMessages(tabIdRef.current, messages);
-  }, [messages, initialized]);
-
-  // Persist expanded state (per-tab)
-  useEffect(() => {
-    if (!initialized || tabIdRef.current == null) return;
-    persistExpanded(tabIdRef.current, expanded);
-  }, [expanded, initialized]);
-
   // Listen for toggle command from background
   useEffect(() => {
     const handler = (msg: { type: string }) => {
-      if (msg.type === "gyozai_toggle") setExpanded((e) => !e);
+      if (msg.type === "gyozai_toggle") {
+        setExpanded((prev) => {
+          if (prev) {
+            // Closing — reset to fresh state
+            startNewChat();
+            return false;
+          }
+          return true;
+        });
+      }
     };
     chrome.runtime.onMessage.addListener(handler);
     return () => chrome.runtime.onMessage.removeListener(handler);
@@ -412,10 +435,10 @@ function GyozaiWidget() {
 
   // Auto-focus input when expanded
   useEffect(() => {
-    if (expanded && initialized) {
+    if (expanded && initialized && viewMode === "chat") {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [expanded, initialized]);
+  }, [expanded, initialized, viewMode]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -432,6 +455,87 @@ function GyozaiWidget() {
       ...prev,
       { id: crypto.randomUUID(), role: "assistant", content },
     ]);
+  }, []);
+
+  // Save current conversation to storage
+  const saveCurrentConversation = useCallback(async (msgs: Message[]) => {
+    if (msgs.length === 0) return;
+
+    let convId = activeConvIdRef.current;
+    const now = Date.now();
+
+    if (!convId) {
+      // Create new conversation
+      convId = crypto.randomUUID();
+      activeConvIdRef.current = convId;
+    }
+
+    // Title = first user message, truncated
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    const title = firstUserMsg
+      ? firstUserMsg.content.slice(0, 80)
+      : "New conversation";
+
+    // Load existing to preserve llmHistory
+    const existing = await loadConversation(convId);
+
+    const conv: Conversation = {
+      id: convId,
+      title,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+      domain: window.location.host,
+      messages: msgs,
+      llmHistory: existing?.llmHistory || [],
+    };
+
+    await persistConversation(conv);
+  }, []);
+
+  // Auto-save messages whenever they change
+  useEffect(() => {
+    if (!initialized) return;
+    saveCurrentConversation(messages);
+  }, [messages, initialized, saveCurrentConversation]);
+
+  // Start a fresh chat
+  const startNewChat = useCallback(() => {
+    activeConvIdRef.current = null;
+    setMessages([]);
+    setError(null);
+    setClarify(null);
+    setViewMode("chat");
+    log("New chat started");
+  }, []);
+
+  // Load a conversation from history
+  const loadFromHistory = useCallback(async (id: string) => {
+    const conv = await loadConversation(id);
+    if (!conv) return;
+    activeConvIdRef.current = conv.id;
+    setMessages(conv.messages);
+    setError(null);
+    setClarify(null);
+    setViewMode("chat");
+    log("Loaded conversation:", conv.title.slice(0, 40));
+  }, []);
+
+  // Open history view
+  const openHistory = useCallback(async () => {
+    const index = await loadConversationIndex();
+    setHistoryList(index);
+    setViewMode("history");
+  }, []);
+
+  // Delete a conversation from history
+  const deleteFromHistory = useCallback(async (id: string) => {
+    await removeConversation(id);
+    setHistoryList((prev) => prev.filter((c) => c.id !== id));
+    // If we deleted the active conversation, reset
+    if (activeConvIdRef.current === id) {
+      activeConvIdRef.current = null;
+      setMessages([]);
+    }
   }, []);
 
   // Send a query to the background worker
@@ -466,7 +570,7 @@ function GyozaiWidget() {
       recipe: recipe?.content,
       htmlSnapshot: manifestMode ? undefined : pageSnapshot,
       currentRoute,
-      tabId: tabIdRef.current,
+      conversationId: activeConvIdRef.current,
       context: {
         currentUrl: window.location.href,
         pageTitle: document.title,
@@ -499,13 +603,13 @@ function GyozaiWidget() {
       "",
     );
     console.log(
-      `%cMode:%c ${manifestMode ? "✅ manifest (recipe)" : "⚠️ no-manifest (raw HTML)"}`,
+      `%cMode:%c ${manifestMode ? "manifest (recipe)" : "no-manifest (raw HTML)"}`,
       S.req,
       "",
     );
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
     console.log(
-      `%cRecipe:%c ${recipe ? `✅ ${recipe.names.join(", ")}` : "❌ none"}`,
+      `%cRecipe:%c ${recipe ? `${recipe.names.join(", ")}` : "none"}`,
       S.req,
       "",
     );
@@ -525,7 +629,7 @@ function GyozaiWidget() {
     }
     if (extraPageContext) {
       console.log(
-        `%cPage context:%c ✅ ${extraPageContext.length} chars (from extraRequests capture)`,
+        `%cPage context:%c ${extraPageContext.length} chars (from extraRequests capture)`,
         S.req,
         "",
       );
@@ -539,7 +643,7 @@ function GyozaiWidget() {
     // ─── Log response ──────────────────
     console.group(`%c[gyoza] ━━━ RESPONSE #${qn} (${ms}ms) ━━━`, S.res);
     if (result?.error) {
-      console.log(`%c❌ Error:%c ${result.error}`, S.err, "");
+      console.log(`%c Error:%c ${result.error}`, S.err, "");
     } else {
       const actions = result?.actions || [];
       for (const action of actions) {
@@ -566,7 +670,7 @@ function GyozaiWidget() {
       if (result?.extraRequests?.length) {
         const ac = (result as { autoContinue?: boolean }).autoContinue;
         console.log(
-          `%c  📋 extraRequests:%c ${result.extraRequests.join(", ")} | autoContinue: ${ac ? "✅ yes" : "❌ no"}`,
+          `%c  extraRequests:%c ${result.extraRequests.join(", ")} | autoContinue: ${ac ? "yes" : "no"}`,
           S.action,
           "",
         );
@@ -575,13 +679,13 @@ function GyozaiWidget() {
         (result as { autoContinue?: boolean }).autoContinue &&
         !result?.extraRequests?.length
       ) {
-        console.log(`%c  🔁 autoContinue:%c true`, S.action, "");
+        console.log(`%c  autoContinue:%c true`, S.action, "");
       }
     }
     console.groupEnd();
 
     // Raw payload/response for debugging (collapsed)
-    console.groupCollapsed(`%c[gyoza] 📦 RAW #${qn}`, S.dim);
+    console.groupCollapsed(`%c[gyoza] RAW #${qn}`, S.dim);
     console.log("Request payload:", payload);
     console.log("Response:", result);
     console.groupEnd();
@@ -615,7 +719,7 @@ function GyozaiWidget() {
       case "execute-js":
         if (action.code) {
           console.log(
-            `%c[gyoza] ⚡ execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
+            `%c[gyoza] execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
             S.action,
             S.dim,
           );
@@ -625,11 +729,7 @@ function GyozaiWidget() {
             code: action.code,
           });
           if (result?.error) {
-            console.error(
-              `%c[gyoza] ❌ JS error:%c ${result.error}`,
-              S.err,
-              "",
-            );
+            console.error(`%c[gyoza] JS error:%c ${result.error}`, S.err, "");
             return result.error;
           }
         }
@@ -665,7 +765,7 @@ function GyozaiWidget() {
       pageContextForQuery = pendingExtraContext;
       pendingExtraContext = null;
       log(
-        "📎 Attaching pending extra context:",
+        "Attaching pending extra context:",
         pageContextForQuery!.length,
         "chars",
       );
@@ -674,12 +774,12 @@ function GyozaiWidget() {
     if (pendingSnapshotTypes && pendingSnapshotTypes.length > 0) {
       const types = pendingSnapshotTypes;
       pendingSnapshotTypes = null;
-      log("📸 Capturing pending snapshots:", types.join(", "));
+      log("Capturing pending snapshots:", types.join(", "));
       const pageCtx = capturePageContext(types);
       const ctxText = formatPageContext(pageCtx);
       if (ctxText) {
         pageContextForQuery = ctxText;
-        log("📎 Captured", ctxText.length, "chars of page context");
+        log("Captured", ctxText.length, "chars of page context");
       }
     }
 
@@ -698,7 +798,7 @@ function GyozaiWidget() {
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
       console.log(
-        `%c[gyoza] 📋 AI requested extraRequests:%c ${extraRequests.join(", ")} ${autoContinue ? "(autoContinue)" : "(wait)"}`,
+        `%c[gyoza] AI requested extraRequests:%c ${extraRequests.join(", ")} ${autoContinue ? "(autoContinue)" : "(wait)"}`,
         S.action,
         "",
       );
@@ -709,10 +809,11 @@ function GyozaiWidget() {
 
       if (hasPageChange) {
         // Page will change — stash snapshot types for after navigation
-        log("🔄 navigate/click + extraRequests → saving for auto-resume");
+        log("navigate/click + extraRequests → saving for auto-resume");
         await savePendingNav({
           snapshotTypes,
           originalQuery: query,
+          conversationId: activeConvIdRef.current || "",
           tabId: tabIdRef.current ?? 0,
           timestamp: Date.now(),
         });
@@ -731,12 +832,12 @@ function GyozaiWidget() {
         // If structured capture is empty, fall back to clean HTML
         const context = ctxText || captureCleanHtml();
         if (!context) {
-          log("📦 autoContinue but no context captured — waiting");
+          log("autoContinue but no context captured — waiting");
           return;
         }
         // AI wants to continue — re-query with captured context
         console.log(
-          `%c[gyoza] 🔁 AUTO-CONTINUE:%c captured ${context.length} chars, re-querying...`,
+          `%c[gyoza] AUTO-CONTINUE:%c captured ${context.length} chars, re-querying...`,
           S.brand,
           "",
         );
@@ -747,7 +848,7 @@ function GyozaiWidget() {
         );
       } else {
         // AI wants to wait — stash context for next user query
-        log("📦 Stashing", ctxText.length, "chars for next query");
+        log("Stashing", ctxText.length, "chars for next query");
         pendingExtraContext = ctxText;
       }
       return;
@@ -828,7 +929,7 @@ function GyozaiWidget() {
       if (jsError && action.type === "execute-js") {
         const errorMsg = sanitizeError(jsError);
         // Don't show JS errors to user — just log and let AI retry silently
-        log("⚠️ JS failed, re-querying AI:", errorMsg);
+        log("JS failed, re-querying AI:", errorMsg);
         // Reset so the error re-query gets its own auto-follow-up allowance
         autoFollowUpUsed = false;
         await handleFullQuery(
@@ -884,21 +985,35 @@ function GyozaiWidget() {
     }
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setError(null);
-    setClarify(null);
-    chrome.runtime.sendMessage({
-      type: "gyozai_clear_history",
-      tabId: tabIdRef.current,
-    });
-    log("Chat cleared");
+  const handleBubbleClick = () => {
+    if (expanded) {
+      // Closing — reset to fresh state for next open
+      startNewChat();
+      setExpanded(false);
+    } else {
+      // Opening — always fresh conversation
+      startNewChat();
+      setExpanded(true);
+    }
   };
+
+  // Format relative time
+  function timeAgo(timestamp: number): string {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
+  }
 
   return (
     <>
       {/* Floating bubble */}
-      <button className="gyozai-bubble" onClick={() => setExpanded(!expanded)}>
+      <button className="gyozai-bubble" onClick={handleBubbleClick}>
         <img
           src={chrome.runtime.getURL("/icon-128.png")}
           alt="gyoza"
@@ -920,10 +1035,11 @@ function GyozaiWidget() {
               <span>gyoza</span>
             </div>
             <div className="gyozai-header-actions">
+              {/* New Chat button */}
               <button
                 className="gyozai-icon-btn"
-                onClick={clearChat}
-                title="Clear chat"
+                onClick={startNewChat}
+                title="New chat"
               >
                 <svg
                   width="14"
@@ -935,11 +1051,33 @@ function GyozaiWidget() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
               </button>
+              {/* History button */}
+              <button
+                className={`gyozai-icon-btn ${viewMode === "history" ? "gyozai-icon-btn-active" : ""}`}
+                onClick={() =>
+                  viewMode === "history" ? setViewMode("chat") : openHistory()
+                }
+                title="Conversation history"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </button>
+              {/* Settings button */}
               <button
                 className="gyozai-icon-btn"
                 onClick={() =>
@@ -964,90 +1102,153 @@ function GyozaiWidget() {
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="gyozai-messages">
-            {messages.length === 0 && (
-              <div className="gyozai-empty">
-                Ask me anything about this page...
-              </div>
-            )}
-            {messages.map((msg) => (
-              <div key={msg.id} className={`gyozai-msg gyozai-msg-${msg.role}`}>
-                {msg.role === "assistant" ? (
-                  <FormatMessage text={msg.content} />
-                ) : (
-                  msg.content
-                )}
-              </div>
-            ))}
-            {loading && (
-              <div className="gyozai-msg gyozai-msg-assistant">
-                <div className="gyozai-typing">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Clarify options */}
-          {clarify && !loading && (
-            <div className="gyozai-clarify">
-              {clarify.options.map((option, i) => (
-                <button
-                  key={i}
-                  className="gyozai-clarify-btn"
-                  onClick={() => handleClarifyOption(option)}
+          {/* History View */}
+          {viewMode === "history" && (
+            <div className="gyozai-messages">
+              {historyList.length === 0 && (
+                <div className="gyozai-empty">No conversations yet</div>
+              )}
+              {historyList.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`gyozai-history-item ${activeConvIdRef.current === conv.id ? "gyozai-history-item-active" : ""}`}
                 >
-                  {option}
-                </button>
+                  <button
+                    className="gyozai-history-item-content"
+                    onClick={() => loadFromHistory(conv.id)}
+                  >
+                    <div className="gyozai-history-title">{conv.title}</div>
+                    <div className="gyozai-history-meta">
+                      <span>{conv.domain}</span>
+                      <span>{timeAgo(conv.updatedAt)}</span>
+                      <span>
+                        {conv.messageCount} msg
+                        {conv.messageCount !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </button>
+                  <button
+                    className="gyozai-history-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteFromHistory(conv.id);
+                    }}
+                    title="Delete conversation"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6L6 18" />
+                      <path d="M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           )}
 
-          {/* Error */}
-          {error && <div className="gyozai-error">{error}</div>}
+          {/* Chat View */}
+          {viewMode === "chat" && (
+            <>
+              {/* Messages */}
+              <div className="gyozai-messages">
+                {messages.length === 0 && (
+                  <div className="gyozai-empty">
+                    Ask me anything about this page...
+                  </div>
+                )}
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`gyozai-msg gyozai-msg-${msg.role}`}
+                  >
+                    {msg.role === "assistant" ? (
+                      <FormatMessage text={msg.content} />
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                ))}
+                {loading && (
+                  <div className="gyozai-msg gyozai-msg-assistant">
+                    <div className="gyozai-typing">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
 
-          {/* Toast */}
-          {toast && <div className="gyozai-toast">{toast}</div>}
+              {/* Clarify options */}
+              {clarify && !loading && (
+                <div className="gyozai-clarify">
+                  {clarify.options.map((option, i) => (
+                    <button
+                      key={i}
+                      className="gyozai-clarify-btn"
+                      onClick={() => handleClarifyOption(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {/* Input */}
-          <div className="gyozai-input-row">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-                if (e.key === "Escape") setExpanded(false);
-              }}
-              placeholder="Ask me anything..."
-              className="gyozai-input"
-              disabled={loading}
-            />
-            <button
-              className="gyozai-send-btn"
-              onClick={handleSubmit}
-              disabled={loading || !input.trim()}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22 2L11 13" />
-                <path d="M22 2l-7 20-4-9-9-4z" />
-              </svg>
-            </button>
-          </div>
+              {/* Error */}
+              {error && <div className="gyozai-error">{error}</div>}
+
+              {/* Toast */}
+              {toast && <div className="gyozai-toast">{toast}</div>}
+
+              {/* Input */}
+              <div className="gyozai-input-row">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSubmit();
+                    if (e.key === "Escape") {
+                      startNewChat();
+                      setExpanded(false);
+                    }
+                  }}
+                  placeholder="Ask me anything..."
+                  className="gyozai-input"
+                  disabled={loading}
+                />
+                <button
+                  className="gyozai-send-btn"
+                  onClick={handleSubmit}
+                  disabled={loading || !input.trim()}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2l-7 20-4-9-9-4z" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </>
@@ -1125,6 +1326,7 @@ const WIDGET_STYLES_BASE = `
     transition: color 0.15s ease;
   }
   .gyozai-icon-btn:hover { color: #E8950A; }
+  .gyozai-icon-btn-active { color: #E8950A; }
 
   .gyozai-messages {
     flex: 1;
@@ -1255,6 +1457,74 @@ const WIDGET_STYLES_BASE = `
   @keyframes gyozai-fade-in {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── History list styles ──────────────────────────────────────────── */
+
+  .gyozai-history-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+  }
+  .gyozai-history-item:hover {
+    background: rgba(232, 149, 10, 0.08);
+  }
+  .gyozai-history-item-active {
+    background: rgba(232, 149, 10, 0.12);
+  }
+
+  .gyozai-history-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    min-width: 0;
+  }
+
+  .gyozai-history-title {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gyozai-history-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    opacity: 0.5;
+  }
+
+  .gyozai-history-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
+    color: inherit;
+    flex-shrink: 0;
+  }
+  .gyozai-history-item:hover .gyozai-history-delete {
+    opacity: 0.5;
+  }
+  .gyozai-history-delete:hover {
+    opacity: 1 !important;
+    color: #ef4444;
   }
 `;
 

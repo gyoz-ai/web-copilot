@@ -2,9 +2,8 @@ import { z } from "zod/v4";
 import { ActionResponseSchema } from "@gyoz-ai/engine";
 import {
   getSettings,
-  getConversationHistory,
-  saveConversationHistory,
-  clearConversationHistory,
+  getConversationLlmHistory,
+  saveConversationLlmHistory,
 } from "../lib/storage";
 import {
   getMergedRecipeForDomain,
@@ -94,19 +93,6 @@ export default defineBackground(() => {
       return true;
     }
 
-    if (message.type === "gyozai_clear_history") {
-      const tabId = message.tabId as number | undefined;
-      if (tabId != null) {
-        clearConversationHistory(tabId).then(() => {
-          console.log(`[gyoza] Conversation history cleared for tab ${tabId}`);
-          sendResponse({ ok: true });
-        });
-      } else {
-        sendResponse({ ok: true });
-      }
-      return true;
-    }
-
     if (message.type === "gyozai_open_popup") {
       chrome.action.openPopup();
       return false;
@@ -185,12 +171,14 @@ async function handleQuery(message: {
   pageContext?: string;
   context?: Record<string, unknown>;
   capabilities?: Record<string, boolean>;
-  tabId?: number;
+  conversationId?: string;
 }) {
   const settings = await getSettings();
   const provider = createProvider(settings);
-  const tabId = message.tabId;
-  const history = tabId != null ? await getConversationHistory(tabId) : [];
+  const conversationId = message.conversationId;
+  const history = conversationId
+    ? await getConversationLlmHistory(conversationId)
+    : [];
 
   const caps = message.capabilities || {};
   const mode = message.manifestMode ? "manifest" : "no-manifest";
@@ -231,7 +219,7 @@ async function handleQuery(message: {
   );
   console.log("  Query:", message.query.slice(0, 100));
   console.log("  Manifest mode:", message.manifestMode);
-  console.log("  Tab ID:", tabId ?? "unknown");
+  console.log("  Conversation ID:", conversationId ?? "none");
   console.log("  Conversation history:", history.length, "messages");
   console.log("  System prompt:", systemPrompt.slice(0, 100) + "...");
   console.log("  User prompt:", userPrompt.slice(0, 150) + "...");
@@ -276,8 +264,8 @@ async function handleQuery(message: {
     // Store only the first show-message, truncated to avoid bloating context
     history.push({ role: "assistant", content: firstMsg.slice(0, 300) });
   }
-  if (tabId != null) {
-    await saveConversationHistory(tabId, history);
+  if (conversationId) {
+    await saveConversationLlmHistory(conversationId, history);
   }
 
   return result;
