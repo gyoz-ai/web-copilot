@@ -12,6 +12,14 @@ import {
   toggleRecipe,
   type StoredRecipe,
 } from "../../lib/recipes";
+import {
+  SUPPORTED_LOCALES,
+  type LocaleCode,
+  detectBrowserLocale,
+  resolveLocale,
+  getTranslations,
+  t,
+} from "../../lib/i18n";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude (Anthropic)" },
@@ -277,13 +285,21 @@ export function App() {
   const isDark = !settings || settings.theme !== "light";
   const s = getStyles(isDark);
 
+  // Resolve locale from settings
+  const locale: LocaleCode = settings
+    ? settings.language === "auto"
+      ? detectBrowserLocale()
+      : resolveLocale(settings.language)
+    : "en";
+  const tr = getTranslations(locale);
+
   // Sync body background/color with theme so scrollbar and any uncovered areas match
   useEffect(() => {
     document.body.style.background = isDark ? "#0a0a0f" : "#ffffff";
     document.body.style.color = isDark ? "#e4e4e7" : "#1a1a2e";
   }, [isDark]);
 
-  if (!settings) return <div style={s.loading}>Loading...</div>;
+  if (!settings) return <div style={s.loading}>{tr.popup_loading}</div>;
 
   const handleSave = async () => {
     await saveSettings(settings);
@@ -356,7 +372,7 @@ export function App() {
       {/* BYOK Config */}
       {settings.mode === "byok" && (
         <div style={s.section}>
-          <label style={s.label}>Provider</label>
+          <label style={s.label}>{tr.popup_provider}</label>
           <select
             style={s.select}
             value={settings.provider}
@@ -373,7 +389,7 @@ export function App() {
             ))}
           </select>
 
-          <label style={s.label}>API Key</label>
+          <label style={s.label}>{tr.popup_api_key}</label>
           <div style={s.keyRow}>
             <input
               type={showKey ? "text" : "password"}
@@ -382,14 +398,17 @@ export function App() {
               onChange={(e) =>
                 setSettings({ ...settings, apiKey: e.target.value })
               }
-              placeholder={`Enter ${PROVIDERS.find((p) => p.id === settings.provider)?.name} API key`}
+              placeholder={t(tr, "popup_api_key_placeholder", {
+                provider:
+                  PROVIDERS.find((p) => p.id === settings.provider)?.name || "",
+              })}
             />
             <button style={s.eyeBtn} onClick={() => setShowKey(!showKey)}>
               {showKey ? "\u{1F648}" : "\u{1F441}\uFE0F"}
             </button>
           </div>
 
-          <label style={s.label}>Model</label>
+          <label style={s.label}>{tr.popup_model}</label>
           <select
             style={s.select}
             value={settings.model}
@@ -405,7 +424,7 @@ export function App() {
           </select>
 
           <button style={s.saveBtn} onClick={handleSave}>
-            {saved ? "\u2713 Saved" : "Save Settings"}
+            {saved ? `\u2713 ${tr.popup_saved}` : tr.popup_save}
           </button>
         </div>
       )}
@@ -417,7 +436,7 @@ export function App() {
             <div>
               <div style={s.statusRow}>
                 <span style={s.statusDot} />
-                <span>Connected to gyoza platform</span>
+                <span>{tr.popup_managed_connected}</span>
               </div>
               <button
                 style={s.signOutBtn}
@@ -426,21 +445,19 @@ export function App() {
                   handleSave();
                 }}
               >
-                Sign Out
+                {tr.popup_managed_sign_out}
               </button>
             </div>
           ) : (
             <div>
-              <p style={s.desc}>
-                Subscribe to use gyoza without your own API key.
-              </p>
+              <p style={s.desc}>{tr.popup_managed_subscribe_desc}</p>
               <button
                 style={s.saveBtn}
                 onClick={() =>
                   chrome.tabs.create({ url: "https://gyoz.ai/subscribe" })
                 }
               >
-                Subscribe & Sign In
+                {tr.popup_managed_subscribe_btn}
               </button>
             </div>
           )}
@@ -452,29 +469,31 @@ export function App() {
         <div style={s.sectionHeader}>
           <span style={s.sectionTitle}>
             {showAllRecipes
-              ? "All Recipes"
-              : `Recipes${currentDomain ? ` \u2014 ${currentDomain}` : ""}`}
+              ? tr.popup_all_recipes
+              : currentDomain
+                ? t(tr, "popup_recipes_for", { domain: currentDomain })
+                : tr.popup_recipes}
           </span>
           <div style={{ display: "flex", gap: 4 }}>
             <button
               style={s.importBtn}
               onClick={() => setShowAllRecipes(!showAllRecipes)}
-              title={
-                showAllRecipes ? "Show current site" : "Manage all recipes"
-              }
+              title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
             >
-              {showAllRecipes ? "\u2190 Back" : "\u{1F4D3}"}
+              {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
             </button>
             <button style={s.importBtn} onClick={handleImportRecipe}>
-              + Import
+              {tr.popup_import}
             </button>
           </div>
         </div>
         {displayRecipes.length === 0 ? (
           <p style={s.emptyText}>
             {showAllRecipes
-              ? "No recipes installed yet."
-              : `No recipes for ${currentDomain || "this site"}. Import a recipe to enhance AI navigation.`}
+              ? tr.popup_no_recipes_all
+              : t(tr, "popup_no_recipes_site", {
+                  domain: currentDomain || "this site",
+                })}
           </p>
         ) : (
           <div style={s.recipeList}>
@@ -512,16 +531,35 @@ export function App() {
       {/* Settings */}
       <div style={s.section}>
         <div style={s.sectionHeader}>
-          <span style={s.sectionTitle}>Settings</span>
+          <span style={s.sectionTitle}>{tr.popup_settings}</span>
+        </div>
+
+        {/* Language */}
+        <div style={s.settingRow}>
+          <div style={s.settingLabel}>{tr.popup_language}</div>
+          <select
+            style={{ ...s.select, width: "auto", minWidth: 140 }}
+            value={settings.language}
+            onChange={(e) => {
+              const updated = { ...settings, language: e.target.value };
+              setSettings(updated);
+              saveSettings(updated);
+            }}
+          >
+            <option value="auto">{tr.popup_language_auto}</option>
+            {SUPPORTED_LOCALES.map((loc) => (
+              <option key={loc.code} value={loc.code}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Yolo Mode */}
         <div style={s.settingRow}>
           <div>
-            <div style={s.settingLabel}>Yolo Mode</div>
-            <div style={s.settingDesc}>
-              Skip confirmations — AI acts immediately without asking
-            </div>
+            <div style={s.settingLabel}>{tr.popup_yolo_mode}</div>
+            <div style={s.settingDesc}>{tr.popup_yolo_desc}</div>
           </div>
           <button
             style={s.toggleBtn}
@@ -537,7 +575,7 @@ export function App() {
 
         {/* Theme */}
         <div style={s.settingRow}>
-          <div style={s.settingLabel}>Theme</div>
+          <div style={s.settingLabel}>{tr.popup_theme}</div>
           <div style={s.modeToggle}>
             <button
               style={
@@ -554,7 +592,7 @@ export function App() {
                 saveSettings(updated);
               }}
             >
-              Dark
+              {tr.popup_dark}
             </button>
             <button
               style={settings.theme === "light" ? s.modeActive : s.modeBtn}
@@ -567,7 +605,7 @@ export function App() {
                 saveSettings(updated);
               }}
             >
-              Light
+              {tr.popup_light}
             </button>
           </div>
         </div>

@@ -6,6 +6,7 @@ export interface ExtensionSettings {
   managedToken?: string;
   yoloMode: boolean;
   theme: "dark" | "light";
+  language: string; // locale code or "auto" for browser detection
 }
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   model: "claude-haiku-4-5-20251001",
   yoloMode: false,
   theme: "dark",
+  language: "auto",
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {

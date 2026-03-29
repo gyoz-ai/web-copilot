@@ -1,0 +1,1421 @@
+// ─── Supported locales ──────────────────────────────────────────────────────
+
+export const SUPPORTED_LOCALES = [
+  { code: "en", name: "English" },
+  { code: "pt-BR", name: "Portugu\u00eas (Brasil)" },
+  { code: "pt-PT", name: "Portugu\u00eas (Portugal)" },
+  { code: "es", name: "Espa\u00f1ol" },
+  { code: "fr", name: "Fran\u00e7ais" },
+  { code: "de", name: "Deutsch" },
+  { code: "it", name: "Italiano" },
+  { code: "nl", name: "Nederlands" },
+  { code: "pl", name: "Polski" },
+  { code: "ru", name: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439" },
+  {
+    code: "uk",
+    name: "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430",
+  },
+  { code: "el", name: "\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac" },
+  { code: "tr", name: "T\u00fcrk\u00e7e" },
+  { code: "ar", name: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629" },
+  { code: "hi", name: "\u0939\u093f\u0928\u094d\u0926\u0940" },
+  { code: "ja", name: "\u65e5\u672c\u8a9e" },
+  { code: "ko", name: "\ud55c\uad6d\uc5b4" },
+  { code: "zh-CN", name: "\u4e2d\u6587(\u7b80\u4f53)" },
+  { code: "zh-TW", name: "\u4e2d\u6587(\u7e41\u9ad4)" },
+  { code: "th", name: "\u0e44\u0e17\u0e22" },
+  { code: "vi", name: "Ti\u1ebfng Vi\u1ec7t" },
+  { code: "id", name: "Bahasa Indonesia" },
+  { code: "ms", name: "Bahasa Melayu" },
+  { code: "sv", name: "Svenska" },
+  { code: "da", name: "Dansk" },
+  { code: "fi", name: "Suomi" },
+  { code: "nb", name: "Norsk" },
+  { code: "cs", name: "\u010ce\u0161tina" },
+  { code: "ro", name: "Rom\u00e2n\u0103" },
+  { code: "hu", name: "Magyar" },
+  { code: "he", name: "\u05e2\u05d1\u05e8\u05d9\u05ea" },
+] as const;
+
+export type LocaleCode = (typeof SUPPORTED_LOCALES)[number]["code"];
+
+// ─── Translation keys ───────────────────────────────────────────────────────
+
+export interface Translations {
+  // Widget (content.tsx)
+  widget_placeholder: string;
+  widget_empty: string;
+  widget_new_chat: string;
+  widget_history: string;
+  widget_settings: string;
+  widget_no_conversations: string;
+  widget_msg_count: string; // "{count} msgs"
+  widget_just_now: string;
+  widget_minutes_ago: string; // "{n}m ago"
+  widget_hours_ago: string; // "{n}h ago"
+  widget_days_ago: string; // "{n}d ago"
+  widget_recipe_imported: string; // "Recipe auto-imported from {name}"
+  widget_delete_conversation: string;
+
+  // Popup (App.tsx)
+  popup_loading: string;
+  popup_provider: string;
+  popup_api_key: string;
+  popup_api_key_placeholder: string; // "Enter {provider} API key"
+  popup_model: string;
+  popup_save: string;
+  popup_saved: string;
+  popup_managed_connected: string;
+  popup_managed_sign_out: string;
+  popup_managed_subscribe_desc: string;
+  popup_managed_subscribe_btn: string;
+  popup_recipes: string;
+  popup_all_recipes: string;
+  popup_recipes_for: string; // "Recipes — {domain}"
+  popup_no_recipes_all: string;
+  popup_no_recipes_site: string; // "No recipes for {domain}..."
+  popup_import: string;
+  popup_back: string;
+  popup_settings: string;
+  popup_yolo_mode: string;
+  popup_yolo_desc: string;
+  popup_theme: string;
+  popup_dark: string;
+  popup_light: string;
+  popup_language: string;
+  popup_language_auto: string;
+}
+
+// ─── Translation data ───────────────────────────────────────────────────────
+
+const en: Translations = {
+  widget_placeholder: "Ask me anything...",
+  widget_empty: "Ask me anything about this page...",
+  widget_new_chat: "New chat",
+  widget_history: "Conversation history",
+  widget_settings: "Settings",
+  widget_no_conversations: "No conversations yet",
+  widget_msg_count: "{count} msgs",
+  widget_just_now: "just now",
+  widget_minutes_ago: "{n}m ago",
+  widget_hours_ago: "{n}h ago",
+  widget_days_ago: "{n}d ago",
+  widget_recipe_imported: "Recipe auto-imported from {name}",
+  widget_delete_conversation: "Delete conversation",
+  popup_loading: "Loading...",
+  popup_provider: "Provider",
+  popup_api_key: "API Key",
+  popup_api_key_placeholder: "Enter {provider} API key",
+  popup_model: "Model",
+  popup_save: "Save Settings",
+  popup_saved: "Saved",
+  popup_managed_connected: "Connected to gyoza platform",
+  popup_managed_sign_out: "Sign Out",
+  popup_managed_subscribe_desc:
+    "Subscribe to use gyoza without your own API key.",
+  popup_managed_subscribe_btn: "Subscribe & Sign In",
+  popup_recipes: "Recipes",
+  popup_all_recipes: "All Recipes",
+  popup_recipes_for: "Recipes \u2014 {domain}",
+  popup_no_recipes_all: "No recipes installed yet.",
+  popup_no_recipes_site:
+    "No recipes for {domain}. Import a recipe to enhance AI navigation.",
+  popup_import: "+ Import",
+  popup_back: "\u2190 Back",
+  popup_settings: "Settings",
+  popup_yolo_mode: "Yolo Mode",
+  popup_yolo_desc:
+    "Skip confirmations \u2014 AI acts immediately without asking",
+  popup_theme: "Theme",
+  popup_dark: "Dark",
+  popup_light: "Light",
+  popup_language: "Language",
+  popup_language_auto: "Auto (browser)",
+};
+
+const ptBR: Translations = {
+  widget_placeholder: "Pergunte qualquer coisa...",
+  widget_empty: "Pergunte qualquer coisa sobre esta p\u00e1gina...",
+  widget_new_chat: "Novo chat",
+  widget_history: "Hist\u00f3rico de conversas",
+  widget_settings: "Configura\u00e7\u00f5es",
+  widget_no_conversations: "Nenhuma conversa ainda",
+  widget_msg_count: "{count} msgs",
+  widget_just_now: "agora",
+  widget_minutes_ago: "{n}min atr\u00e1s",
+  widget_hours_ago: "{n}h atr\u00e1s",
+  widget_days_ago: "{n}d atr\u00e1s",
+  widget_recipe_imported: "Receita importada automaticamente de {name}",
+  widget_delete_conversation: "Excluir conversa",
+  popup_loading: "Carregando...",
+  popup_provider: "Provedor",
+  popup_api_key: "Chave de API",
+  popup_api_key_placeholder: "Insira a chave de API do {provider}",
+  popup_model: "Modelo",
+  popup_save: "Salvar Configura\u00e7\u00f5es",
+  popup_saved: "Salvo",
+  popup_managed_connected: "Conectado \u00e0 plataforma gyoza",
+  popup_managed_sign_out: "Sair",
+  popup_managed_subscribe_desc:
+    "Assine para usar o gyoza sem sua pr\u00f3pria chave de API.",
+  popup_managed_subscribe_btn: "Assinar e Entrar",
+  popup_recipes: "Receitas",
+  popup_all_recipes: "Todas as Receitas",
+  popup_recipes_for: "Receitas \u2014 {domain}",
+  popup_no_recipes_all: "Nenhuma receita instalada.",
+  popup_no_recipes_site:
+    "Nenhuma receita para {domain}. Importe uma receita para melhorar a navega\u00e7\u00e3o com IA.",
+  popup_import: "+ Importar",
+  popup_back: "\u2190 Voltar",
+  popup_settings: "Configura\u00e7\u00f5es",
+  popup_yolo_mode: "Modo Yolo",
+  popup_yolo_desc:
+    "Pular confirma\u00e7\u00f5es \u2014 IA age imediatamente sem perguntar",
+  popup_theme: "Tema",
+  popup_dark: "Escuro",
+  popup_light: "Claro",
+  popup_language: "Idioma",
+  popup_language_auto: "Autom\u00e1tico (navegador)",
+};
+
+const ptPT: Translations = {
+  ...ptBR,
+  widget_empty: "Pergunte qualquer coisa sobre esta p\u00e1gina...",
+  widget_no_conversations: "Ainda sem conversas",
+  widget_recipe_imported: "Receita importada automaticamente de {name}",
+  widget_delete_conversation: "Eliminar conversa",
+  popup_managed_sign_out: "Terminar Sess\u00e3o",
+  popup_managed_subscribe_desc:
+    "Subscreva para usar o gyoza sem a sua pr\u00f3pria chave de API.",
+  popup_managed_subscribe_btn: "Subscrever e Iniciar Sess\u00e3o",
+  popup_no_recipes_site:
+    "Sem receitas para {domain}. Importe uma receita para melhorar a navega\u00e7\u00e3o com IA.",
+  popup_import: "+ Importar",
+  popup_back: "\u2190 Voltar",
+  popup_language_auto: "Autom\u00e1tico (navegador)",
+};
+
+const es: Translations = {
+  widget_placeholder: "Pregunta lo que quieras...",
+  widget_empty: "Pregunta cualquier cosa sobre esta p\u00e1gina...",
+  widget_new_chat: "Nuevo chat",
+  widget_history: "Historial de conversaciones",
+  widget_settings: "Ajustes",
+  widget_no_conversations: "A\u00fan no hay conversaciones",
+  widget_msg_count: "{count} msgs",
+  widget_just_now: "ahora",
+  widget_minutes_ago: "hace {n}m",
+  widget_hours_ago: "hace {n}h",
+  widget_days_ago: "hace {n}d",
+  widget_recipe_imported: "Receta importada autom\u00e1ticamente de {name}",
+  widget_delete_conversation: "Eliminar conversaci\u00f3n",
+  popup_loading: "Cargando...",
+  popup_provider: "Proveedor",
+  popup_api_key: "Clave de API",
+  popup_api_key_placeholder: "Introduce la clave de API de {provider}",
+  popup_model: "Modelo",
+  popup_save: "Guardar Ajustes",
+  popup_saved: "Guardado",
+  popup_managed_connected: "Conectado a la plataforma gyoza",
+  popup_managed_sign_out: "Cerrar Sesi\u00f3n",
+  popup_managed_subscribe_desc:
+    "Suscr\u00edbete para usar gyoza sin tu propia clave de API.",
+  popup_managed_subscribe_btn: "Suscribirse e Iniciar Sesi\u00f3n",
+  popup_recipes: "Recetas",
+  popup_all_recipes: "Todas las Recetas",
+  popup_recipes_for: "Recetas \u2014 {domain}",
+  popup_no_recipes_all: "A\u00fan no hay recetas instaladas.",
+  popup_no_recipes_site:
+    "Sin recetas para {domain}. Importa una receta para mejorar la navegaci\u00f3n con IA.",
+  popup_import: "+ Importar",
+  popup_back: "\u2190 Volver",
+  popup_settings: "Ajustes",
+  popup_yolo_mode: "Modo Yolo",
+  popup_yolo_desc:
+    "Omitir confirmaciones \u2014 la IA act\u00faa inmediatamente sin preguntar",
+  popup_theme: "Tema",
+  popup_dark: "Oscuro",
+  popup_light: "Claro",
+  popup_language: "Idioma",
+  popup_language_auto: "Autom\u00e1tico (navegador)",
+};
+
+const fr: Translations = {
+  widget_placeholder: "Demandez n'importe quoi...",
+  widget_empty: "Posez une question sur cette page...",
+  widget_new_chat: "Nouveau chat",
+  widget_history: "Historique des conversations",
+  widget_settings: "Param\u00e8tres",
+  widget_no_conversations: "Aucune conversation pour le moment",
+  widget_msg_count: "{count} msgs",
+  widget_just_now: "\u00e0 l'instant",
+  widget_minutes_ago: "il y a {n}m",
+  widget_hours_ago: "il y a {n}h",
+  widget_days_ago: "il y a {n}j",
+  widget_recipe_imported: "Recette import\u00e9e automatiquement depuis {name}",
+  widget_delete_conversation: "Supprimer la conversation",
+  popup_loading: "Chargement...",
+  popup_provider: "Fournisseur",
+  popup_api_key: "Cl\u00e9 API",
+  popup_api_key_placeholder: "Entrez la cl\u00e9 API {provider}",
+  popup_model: "Mod\u00e8le",
+  popup_save: "Enregistrer",
+  popup_saved: "Enregistr\u00e9",
+  popup_managed_connected: "Connect\u00e9 \u00e0 la plateforme gyoza",
+  popup_managed_sign_out: "Se D\u00e9connecter",
+  popup_managed_subscribe_desc:
+    "Abonnez-vous pour utiliser gyoza sans votre propre cl\u00e9 API.",
+  popup_managed_subscribe_btn: "S'abonner et Se Connecter",
+  popup_recipes: "Recettes",
+  popup_all_recipes: "Toutes les Recettes",
+  popup_recipes_for: "Recettes \u2014 {domain}",
+  popup_no_recipes_all: "Aucune recette install\u00e9e.",
+  popup_no_recipes_site:
+    "Aucune recette pour {domain}. Importez une recette pour am\u00e9liorer la navigation IA.",
+  popup_import: "+ Importer",
+  popup_back: "\u2190 Retour",
+  popup_settings: "Param\u00e8tres",
+  popup_yolo_mode: "Mode Yolo",
+  popup_yolo_desc:
+    "Ignorer les confirmations \u2014 l'IA agit imm\u00e9diatement sans demander",
+  popup_theme: "Th\u00e8me",
+  popup_dark: "Sombre",
+  popup_light: "Clair",
+  popup_language: "Langue",
+  popup_language_auto: "Automatique (navigateur)",
+};
+
+const de: Translations = {
+  widget_placeholder: "Frag mich etwas...",
+  widget_empty: "Frag mich etwas \u00fcber diese Seite...",
+  widget_new_chat: "Neuer Chat",
+  widget_history: "Gespr\u00e4chsverlauf",
+  widget_settings: "Einstellungen",
+  widget_no_conversations: "Noch keine Gespr\u00e4che",
+  widget_msg_count: "{count} Nachr.",
+  widget_just_now: "gerade eben",
+  widget_minutes_ago: "vor {n}Min",
+  widget_hours_ago: "vor {n}Std",
+  widget_days_ago: "vor {n}T",
+  widget_recipe_imported: "Rezept automatisch importiert von {name}",
+  widget_delete_conversation: "Gespr\u00e4ch l\u00f6schen",
+  popup_loading: "Laden...",
+  popup_provider: "Anbieter",
+  popup_api_key: "API-Schl\u00fcssel",
+  popup_api_key_placeholder: "{provider} API-Schl\u00fcssel eingeben",
+  popup_model: "Modell",
+  popup_save: "Einstellungen Speichern",
+  popup_saved: "Gespeichert",
+  popup_managed_connected: "Verbunden mit der gyoza-Plattform",
+  popup_managed_sign_out: "Abmelden",
+  popup_managed_subscribe_desc:
+    "Abonnieren, um gyoza ohne eigenen API-Schl\u00fcssel zu nutzen.",
+  popup_managed_subscribe_btn: "Abonnieren & Anmelden",
+  popup_recipes: "Rezepte",
+  popup_all_recipes: "Alle Rezepte",
+  popup_recipes_for: "Rezepte \u2014 {domain}",
+  popup_no_recipes_all: "Noch keine Rezepte installiert.",
+  popup_no_recipes_site:
+    "Keine Rezepte f\u00fcr {domain}. Importieren Sie ein Rezept, um die KI-Navigation zu verbessern.",
+  popup_import: "+ Importieren",
+  popup_back: "\u2190 Zur\u00fcck",
+  popup_settings: "Einstellungen",
+  popup_yolo_mode: "Yolo-Modus",
+  popup_yolo_desc:
+    "Best\u00e4tigungen \u00fcberspringen \u2014 KI handelt sofort ohne zu fragen",
+  popup_theme: "Design",
+  popup_dark: "Dunkel",
+  popup_light: "Hell",
+  popup_language: "Sprache",
+  popup_language_auto: "Automatisch (Browser)",
+};
+
+const it: Translations = {
+  widget_placeholder: "Chiedi qualcosa...",
+  widget_empty: "Chiedi qualcosa su questa pagina...",
+  widget_new_chat: "Nuova chat",
+  widget_history: "Cronologia conversazioni",
+  widget_settings: "Impostazioni",
+  widget_no_conversations: "Nessuna conversazione ancora",
+  widget_msg_count: "{count} msg",
+  widget_just_now: "adesso",
+  widget_minutes_ago: "{n}min fa",
+  widget_hours_ago: "{n}h fa",
+  widget_days_ago: "{n}g fa",
+  widget_recipe_imported: "Ricetta importata automaticamente da {name}",
+  widget_delete_conversation: "Elimina conversazione",
+  popup_loading: "Caricamento...",
+  popup_provider: "Provider",
+  popup_api_key: "Chiave API",
+  popup_api_key_placeholder: "Inserisci la chiave API di {provider}",
+  popup_model: "Modello",
+  popup_save: "Salva Impostazioni",
+  popup_saved: "Salvato",
+  popup_managed_connected: "Connesso alla piattaforma gyoza",
+  popup_managed_sign_out: "Esci",
+  popup_managed_subscribe_desc:
+    "Abbonati per usare gyoza senza la tua chiave API.",
+  popup_managed_subscribe_btn: "Abbonati e Accedi",
+  popup_recipes: "Ricette",
+  popup_all_recipes: "Tutte le Ricette",
+  popup_recipes_for: "Ricette \u2014 {domain}",
+  popup_no_recipes_all: "Nessuna ricetta installata.",
+  popup_no_recipes_site:
+    "Nessuna ricetta per {domain}. Importa una ricetta per migliorare la navigazione IA.",
+  popup_import: "+ Importa",
+  popup_back: "\u2190 Indietro",
+  popup_settings: "Impostazioni",
+  popup_yolo_mode: "Modalit\u00e0 Yolo",
+  popup_yolo_desc:
+    "Salta le conferme \u2014 l'IA agisce immediatamente senza chiedere",
+  popup_theme: "Tema",
+  popup_dark: "Scuro",
+  popup_light: "Chiaro",
+  popup_language: "Lingua",
+  popup_language_auto: "Automatico (browser)",
+};
+
+const nl: Translations = {
+  widget_placeholder: "Vraag me iets...",
+  widget_empty: "Vraag me iets over deze pagina...",
+  widget_new_chat: "Nieuw gesprek",
+  widget_history: "Gespreksgeschiedenis",
+  widget_settings: "Instellingen",
+  widget_no_conversations: "Nog geen gesprekken",
+  widget_msg_count: "{count} ber.",
+  widget_just_now: "zojuist",
+  widget_minutes_ago: "{n}min geleden",
+  widget_hours_ago: "{n}u geleden",
+  widget_days_ago: "{n}d geleden",
+  widget_recipe_imported: "Recept automatisch ge\u00efmporteerd van {name}",
+  widget_delete_conversation: "Gesprek verwijderen",
+  popup_loading: "Laden...",
+  popup_provider: "Aanbieder",
+  popup_api_key: "API-sleutel",
+  popup_api_key_placeholder: "Voer {provider} API-sleutel in",
+  popup_model: "Model",
+  popup_save: "Instellingen Opslaan",
+  popup_saved: "Opgeslagen",
+  popup_managed_connected: "Verbonden met gyoza-platform",
+  popup_managed_sign_out: "Uitloggen",
+  popup_managed_subscribe_desc:
+    "Abonneer om gyoza te gebruiken zonder eigen API-sleutel.",
+  popup_managed_subscribe_btn: "Abonneren & Inloggen",
+  popup_recipes: "Recepten",
+  popup_all_recipes: "Alle Recepten",
+  popup_recipes_for: "Recepten \u2014 {domain}",
+  popup_no_recipes_all: "Nog geen recepten ge\u00efnstalleerd.",
+  popup_no_recipes_site:
+    "Geen recepten voor {domain}. Importeer een recept om AI-navigatie te verbeteren.",
+  popup_import: "+ Importeren",
+  popup_back: "\u2190 Terug",
+  popup_settings: "Instellingen",
+  popup_yolo_mode: "Yolo-modus",
+  popup_yolo_desc:
+    "Bevestigingen overslaan \u2014 AI handelt direct zonder te vragen",
+  popup_theme: "Thema",
+  popup_dark: "Donker",
+  popup_light: "Licht",
+  popup_language: "Taal",
+  popup_language_auto: "Automatisch (browser)",
+};
+
+const pl: Translations = {
+  widget_placeholder: "Zapytaj o cokolwiek...",
+  widget_empty: "Zapytaj o cokolwiek na tej stronie...",
+  widget_new_chat: "Nowy czat",
+  widget_history: "Historia rozm\u00f3w",
+  widget_settings: "Ustawienia",
+  widget_no_conversations: "Brak rozm\u00f3w",
+  widget_msg_count: "{count} wiad.",
+  widget_just_now: "w\u0142a\u015bnie",
+  widget_minutes_ago: "{n}min temu",
+  widget_hours_ago: "{n}godz. temu",
+  widget_days_ago: "{n}d temu",
+  widget_recipe_imported: "Przepis automatycznie zaimportowany z {name}",
+  widget_delete_conversation: "Usu\u0144 rozmow\u0119",
+  popup_loading: "\u0141adowanie...",
+  popup_provider: "Dostawca",
+  popup_api_key: "Klucz API",
+  popup_api_key_placeholder: "Wprowad\u017a klucz API {provider}",
+  popup_model: "Model",
+  popup_save: "Zapisz Ustawienia",
+  popup_saved: "Zapisano",
+  popup_managed_connected: "Po\u0142\u0105czono z platform\u0105 gyoza",
+  popup_managed_sign_out: "Wyloguj",
+  popup_managed_subscribe_desc:
+    "Subskrybuj, aby u\u017cywa\u0107 gyoza bez w\u0142asnego klucza API.",
+  popup_managed_subscribe_btn: "Subskrybuj i Zaloguj",
+  popup_recipes: "Przepisy",
+  popup_all_recipes: "Wszystkie Przepisy",
+  popup_recipes_for: "Przepisy \u2014 {domain}",
+  popup_no_recipes_all: "Brak zainstalowanych przepis\u00f3w.",
+  popup_no_recipes_site:
+    "Brak przepis\u00f3w dla {domain}. Importuj przepis, aby poprawi\u0107 nawigacj\u0119 AI.",
+  popup_import: "+ Importuj",
+  popup_back: "\u2190 Wstecz",
+  popup_settings: "Ustawienia",
+  popup_yolo_mode: "Tryb Yolo",
+  popup_yolo_desc:
+    "Pomi\u0144 potwierdzenia \u2014 AI dzia\u0142a natychmiast bez pytania",
+  popup_theme: "Motyw",
+  popup_dark: "Ciemny",
+  popup_light: "Jasny",
+  popup_language: "J\u0119zyk",
+  popup_language_auto: "Automatyczny (przegl\u0105darka)",
+};
+
+const ru: Translations = {
+  widget_placeholder:
+    "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u0435 \u0447\u0442\u043e \u0443\u0433\u043e\u0434\u043d\u043e...",
+  widget_empty:
+    "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u0435 \u0447\u0442\u043e-\u043d\u0438\u0431\u0443\u0434\u044c \u043e\u0431 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435...",
+  widget_new_chat: "\u041d\u043e\u0432\u044b\u0439 \u0447\u0430\u0442",
+  widget_history:
+    "\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440\u043e\u0432",
+  widget_settings: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438",
+  widget_no_conversations:
+    "\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440\u043e\u0432",
+  widget_msg_count: "{count} \u0441\u043e\u043e\u0431\u0449.",
+  widget_just_now: "\u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u043e",
+  widget_minutes_ago: "{n}\u043c\u0438\u043d \u043d\u0430\u0437\u0430\u0434",
+  widget_hours_ago: "{n}\u0447 \u043d\u0430\u0437\u0430\u0434",
+  widget_days_ago: "{n}\u0434 \u043d\u0430\u0437\u0430\u0434",
+  widget_recipe_imported:
+    "\u0420\u0435\u0446\u0435\u043f\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u0438\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u043d \u0438\u0437 {name}",
+  widget_delete_conversation:
+    "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440",
+  popup_loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...",
+  popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
+  popup_api_key: "API-\u043a\u043b\u044e\u0447",
+  popup_api_key_placeholder:
+    "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 API-\u043a\u043b\u044e\u0447 {provider}",
+  popup_model: "\u041c\u043e\u0434\u0435\u043b\u044c",
+  popup_save: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c",
+  popup_saved: "\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e",
+  popup_managed_connected:
+    "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u043a \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435 gyoza",
+  popup_managed_sign_out: "\u0412\u044b\u0439\u0442\u0438",
+  popup_managed_subscribe_desc:
+    "\u041f\u043e\u0434\u043f\u0438\u0448\u0438\u0442\u0435\u0441\u044c, \u0447\u0442\u043e\u0431\u044b \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c gyoza \u0431\u0435\u0437 \u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e API-\u043a\u043b\u044e\u0447\u0430.",
+  popup_managed_subscribe_btn:
+    "\u041f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c\u0441\u044f \u0438 \u0412\u043e\u0439\u0442\u0438",
+  popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u044b",
+  popup_all_recipes:
+    "\u0412\u0441\u0435 \u0420\u0435\u0446\u0435\u043f\u0442\u044b",
+  popup_recipes_for:
+    "\u0420\u0435\u0446\u0435\u043f\u0442\u044b \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0420\u0435\u0446\u0435\u043f\u0442\u044b \u043d\u0435 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u044b.",
+  popup_no_recipes_site:
+    "\u041d\u0435\u0442 \u0440\u0435\u0446\u0435\u043f\u0442\u043e\u0432 \u0434\u043b\u044f {domain}. \u0418\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0440\u0435\u0446\u0435\u043f\u0442 \u0434\u043b\u044f \u0443\u043b\u0443\u0447\u0448\u0435\u043d\u0438\u044f AI-\u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438.",
+  popup_import: "+ \u0418\u043c\u043f\u043e\u0440\u0442",
+  popup_back: "\u2190 \u041d\u0430\u0437\u0430\u0434",
+  popup_settings: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438",
+  popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
+  popup_yolo_desc:
+    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f \u2014 \u0418\u0418 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u043d\u0435\u043c\u0435\u0434\u043b\u0435\u043d\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0440\u043e\u0441\u0430",
+  popup_theme: "\u0422\u0435\u043c\u0430",
+  popup_dark: "\u0422\u0451\u043c\u043d\u0430\u044f",
+  popup_light: "\u0421\u0432\u0435\u0442\u043b\u0430\u044f",
+  popup_language: "\u042f\u0437\u044b\u043a",
+  popup_language_auto:
+    "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
+};
+
+const uk: Translations = {
+  widget_placeholder:
+    "\u0417\u0430\u043f\u0438\u0442\u0430\u0439\u0442\u0435 \u0431\u0443\u0434\u044c-\u0449\u043e...",
+  widget_empty:
+    "\u0417\u0430\u043f\u0438\u0442\u0430\u0439\u0442\u0435 \u0449\u043e\u0441\u044c \u043f\u0440\u043e \u0446\u044e \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0443...",
+  widget_new_chat: "\u041d\u043e\u0432\u0438\u0439 \u0447\u0430\u0442",
+  widget_history:
+    "\u0406\u0441\u0442\u043e\u0440\u0456\u044f \u0440\u043e\u0437\u043c\u043e\u0432",
+  widget_settings:
+    "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f",
+  widget_no_conversations:
+    "\u0429\u0435 \u043d\u0435\u043c\u0430\u0454 \u0440\u043e\u0437\u043c\u043e\u0432",
+  widget_msg_count: "{count} \u043f\u043e\u0432\u0456\u0434.",
+  widget_just_now: "\u0449\u043e\u0439\u043d\u043e",
+  widget_minutes_ago: "{n}\u0445\u0432 \u0442\u043e\u043c\u0443",
+  widget_hours_ago: "{n}\u0433\u043e\u0434 \u0442\u043e\u043c\u0443",
+  widget_days_ago: "{n}\u0434 \u0442\u043e\u043c\u0443",
+  widget_recipe_imported:
+    "\u0420\u0435\u0446\u0435\u043f\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u043d\u043e \u0456\u043c\u043f\u043e\u0440\u0442\u043e\u0432\u0430\u043d\u043e \u0437 {name}",
+  widget_delete_conversation:
+    "\u0412\u0438\u0434\u0430\u043b\u0438\u0442\u0438 \u0440\u043e\u0437\u043c\u043e\u0432\u0443",
+  popup_loading:
+    "\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f...",
+  popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
+  popup_api_key: "API-\u043a\u043b\u044e\u0447",
+  popup_api_key_placeholder:
+    "\u0412\u0432\u0435\u0434\u0456\u0442\u044c API-\u043a\u043b\u044e\u0447 {provider}",
+  popup_model: "\u041c\u043e\u0434\u0435\u043b\u044c",
+  popup_save: "\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438",
+  popup_saved: "\u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043d\u043e",
+  popup_managed_connected:
+    "\u041f\u0456\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u0434\u043e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0438 gyoza",
+  popup_managed_sign_out: "\u0412\u0438\u0439\u0442\u0438",
+  popup_managed_subscribe_desc:
+    "\u041f\u0456\u0434\u043f\u0438\u0448\u0456\u0442\u044c\u0441\u044f, \u0449\u043e\u0431 \u0432\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u043e\u0432\u0443\u0432\u0430\u0442\u0438 gyoza \u0431\u0435\u0437 \u0432\u043b\u0430\u0441\u043d\u043e\u0433\u043e API-\u043a\u043b\u044e\u0447\u0430.",
+  popup_managed_subscribe_btn:
+    "\u041f\u0456\u0434\u043f\u0438\u0441\u0430\u0442\u0438\u0441\u044f \u0442\u0430 \u0412\u0432\u0456\u0439\u0442\u0438",
+  popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u0438",
+  popup_all_recipes:
+    "\u0423\u0441\u0456 \u0420\u0435\u0446\u0435\u043f\u0442\u0438",
+  popup_recipes_for:
+    "\u0420\u0435\u0446\u0435\u043f\u0442\u0438 \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0420\u0435\u0446\u0435\u043f\u0442\u0456\u0432 \u043d\u0435 \u0432\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e.",
+  popup_no_recipes_site:
+    "\u041d\u0435\u043c\u0430\u0454 \u0440\u0435\u0446\u0435\u043f\u0442\u0456\u0432 \u0434\u043b\u044f {domain}. \u0406\u043c\u043f\u043e\u0440\u0442\u0443\u0439\u0442\u0435 \u0440\u0435\u0446\u0435\u043f\u0442 \u0434\u043b\u044f \u043f\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u043d\u044f AI-\u043d\u0430\u0432\u0456\u0433\u0430\u0446\u0456\u0457.",
+  popup_import: "+ \u0406\u043c\u043f\u043e\u0440\u0442",
+  popup_back: "\u2190 \u041d\u0430\u0437\u0430\u0434",
+  popup_settings:
+    "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f",
+  popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
+  popup_yolo_desc:
+    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u0438 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043d\u044f \u2014 \u0428\u0406 \u0434\u0456\u0454 \u043d\u0435\u0433\u0430\u0439\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0438\u0442\u0443",
+  popup_theme: "\u0422\u0435\u043c\u0430",
+  popup_dark: "\u0422\u0435\u043c\u043d\u0430",
+  popup_light: "\u0421\u0432\u0456\u0442\u043b\u0430",
+  popup_language: "\u041c\u043e\u0432\u0430",
+  popup_language_auto:
+    "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
+};
+
+const el: Translations = {
+  widget_placeholder:
+    "\u03a1\u03c9\u03c4\u03ae\u03c3\u03c4\u03b5 \u03bf\u03c4\u03b9\u03b4\u03ae\u03c0\u03bf\u03c4\u03b5...",
+  widget_empty:
+    "\u03a1\u03c9\u03c4\u03ae\u03c3\u03c4\u03b5 \u03bf\u03c4\u03b9\u03b4\u03ae\u03c0\u03bf\u03c4\u03b5 \u03b3\u03b9\u03b1 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1...",
+  widget_new_chat:
+    "\u039d\u03ad\u03b1 \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
+  widget_history:
+    "\u0399\u03c3\u03c4\u03bf\u03c1\u03b9\u03ba\u03cc \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03b9\u03ce\u03bd",
+  widget_settings: "\u03a1\u03c5\u03b8\u03bc\u03af\u03c3\u03b5\u03b9\u03c2",
+  widget_no_conversations:
+    "\u0394\u03b5\u03bd \u03c5\u03c0\u03ac\u03c1\u03c7\u03bf\u03c5\u03bd \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b5\u03c2",
+  widget_msg_count: "{count} \u03bc\u03bd\u03bc.",
+  widget_just_now: "\u03c4\u03ce\u03c1\u03b1",
+  widget_minutes_ago: "{n}\u03bb \u03c0\u03c1\u03b9\u03bd",
+  widget_hours_ago: "{n}\u03ce \u03c0\u03c1\u03b9\u03bd",
+  widget_days_ago: "{n}\u03bc \u03c0\u03c1\u03b9\u03bd",
+  widget_recipe_imported:
+    "\u0397 \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ae \u03b5\u03b9\u03c3\u03ae\u03c7\u03b8\u03b7 \u03b1\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03b1 \u03b1\u03c0\u03cc {name}",
+  widget_delete_conversation:
+    "\u0394\u03b9\u03b1\u03b3\u03c1\u03b1\u03c6\u03ae \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1\u03c2",
+  popup_loading: "\u03a6\u03cc\u03c1\u03c4\u03c9\u03c3\u03b7...",
+  popup_provider: "\u03a0\u03ac\u03c1\u03bf\u03c7\u03bf\u03c2",
+  popup_api_key: "\u039a\u03bb\u03b5\u03b9\u03b4\u03af API",
+  popup_api_key_placeholder:
+    "\u0395\u03b9\u03c3\u03ac\u03b3\u03b5\u03c4\u03b5 \u03c4\u03bf \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API {provider}",
+  popup_model: "\u039c\u03bf\u03bd\u03c4\u03ad\u03bb\u03bf",
+  popup_save: "\u0391\u03c0\u03bf\u03b8\u03ae\u03ba\u03b5\u03c5\u03c3\u03b7",
+  popup_saved:
+    "\u0391\u03c0\u03bf\u03b8\u03b7\u03ba\u03b5\u03cd\u03c4\u03b7\u03ba\u03b5",
+  popup_managed_connected:
+    "\u03a3\u03c5\u03bd\u03b4\u03b5\u03b4\u03b5\u03bc\u03ad\u03bd\u03bf \u03c3\u03c4\u03b7\u03bd \u03c0\u03bb\u03b1\u03c4\u03c6\u03cc\u03c1\u03bc\u03b1 gyoza",
+  popup_managed_sign_out:
+    "\u0391\u03c0\u03bf\u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7",
+  popup_managed_subscribe_desc:
+    "\u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03b5\u03af\u03c4\u03b5 \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03c7\u03c1\u03b7\u03c3\u03b9\u03bc\u03bf\u03c0\u03bf\u03b9\u03ae\u03c3\u03b5\u03c4\u03b5 \u03c4\u03bf gyoza \u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API.",
+  popup_managed_subscribe_btn:
+    "\u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03ae & \u03a3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7",
+  popup_recipes: "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
+  popup_all_recipes:
+    "\u038c\u03bb\u03b5\u03c2 \u03bf\u03b9 \u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
+  popup_recipes_for:
+    "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2 \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0394\u03b5\u03bd \u03c5\u03c0\u03ac\u03c1\u03c7\u03bf\u03c5\u03bd \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2.",
+  popup_no_recipes_site:
+    "\u0394\u03b5\u03bd \u03c5\u03c0\u03ac\u03c1\u03c7\u03bf\u03c5\u03bd \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2 \u03b3\u03b9\u03b1 {domain}. \u0395\u03b9\u03c3\u03ac\u03b3\u03b5\u03c4\u03b5 \u03bc\u03b9\u03b1 \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ae \u03b3\u03b9\u03b1 \u03ba\u03b1\u03bb\u03cd\u03c4\u03b5\u03c1\u03b7 AI \u03c0\u03bb\u03bf\u03ae\u03b3\u03b7\u03c3\u03b7.",
+  popup_import: "+ \u0395\u03b9\u03c3\u03b1\u03b3\u03c9\u03b3\u03ae",
+  popup_back: "\u2190 \u03a0\u03af\u03c3\u03c9",
+  popup_settings: "\u03a1\u03c5\u03b8\u03bc\u03af\u03c3\u03b5\u03b9\u03c2",
+  popup_yolo_mode:
+    "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 Yolo",
+  popup_yolo_desc:
+    "\u03a0\u03b1\u03c1\u03ac\u03bb\u03b5\u03b9\u03c8\u03b7 \u03b5\u03c0\u03b9\u03b2\u03b5\u03b2\u03b1\u03b9\u03ce\u03c3\u03b5\u03c9\u03bd \u2014 \u03c4\u03bf AI \u03b5\u03bd\u03b5\u03c1\u03b3\u03b5\u03af \u03b1\u03bc\u03ad\u03c3\u03c9\u03c2",
+  popup_theme: "\u0398\u03ad\u03bc\u03b1",
+  popup_dark: "\u03a3\u03ba\u03bf\u03c4\u03b5\u03b9\u03bd\u03cc",
+  popup_light: "\u03a6\u03c9\u03c4\u03b5\u03b9\u03bd\u03cc",
+  popup_language: "\u0393\u03bb\u03ce\u03c3\u03c3\u03b1",
+  popup_language_auto:
+    "\u0391\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03bf (\u03c0\u03c1\u03cc\u03b3\u03c1\u03b1\u03bc\u03bc\u03b1 \u03c0\u03b5\u03c1\u03b9\u03ae\u03b3\u03b7\u03c3\u03b7\u03c2)",
+};
+
+const tr: Translations = {
+  widget_placeholder: "Bir \u015fey sor...",
+  widget_empty: "Bu sayfa hakk\u0131nda bir \u015fey sor...",
+  widget_new_chat: "Yeni sohbet",
+  widget_history: "Sohbet ge\u00e7mi\u015fi",
+  widget_settings: "Ayarlar",
+  widget_no_conversations: "Hen\u00fcz sohbet yok",
+  widget_msg_count: "{count} msj",
+  widget_just_now: "\u015fimdi",
+  widget_minutes_ago: "{n}dk \u00f6nce",
+  widget_hours_ago: "{n}sa \u00f6nce",
+  widget_days_ago: "{n}g \u00f6nce",
+  widget_recipe_imported:
+    "Tarif {name} kayna\u011f\u0131ndan otomatik i\u00e7e aktar\u0131ld\u0131",
+  widget_delete_conversation: "Sohbeti sil",
+  popup_loading: "Y\u00fckleniyor...",
+  popup_provider: "Sa\u011flay\u0131c\u0131",
+  popup_api_key: "API Anahtar\u0131",
+  popup_api_key_placeholder: "{provider} API anahtar\u0131n\u0131 girin",
+  popup_model: "Model",
+  popup_save: "Ayarlar\u0131 Kaydet",
+  popup_saved: "Kaydedildi",
+  popup_managed_connected: "gyoza platformuna ba\u011fl\u0131",
+  popup_managed_sign_out: "\u00c7\u0131k\u0131\u015f Yap",
+  popup_managed_subscribe_desc:
+    "Kendi API anahtar\u0131n\u0131z olmadan gyoza kullanmak i\u00e7in abone olun.",
+  popup_managed_subscribe_btn: "Abone Ol ve Giri\u015f Yap",
+  popup_recipes: "Tarifler",
+  popup_all_recipes: "T\u00fcm Tarifler",
+  popup_recipes_for: "Tarifler \u2014 {domain}",
+  popup_no_recipes_all: "Hen\u00fcz tarif y\u00fcklenmemi\u015f.",
+  popup_no_recipes_site:
+    "{domain} i\u00e7in tarif yok. AI navigasyonunu geli\u015ftirmek i\u00e7in bir tarif i\u00e7e aktar\u0131n.",
+  popup_import: "+ \u0130\u00e7e Aktar",
+  popup_back: "\u2190 Geri",
+  popup_settings: "Ayarlar",
+  popup_yolo_mode: "Yolo Modu",
+  popup_yolo_desc:
+    "Onaylar\u0131 atla \u2014 AI sormadan hemen harekete ge\u00e7er",
+  popup_theme: "Tema",
+  popup_dark: "Koyu",
+  popup_light: "A\u00e7\u0131k",
+  popup_language: "Dil",
+  popup_language_auto: "Otomatik (taray\u0131c\u0131)",
+};
+
+const ar: Translations = {
+  widget_placeholder:
+    "\u0627\u0633\u0623\u0644 \u0623\u064a \u0634\u064a\u0621...",
+  widget_empty:
+    "\u0627\u0633\u0623\u0644 \u0623\u064a \u0634\u064a\u0621 \u0639\u0646 \u0647\u0630\u0647 \u0627\u0644\u0635\u0641\u062d\u0629...",
+  widget_new_chat:
+    "\u0645\u062d\u0627\u062f\u062b\u0629 \u062c\u062f\u064a\u062f\u0629",
+  widget_history:
+    "\u0633\u062c\u0644 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0627\u062a",
+  widget_settings: "\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
+  widget_no_conversations:
+    "\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u062d\u0627\u062f\u062b\u0627\u062a \u0628\u0639\u062f",
+  widget_msg_count: "{count} \u0631\u0633\u0627\u0626\u0644",
+  widget_just_now: "\u0627\u0644\u0622\u0646",
+  widget_minutes_ago: "\u0645\u0646\u0630 {n}\u062f",
+  widget_hours_ago: "\u0645\u0646\u0630 {n}\u0633",
+  widget_days_ago: "\u0645\u0646\u0630 {n}\u064a",
+  widget_recipe_imported:
+    "\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0627\u0644\u0648\u0635\u0641\u0629 \u062a\u0644\u0642\u0627\u0626\u064a\u0627\u064b \u0645\u0646 {name}",
+  widget_delete_conversation:
+    "\u062d\u0630\u0641 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629",
+  popup_loading:
+    "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...",
+  popup_provider: "\u0627\u0644\u0645\u0632\u0648\u062f",
+  popup_api_key: "\u0645\u0641\u062a\u0627\u062d API",
+  popup_api_key_placeholder:
+    "\u0623\u062f\u062e\u0644 \u0645\u0641\u062a\u0627\u062d API \u0644\u0640 {provider}",
+  popup_model: "\u0627\u0644\u0646\u0645\u0648\u0630\u062c",
+  popup_save:
+    "\u062d\u0641\u0638 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
+  popup_saved: "\u062a\u0645 \u0627\u0644\u062d\u0641\u0638",
+  popup_managed_connected:
+    "\u0645\u062a\u0635\u0644 \u0628\u0645\u0646\u0635\u0629 gyoza",
+  popup_managed_sign_out:
+    "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c",
+  popup_managed_subscribe_desc:
+    "\u0627\u0634\u062a\u0631\u0643 \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645 gyoza \u0628\u062f\u0648\u0646 \u0645\u0641\u062a\u0627\u062d API \u062e\u0627\u0635 \u0628\u0643.",
+  popup_managed_subscribe_btn:
+    "\u0627\u0634\u062a\u0631\u0627\u0643 \u0648\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
+  popup_recipes: "\u0627\u0644\u0648\u0635\u0641\u0627\u062a",
+  popup_all_recipes:
+    "\u062c\u0645\u064a\u0639 \u0627\u0644\u0648\u0635\u0641\u0627\u062a",
+  popup_recipes_for:
+    "\u0627\u0644\u0648\u0635\u0641\u0627\u062a \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0644\u0627 \u062a\u0648\u062c\u062f \u0648\u0635\u0641\u0627\u062a \u0645\u062b\u0628\u062a\u0629.",
+  popup_no_recipes_site:
+    "\u0644\u0627 \u062a\u0648\u062c\u062f \u0648\u0635\u0641\u0627\u062a \u0644\u0640 {domain}. \u0627\u0633\u062a\u0648\u0631\u062f \u0648\u0635\u0641\u0629 \u0644\u062a\u062d\u0633\u064a\u0646 \u0627\u0644\u062a\u0635\u0641\u062d \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a.",
+  popup_import: "+ \u0627\u0633\u062a\u064a\u0631\u0627\u062f",
+  popup_back: "\u0631\u062c\u0648\u0639 \u2192",
+  popup_settings: "\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
+  popup_yolo_mode: "\u0648\u0636\u0639 Yolo",
+  popup_yolo_desc:
+    "\u062a\u062e\u0637\u064a \u0627\u0644\u062a\u0623\u0643\u064a\u062f\u0627\u062a \u2014 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a \u064a\u062a\u0635\u0631\u0641 \u0641\u0648\u0631\u0627\u064b",
+  popup_theme: "\u0627\u0644\u0645\u0638\u0647\u0631",
+  popup_dark: "\u062f\u0627\u0643\u0646",
+  popup_light: "\u0641\u0627\u062a\u062d",
+  popup_language: "\u0627\u0644\u0644\u063a\u0629",
+  popup_language_auto:
+    "\u062a\u0644\u0642\u0627\u0626\u064a (\u0627\u0644\u0645\u062a\u0635\u0641\u062d)",
+};
+
+const hi: Translations = {
+  widget_placeholder:
+    "\u0915\u0941\u091b \u092d\u0940 \u092a\u0942\u091b\u0947\u0902...",
+  widget_empty:
+    "\u0907\u0938 \u092a\u0947\u091c \u0915\u0947 \u092c\u093e\u0930\u0947 \u092e\u0947\u0902 \u0915\u0941\u091b \u092d\u0940 \u092a\u0942\u091b\u0947\u0902...",
+  widget_new_chat: "\u0928\u0908 \u091a\u0948\u091f",
+  widget_history:
+    "\u092c\u093e\u0924\u091a\u0940\u0924 \u0907\u0924\u093f\u0939\u093e\u0938",
+  widget_settings: "\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938",
+  widget_no_conversations:
+    "\u0905\u092d\u0940 \u0915\u094b\u0908 \u092c\u093e\u0924\u091a\u0940\u0924 \u0928\u0939\u0940\u0902",
+  widget_msg_count: "{count} \u0938\u0902\u0926\u0947\u0936",
+  widget_just_now: "\u0905\u092d\u0940",
+  widget_minutes_ago: "{n}\u092e\u093f\u0928\u091f \u092a\u0939\u0932\u0947",
+  widget_hours_ago: "{n}\u0918\u0902\u091f\u0947 \u092a\u0939\u0932\u0947",
+  widget_days_ago: "{n}\u0926\u093f\u0928 \u092a\u0939\u0932\u0947",
+  widget_recipe_imported:
+    "\u0930\u0947\u0938\u093f\u092a\u0940 {name} \u0938\u0947 \u0911\u091f\u094b-\u0907\u0902\u092a\u094b\u0930\u094d\u091f \u0939\u0941\u0908",
+  widget_delete_conversation:
+    "\u092c\u093e\u0924\u091a\u0940\u0924 \u0939\u091f\u093e\u090f\u0902",
+  popup_loading:
+    "\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...",
+  popup_provider: "\u092a\u094d\u0930\u0926\u093e\u0924\u093e",
+  popup_api_key: "API \u0915\u0941\u0902\u091c\u0940",
+  popup_api_key_placeholder:
+    "{provider} API \u0915\u0941\u0902\u091c\u0940 \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902",
+  popup_model: "\u092e\u0949\u0921\u0932",
+  popup_save:
+    "\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0938\u0939\u0947\u091c\u0947\u0902",
+  popup_saved: "\u0938\u0939\u0947\u091c\u093e \u0917\u092f\u093e",
+  popup_managed_connected:
+    "gyoza \u092a\u094d\u0932\u0947\u091f\u092b\u0949\u0930\u094d\u092e \u0938\u0947 \u091c\u0941\u0921\u093c\u093e",
+  popup_managed_sign_out: "\u0938\u093e\u0907\u0928 \u0906\u0909\u091f",
+  popup_managed_subscribe_desc:
+    "\u0905\u092a\u0928\u0940 API \u0915\u0941\u0902\u091c\u0940 \u0915\u0947 \u092c\u093f\u0928\u093e gyoza \u0909\u092a\u092f\u094b\u0917 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0938\u092c\u094d\u0938\u0915\u094d\u0930\u093e\u0907\u092c \u0915\u0930\u0947\u0902\u0964",
+  popup_managed_subscribe_btn:
+    "\u0938\u092c\u094d\u0938\u0915\u094d\u0930\u093e\u0907\u092c \u0914\u0930 \u0938\u093e\u0907\u0928 \u0907\u0928",
+  popup_recipes: "\u0930\u0947\u0938\u093f\u092a\u0940",
+  popup_all_recipes: "\u0938\u092d\u0940 \u0930\u0947\u0938\u093f\u092a\u0940",
+  popup_recipes_for: "\u0930\u0947\u0938\u093f\u092a\u0940 \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0905\u092d\u0940 \u0915\u094b\u0908 \u0930\u0947\u0938\u093f\u092a\u0940 \u0928\u0939\u0940\u0902\u0964",
+  popup_no_recipes_site:
+    "{domain} \u0915\u0947 \u0932\u093f\u090f \u0915\u094b\u0908 \u0930\u0947\u0938\u093f\u092a\u0940 \u0928\u0939\u0940\u0902\u0964 AI \u0928\u0947\u0935\u093f\u0917\u0947\u0936\u0928 \u092c\u0947\u0939\u0924\u0930 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0930\u0947\u0938\u093f\u092a\u0940 \u0907\u0902\u092a\u094b\u0930\u094d\u091f \u0915\u0930\u0947\u0902\u0964",
+  popup_import: "+ \u0907\u0902\u092a\u094b\u0930\u094d\u091f",
+  popup_back: "\u2190 \u0935\u093e\u092a\u0938",
+  popup_settings: "\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938",
+  popup_yolo_mode: "Yolo \u092e\u094b\u0921",
+  popup_yolo_desc:
+    "\u092a\u0941\u0937\u094d\u091f\u093f \u091b\u094b\u0921\u093c\u0947\u0902 \u2014 AI \u0924\u0941\u0930\u0902\u0924 \u0915\u093e\u0930\u094d\u0930\u0935\u093e\u0908 \u0915\u0930\u0924\u093e \u0939\u0948",
+  popup_theme: "\u0925\u0940\u092e",
+  popup_dark: "\u0921\u093e\u0930\u094d\u0915",
+  popup_light: "\u0932\u093e\u0907\u091f",
+  popup_language: "\u092d\u093e\u0937\u093e",
+  popup_language_auto:
+    "\u0911\u091f\u094b (\u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930)",
+};
+
+const ja: Translations = {
+  widget_placeholder:
+    "\u4f55\u3067\u3082\u805e\u3044\u3066\u304f\u3060\u3055\u3044...",
+  widget_empty:
+    "\u3053\u306e\u30da\u30fc\u30b8\u306b\u3064\u3044\u3066\u4f55\u3067\u3082\u805e\u3044\u3066\u304f\u3060\u3055\u3044...",
+  widget_new_chat: "\u65b0\u3057\u3044\u30c1\u30e3\u30c3\u30c8",
+  widget_history: "\u4f1a\u8a71\u5c65\u6b74",
+  widget_settings: "\u8a2d\u5b9a",
+  widget_no_conversations:
+    "\u4f1a\u8a71\u306f\u307e\u3060\u3042\u308a\u307e\u305b\u3093",
+  widget_msg_count: "{count}\u4ef6",
+  widget_just_now: "\u305f\u3063\u305f\u4eca",
+  widget_minutes_ago: "{n}\u5206\u524d",
+  widget_hours_ago: "{n}\u6642\u9593\u524d",
+  widget_days_ago: "{n}\u65e5\u524d",
+  widget_recipe_imported:
+    "{name}\u304b\u3089\u30ec\u30b7\u30d4\u3092\u81ea\u52d5\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f",
+  widget_delete_conversation: "\u4f1a\u8a71\u3092\u524a\u9664",
+  popup_loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
+  popup_provider: "\u30d7\u30ed\u30d0\u30a4\u30c0\u30fc",
+  popup_api_key: "API\u30ad\u30fc",
+  popup_api_key_placeholder:
+    "{provider}\u306eAPI\u30ad\u30fc\u3092\u5165\u529b",
+  popup_model: "\u30e2\u30c7\u30eb",
+  popup_save: "\u8a2d\u5b9a\u3092\u4fdd\u5b58",
+  popup_saved: "\u4fdd\u5b58\u6e08\u307f",
+  popup_managed_connected:
+    "gyoza\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u306b\u63a5\u7d9a\u6e08\u307f",
+  popup_managed_sign_out: "\u30b5\u30a4\u30f3\u30a2\u30a6\u30c8",
+  popup_managed_subscribe_desc:
+    "API\u30ad\u30fc\u306a\u3057\u3067gyoza\u3092\u4f7f\u7528\u3059\u308b\u306b\u306f\u767b\u9332\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+  popup_managed_subscribe_btn:
+    "\u767b\u9332\u3057\u3066\u30b5\u30a4\u30f3\u30a4\u30f3",
+  popup_recipes: "\u30ec\u30b7\u30d4",
+  popup_all_recipes: "\u3059\u3079\u3066\u306e\u30ec\u30b7\u30d4",
+  popup_recipes_for: "\u30ec\u30b7\u30d4 \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u30ec\u30b7\u30d4\u306f\u307e\u3060\u3042\u308a\u307e\u305b\u3093\u3002",
+  popup_no_recipes_site:
+    "{domain}\u306e\u30ec\u30b7\u30d4\u306f\u3042\u308a\u307e\u305b\u3093\u3002AI\u30ca\u30d3\u30b2\u30fc\u30b7\u30e7\u30f3\u3092\u5411\u4e0a\u3055\u305b\u308b\u306b\u306f\u30ec\u30b7\u30d4\u3092\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+  popup_import: "+ \u30a4\u30f3\u30dd\u30fc\u30c8",
+  popup_back: "\u2190 \u623b\u308b",
+  popup_settings: "\u8a2d\u5b9a",
+  popup_yolo_mode: "Yolo\u30e2\u30fc\u30c9",
+  popup_yolo_desc:
+    "\u78ba\u8a8d\u3092\u30b9\u30ad\u30c3\u30d7 \u2014 AI\u304c\u78ba\u8a8d\u306a\u3057\u3067\u5373\u5ea7\u306b\u5b9f\u884c",
+  popup_theme: "\u30c6\u30fc\u30de",
+  popup_dark: "\u30c0\u30fc\u30af",
+  popup_light: "\u30e9\u30a4\u30c8",
+  popup_language: "\u8a00\u8a9e",
+  popup_language_auto: "\u81ea\u52d5\uff08\u30d6\u30e9\u30a6\u30b6\u30fc\uff09",
+};
+
+const ko: Translations = {
+  widget_placeholder:
+    "\ubb34\uc5c7\uc774\ub4e0 \ubb3c\uc5b4\ubcf4\uc138\uc694...",
+  widget_empty:
+    "\uc774 \ud398\uc774\uc9c0\uc5d0 \ub300\ud574 \ubb34\uc5c7\uc774\ub4e0 \ubb3c\uc5b4\ubcf4\uc138\uc694...",
+  widget_new_chat: "\uc0c8 \ucc44\ud305",
+  widget_history: "\ub300\ud654 \uae30\ub85d",
+  widget_settings: "\uc124\uc815",
+  widget_no_conversations:
+    "\ub300\ud654\uac00 \uc544\uc9c1 \uc5c6\uc2b5\ub2c8\ub2e4",
+  widget_msg_count: "{count}\uac1c \uba54\uc2dc\uc9c0",
+  widget_just_now: "\ubc29\uae08",
+  widget_minutes_ago: "{n}\ubd84 \uc804",
+  widget_hours_ago: "{n}\uc2dc\uac04 \uc804",
+  widget_days_ago: "{n}\uc77c \uc804",
+  widget_recipe_imported:
+    "{name}\uc5d0\uc11c \ub808\uc2dc\ud53c\uac00 \uc790\ub3d9 \uac00\uc838\uc624\uae30 \ub428",
+  widget_delete_conversation: "\ub300\ud654 \uc0ad\uc81c",
+  popup_loading: "\ub85c\ub529 \uc911...",
+  popup_provider: "\uc81c\uacf5\uc790",
+  popup_api_key: "API \ud0a4",
+  popup_api_key_placeholder:
+    "{provider} API \ud0a4\ub97c \uc785\ub825\ud558\uc138\uc694",
+  popup_model: "\ubaa8\ub378",
+  popup_save: "\uc124\uc815 \uc800\uc7a5",
+  popup_saved: "\uc800\uc7a5\ub428",
+  popup_managed_connected: "gyoza \ud50c\ub7ab\ud3fc\uc5d0 \uc5f0\uacb0\ub428",
+  popup_managed_sign_out: "\ub85c\uadf8\uc544\uc6c3",
+  popup_managed_subscribe_desc:
+    "API \ud0a4 \uc5c6\uc774 gyoza\ub97c \uc0ac\uc6a9\ud558\ub824\uba74 \uad6c\ub3c5\ud558\uc138\uc694.",
+  popup_managed_subscribe_btn: "\uad6c\ub3c5 \ubc0f \ub85c\uadf8\uc778",
+  popup_recipes: "\ub808\uc2dc\ud53c",
+  popup_all_recipes: "\ubaa8\ub4e0 \ub808\uc2dc\ud53c",
+  popup_recipes_for: "\ub808\uc2dc\ud53c \u2014 {domain}",
+  popup_no_recipes_all:
+    "\uc124\uce58\ub41c \ub808\uc2dc\ud53c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.",
+  popup_no_recipes_site:
+    "{domain}\uc5d0 \ub300\ud55c \ub808\uc2dc\ud53c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4. AI \ud0d0\uc0c9\uc744 \uac1c\uc120\ud558\ub824\uba74 \ub808\uc2dc\ud53c\ub97c \uac00\uc838\uc624\uc138\uc694.",
+  popup_import: "+ \uac00\uc838\uc624\uae30",
+  popup_back: "\u2190 \ub4a4\ub85c",
+  popup_settings: "\uc124\uc815",
+  popup_yolo_mode: "Yolo \ubaa8\ub4dc",
+  popup_yolo_desc:
+    "\ud655\uc778 \uac74\ub108\ub6f0\uae30 \u2014 AI\uac00 \ubb3b\uc9c0 \uc54a\uace0 \uc989\uc2dc \uc2e4\ud589",
+  popup_theme: "\ud14c\ub9c8",
+  popup_dark: "\ub2e4\ud06c",
+  popup_light: "\ub77c\uc774\ud2b8",
+  popup_language: "\uc5b8\uc5b4",
+  popup_language_auto: "\uc790\ub3d9 (\ube0c\ub77c\uc6b0\uc800)",
+};
+
+const zhCN: Translations = {
+  widget_placeholder: "\u968f\u4fbf\u95ee...",
+  widget_empty:
+    "\u5173\u4e8e\u8fd9\u4e2a\u9875\u9762\uff0c\u968f\u4fbf\u95ee...",
+  widget_new_chat: "\u65b0\u5bf9\u8bdd",
+  widget_history: "\u5bf9\u8bdd\u5386\u53f2",
+  widget_settings: "\u8bbe\u7f6e",
+  widget_no_conversations: "\u6682\u65e0\u5bf9\u8bdd",
+  widget_msg_count: "{count}\u6761",
+  widget_just_now: "\u521a\u521a",
+  widget_minutes_ago: "{n}\u5206\u949f\u524d",
+  widget_hours_ago: "{n}\u5c0f\u65f6\u524d",
+  widget_days_ago: "{n}\u5929\u524d",
+  widget_recipe_imported:
+    "\u5df2\u4ece{name}\u81ea\u52a8\u5bfc\u5165\u914d\u65b9",
+  widget_delete_conversation: "\u5220\u9664\u5bf9\u8bdd",
+  popup_loading: "\u52a0\u8f7d\u4e2d...",
+  popup_provider: "\u63d0\u4f9b\u5546",
+  popup_api_key: "API\u5bc6\u94a5",
+  popup_api_key_placeholder: "\u8f93\u5165{provider} API\u5bc6\u94a5",
+  popup_model: "\u6a21\u578b",
+  popup_save: "\u4fdd\u5b58\u8bbe\u7f6e",
+  popup_saved: "\u5df2\u4fdd\u5b58",
+  popup_managed_connected: "\u5df2\u8fde\u63a5\u5230gyoza\u5e73\u53f0",
+  popup_managed_sign_out: "\u9000\u51fa",
+  popup_managed_subscribe_desc:
+    "\u8ba2\u9605\u540e\u65e0\u9700\u81ea\u5df1\u7684API\u5bc6\u94a5\u5373\u53ef\u4f7f\u7528gyoza\u3002",
+  popup_managed_subscribe_btn: "\u8ba2\u9605\u5e76\u767b\u5f55",
+  popup_recipes: "\u914d\u65b9",
+  popup_all_recipes: "\u6240\u6709\u914d\u65b9",
+  popup_recipes_for: "\u914d\u65b9 \u2014 {domain}",
+  popup_no_recipes_all: "\u5c1a\u672a\u5b89\u88c5\u914d\u65b9\u3002",
+  popup_no_recipes_site:
+    "{domain}\u65e0\u914d\u65b9\u3002\u5bfc\u5165\u914d\u65b9\u4ee5\u589e\u5f3aAI\u5bfc\u822a\u3002",
+  popup_import: "+ \u5bfc\u5165",
+  popup_back: "\u2190 \u8fd4\u56de",
+  popup_settings: "\u8bbe\u7f6e",
+  popup_yolo_mode: "Yolo\u6a21\u5f0f",
+  popup_yolo_desc:
+    "\u8df3\u8fc7\u786e\u8ba4 \u2014 AI\u65e0\u9700\u8be2\u95ee\u7acb\u5373\u6267\u884c",
+  popup_theme: "\u4e3b\u9898",
+  popup_dark: "\u6df1\u8272",
+  popup_light: "\u6d45\u8272",
+  popup_language: "\u8bed\u8a00",
+  popup_language_auto: "\u81ea\u52a8\uff08\u6d4f\u89c8\u5668\uff09",
+};
+
+const zhTW: Translations = {
+  ...zhCN,
+  widget_empty:
+    "\u95dc\u65bc\u9019\u500b\u9801\u9762\uff0c\u96a8\u4fbf\u554f...",
+  widget_no_conversations: "\u5c1a\u7121\u5c0d\u8a71",
+  widget_delete_conversation: "\u522a\u9664\u5c0d\u8a71",
+  popup_loading: "\u8f09\u5165\u4e2d...",
+  popup_api_key: "API\u91d1\u9470",
+  popup_api_key_placeholder: "\u8f38\u5165{provider} API\u91d1\u9470",
+  popup_save: "\u5132\u5b58\u8a2d\u5b9a",
+  popup_saved: "\u5df2\u5132\u5b58",
+  popup_managed_connected: "\u5df2\u9023\u63a5\u5230gyoza\u5e73\u53f0",
+  popup_managed_sign_out: "\u767b\u51fa",
+  popup_managed_subscribe_desc:
+    "\u8a02\u95b1\u5f8c\u7121\u9700\u81ea\u5df1\u7684API\u91d1\u9470\u5373\u53ef\u4f7f\u7528gyoza\u3002",
+  popup_managed_subscribe_btn: "\u8a02\u95b1\u4e26\u767b\u5165",
+  popup_recipes: "\u914d\u65b9",
+  popup_all_recipes: "\u6240\u6709\u914d\u65b9",
+  popup_no_recipes_all: "\u5c1a\u672a\u5b89\u88dd\u914d\u65b9\u3002",
+  popup_no_recipes_site:
+    "{domain}\u7121\u914d\u65b9\u3002\u532f\u5165\u914d\u65b9\u4ee5\u589e\u5f37AI\u5c0e\u822a\u3002",
+  popup_import: "+ \u532f\u5165",
+  popup_back: "\u2190 \u8fd4\u56de",
+  popup_settings: "\u8a2d\u5b9a",
+  popup_yolo_desc:
+    "\u8df3\u904e\u78ba\u8a8d \u2014 AI\u7121\u9700\u8a62\u554f\u7acb\u5373\u57f7\u884c",
+  popup_theme: "\u4e3b\u984c",
+  popup_dark: "\u6df1\u8272",
+  popup_light: "\u6dfa\u8272",
+  popup_language: "\u8a9e\u8a00",
+  popup_language_auto: "\u81ea\u52d5\uff08\u700f\u89bd\u5668\uff09",
+};
+
+const th: Translations = {
+  widget_placeholder:
+    "\u0e16\u0e32\u0e21\u0e2d\u0e30\u0e44\u0e23\u0e01\u0e47\u0e44\u0e14\u0e49...",
+  widget_empty:
+    "\u0e16\u0e32\u0e21\u0e2d\u0e30\u0e44\u0e23\u0e01\u0e47\u0e44\u0e14\u0e49\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e2b\u0e19\u0e49\u0e32\u0e19\u0e35\u0e49...",
+  widget_new_chat: "\u0e41\u0e0a\u0e17\u0e43\u0e2b\u0e21\u0e48",
+  widget_history:
+    "\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e01\u0e32\u0e23\u0e2a\u0e19\u0e17\u0e19\u0e32",
+  widget_settings: "\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32",
+  widget_no_conversations:
+    "\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e2a\u0e19\u0e17\u0e19\u0e32",
+  widget_msg_count: "{count} \u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21",
+  widget_just_now:
+    "\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e2a\u0e31\u0e01\u0e04\u0e23\u0e39\u0e48",
+  widget_minutes_ago:
+    "{n}\u0e19\u0e32\u0e17\u0e35\u0e17\u0e35\u0e48\u0e41\u0e25\u0e49\u0e27",
+  widget_hours_ago:
+    "{n}\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07\u0e17\u0e35\u0e48\u0e41\u0e25\u0e49\u0e27",
+  widget_days_ago:
+    "{n}\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e41\u0e25\u0e49\u0e27",
+  widget_recipe_imported:
+    "\u0e19\u0e33\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e15\u0e23\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34\u0e08\u0e32\u0e01 {name}",
+  widget_delete_conversation:
+    "\u0e25\u0e1a\u0e01\u0e32\u0e23\u0e2a\u0e19\u0e17\u0e19\u0e32",
+  popup_loading: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...",
+  popup_provider:
+    "\u0e1c\u0e39\u0e49\u0e43\u0e2b\u0e49\u0e1a\u0e23\u0e34\u0e01\u0e32\u0e23",
+  popup_api_key: "\u0e04\u0e35\u0e22\u0e4c API",
+  popup_api_key_placeholder:
+    "\u0e01\u0e23\u0e2d\u0e01\u0e04\u0e35\u0e22\u0e4c API {provider}",
+  popup_model: "\u0e42\u0e21\u0e40\u0e14\u0e25",
+  popup_save:
+    "\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e01\u0e32\u0e23\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32",
+  popup_saved: "\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e41\u0e25\u0e49\u0e27",
+  popup_managed_connected:
+    "\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d\u0e41\u0e1e\u0e25\u0e15\u0e1f\u0e2d\u0e23\u0e4c\u0e21 gyoza",
+  popup_managed_sign_out:
+    "\u0e2d\u0e2d\u0e01\u0e08\u0e32\u0e01\u0e23\u0e30\u0e1a\u0e1a",
+  popup_managed_subscribe_desc:
+    "\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e43\u0e0a\u0e49 gyoza \u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e21\u0e35\u0e04\u0e35\u0e22\u0e4c API",
+  popup_managed_subscribe_btn:
+    "\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e41\u0e25\u0e30\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48\u0e23\u0e30\u0e1a\u0e1a",
+  popup_recipes: "\u0e2a\u0e39\u0e15\u0e23",
+  popup_all_recipes:
+    "\u0e2a\u0e39\u0e15\u0e23\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14",
+  popup_recipes_for: "\u0e2a\u0e39\u0e15\u0e23 \u2014 {domain}",
+  popup_no_recipes_all:
+    "\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e39\u0e15\u0e23\u0e17\u0e35\u0e48\u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07",
+  popup_no_recipes_site:
+    "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e39\u0e15\u0e23\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a {domain} \u0e19\u0e33\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e15\u0e23\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e23\u0e31\u0e1a\u0e1b\u0e23\u0e38\u0e07\u0e01\u0e32\u0e23\u0e19\u0e33\u0e17\u0e32\u0e07 AI",
+  popup_import: "+ \u0e19\u0e33\u0e40\u0e02\u0e49\u0e32",
+  popup_back: "\u2190 \u0e01\u0e25\u0e31\u0e1a",
+  popup_settings: "\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32",
+  popup_yolo_mode: "\u0e42\u0e2b\u0e21\u0e14 Yolo",
+  popup_yolo_desc:
+    "\u0e02\u0e49\u0e32\u0e21\u0e01\u0e32\u0e23\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19 \u2014 AI \u0e17\u0e33\u0e07\u0e32\u0e19\u0e17\u0e31\u0e19\u0e17\u0e35\u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e16\u0e32\u0e21",
+  popup_theme: "\u0e18\u0e35\u0e21",
+  popup_dark: "\u0e21\u0e37\u0e14",
+  popup_light: "\u0e2a\u0e27\u0e48\u0e32\u0e07",
+  popup_language: "\u0e20\u0e32\u0e29\u0e32",
+  popup_language_auto:
+    "\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 (\u0e40\u0e1a\u0e23\u0e32\u0e27\u0e40\u0e0b\u0e2d\u0e23\u0e4c)",
+};
+
+const vi: Translations = {
+  widget_placeholder: "H\u1ecfi b\u1ea5t c\u1ee9 \u0111i\u1ec1u g\u00ec...",
+  widget_empty:
+    "H\u1ecfi b\u1ea5t c\u1ee9 \u0111i\u1ec1u g\u00ec v\u1ec1 trang n\u00e0y...",
+  widget_new_chat: "Cu\u1ed9c tr\u00f2 chuy\u1ec7n m\u1edbi",
+  widget_history: "L\u1ecbch s\u1eed h\u1ed9i tho\u1ea1i",
+  widget_settings: "C\u00e0i \u0111\u1eb7t",
+  widget_no_conversations:
+    "Ch\u01b0a c\u00f3 cu\u1ed9c tr\u00f2 chuy\u1ec7n n\u00e0o",
+  widget_msg_count: "{count} tin nh\u1eafn",
+  widget_just_now: "v\u1eeba xong",
+  widget_minutes_ago: "{n} ph\u00fat tr\u01b0\u1edbc",
+  widget_hours_ago: "{n} gi\u1edd tr\u01b0\u1edbc",
+  widget_days_ago: "{n} ng\u00e0y tr\u01b0\u1edbc",
+  widget_recipe_imported:
+    "C\u00f4ng th\u1ee9c \u0111\u00e3 t\u1ef1 \u0111\u1ed9ng nh\u1eadp t\u1eeb {name}",
+  widget_delete_conversation: "X\u00f3a cu\u1ed9c tr\u00f2 chuy\u1ec7n",
+  popup_loading: "\u0110ang t\u1ea3i...",
+  popup_provider: "Nh\u00e0 cung c\u1ea5p",
+  popup_api_key: "Kh\u00f3a API",
+  popup_api_key_placeholder: "Nh\u1eadp kh\u00f3a API {provider}",
+  popup_model: "M\u00f4 h\u00ecnh",
+  popup_save: "L\u01b0u C\u00e0i \u0110\u1eb7t",
+  popup_saved: "\u0110\u00e3 l\u01b0u",
+  popup_managed_connected:
+    "\u0110\u00e3 k\u1ebft n\u1ed1i v\u1edbi n\u1ec1n t\u1ea3ng gyoza",
+  popup_managed_sign_out: "\u0110\u0103ng xu\u1ea5t",
+  popup_managed_subscribe_desc:
+    "\u0110\u0103ng k\u00fd \u0111\u1ec3 d\u00f9ng gyoza m\u00e0 kh\u00f4ng c\u1ea7n kh\u00f3a API.",
+  popup_managed_subscribe_btn:
+    "\u0110\u0103ng k\u00fd & \u0110\u0103ng nh\u1eadp",
+  popup_recipes: "C\u00f4ng th\u1ee9c",
+  popup_all_recipes: "T\u1ea5t c\u1ea3 C\u00f4ng th\u1ee9c",
+  popup_recipes_for: "C\u00f4ng th\u1ee9c \u2014 {domain}",
+  popup_no_recipes_all: "Ch\u01b0a c\u00f3 c\u00f4ng th\u1ee9c n\u00e0o.",
+  popup_no_recipes_site:
+    "Kh\u00f4ng c\u00f3 c\u00f4ng th\u1ee9c cho {domain}. Nh\u1eadp c\u00f4ng th\u1ee9c \u0111\u1ec3 c\u1ea3i thi\u1ec7n \u0111i\u1ec1u h\u01b0\u1edbng AI.",
+  popup_import: "+ Nh\u1eadp",
+  popup_back: "\u2190 Quay l\u1ea1i",
+  popup_settings: "C\u00e0i \u0111\u1eb7t",
+  popup_yolo_mode: "Ch\u1ebf \u0111\u1ed9 Yolo",
+  popup_yolo_desc:
+    "B\u1ecf qua x\u00e1c nh\u1eadn \u2014 AI h\u00e0nh \u0111\u1ed9ng ngay m\u00e0 kh\u00f4ng h\u1ecfi",
+  popup_theme: "Giao di\u1ec7n",
+  popup_dark: "T\u1ed1i",
+  popup_light: "S\u00e1ng",
+  popup_language: "Ng\u00f4n ng\u1eef",
+  popup_language_auto: "T\u1ef1 \u0111\u1ed9ng (tr\u00ecnh duy\u1ec7t)",
+};
+
+const id: Translations = {
+  widget_placeholder: "Tanyakan apa saja...",
+  widget_empty: "Tanyakan apa saja tentang halaman ini...",
+  widget_new_chat: "Obrolan baru",
+  widget_history: "Riwayat percakapan",
+  widget_settings: "Pengaturan",
+  widget_no_conversations: "Belum ada percakapan",
+  widget_msg_count: "{count} pesan",
+  widget_just_now: "baru saja",
+  widget_minutes_ago: "{n}m lalu",
+  widget_hours_ago: "{n}j lalu",
+  widget_days_ago: "{n}h lalu",
+  widget_recipe_imported: "Resep diimpor otomatis dari {name}",
+  widget_delete_conversation: "Hapus percakapan",
+  popup_loading: "Memuat...",
+  popup_provider: "Penyedia",
+  popup_api_key: "Kunci API",
+  popup_api_key_placeholder: "Masukkan kunci API {provider}",
+  popup_model: "Model",
+  popup_save: "Simpan Pengaturan",
+  popup_saved: "Tersimpan",
+  popup_managed_connected: "Terhubung ke platform gyoza",
+  popup_managed_sign_out: "Keluar",
+  popup_managed_subscribe_desc:
+    "Berlangganan untuk menggunakan gyoza tanpa kunci API sendiri.",
+  popup_managed_subscribe_btn: "Berlangganan & Masuk",
+  popup_recipes: "Resep",
+  popup_all_recipes: "Semua Resep",
+  popup_recipes_for: "Resep \u2014 {domain}",
+  popup_no_recipes_all: "Belum ada resep terpasang.",
+  popup_no_recipes_site:
+    "Tidak ada resep untuk {domain}. Impor resep untuk meningkatkan navigasi AI.",
+  popup_import: "+ Impor",
+  popup_back: "\u2190 Kembali",
+  popup_settings: "Pengaturan",
+  popup_yolo_mode: "Mode Yolo",
+  popup_yolo_desc:
+    "Lewati konfirmasi \u2014 AI bertindak langsung tanpa bertanya",
+  popup_theme: "Tema",
+  popup_dark: "Gelap",
+  popup_light: "Terang",
+  popup_language: "Bahasa",
+  popup_language_auto: "Otomatis (browser)",
+};
+
+const ms: Translations = {
+  ...id,
+  widget_placeholder: "Tanya apa sahaja...",
+  widget_empty: "Tanya apa sahaja tentang halaman ini...",
+  widget_new_chat: "Sembang baru",
+  widget_history: "Sejarah perbualan",
+  widget_no_conversations: "Belum ada perbualan",
+  popup_save: "Simpan Tetapan",
+  popup_settings: "Tetapan",
+  popup_language: "Bahasa",
+  popup_language_auto: "Auto (pelayar)",
+};
+
+// Scandinavian + other European languages use English as fallback with overrides
+
+const sv: Translations = {
+  ...en,
+  widget_placeholder: "Fr\u00e5ga mig n\u00e5got...",
+  widget_empty: "Fr\u00e5ga mig n\u00e5got om den h\u00e4r sidan...",
+  widget_new_chat: "Ny chatt",
+  widget_history: "Konversationshistorik",
+  widget_settings: "Inst\u00e4llningar",
+  widget_no_conversations: "\u00c4nnu inga konversationer",
+  widget_just_now: "just nu",
+  widget_minutes_ago: "{n}min sedan",
+  widget_hours_ago: "{n}t sedan",
+  widget_days_ago: "{n}d sedan",
+  popup_save: "Spara Inst\u00e4llningar",
+  popup_saved: "Sparat",
+  popup_settings: "Inst\u00e4llningar",
+  popup_theme: "Tema",
+  popup_dark: "M\u00f6rkt",
+  popup_light: "Ljust",
+  popup_language: "Spr\u00e5k",
+  popup_language_auto: "Automatiskt (webbl\u00e4sare)",
+};
+
+const da: Translations = {
+  ...en,
+  widget_placeholder: "Sp\u00f8rg om hvad som helst...",
+  widget_empty: "Sp\u00f8rg om hvad som helst om denne side...",
+  widget_new_chat: "Ny chat",
+  widget_history: "Samtalehistorik",
+  widget_settings: "Indstillinger",
+  widget_no_conversations: "Ingen samtaler endnu",
+  widget_just_now: "lige nu",
+  popup_save: "Gem Indstillinger",
+  popup_saved: "Gemt",
+  popup_settings: "Indstillinger",
+  popup_dark: "M\u00f8rk",
+  popup_light: "Lys",
+  popup_language: "Sprog",
+  popup_language_auto: "Automatisk (browser)",
+};
+
+const fi: Translations = {
+  ...en,
+  widget_placeholder: "Kysy mit\u00e4 vain...",
+  widget_empty: "Kysy mit\u00e4 vain t\u00e4st\u00e4 sivusta...",
+  widget_new_chat: "Uusi keskustelu",
+  widget_history: "Keskusteluhistoria",
+  widget_settings: "Asetukset",
+  widget_no_conversations: "Ei viel\u00e4 keskusteluja",
+  widget_just_now: "juuri nyt",
+  popup_save: "Tallenna Asetukset",
+  popup_saved: "Tallennettu",
+  popup_settings: "Asetukset",
+  popup_dark: "Tumma",
+  popup_light: "Vaalea",
+  popup_language: "Kieli",
+  popup_language_auto: "Automaattinen (selain)",
+};
+
+const nb: Translations = {
+  ...en,
+  widget_placeholder: "Sp\u00f8r meg om hva som helst...",
+  widget_empty: "Sp\u00f8r meg om hva som helst om denne siden...",
+  widget_new_chat: "Ny chat",
+  widget_history: "Samtalehistorikk",
+  widget_settings: "Innstillinger",
+  widget_no_conversations: "Ingen samtaler enn\u00e5",
+  widget_just_now: "akkurat n\u00e5",
+  popup_save: "Lagre Innstillinger",
+  popup_saved: "Lagret",
+  popup_settings: "Innstillinger",
+  popup_dark: "M\u00f8rk",
+  popup_light: "Lys",
+  popup_language: "Spr\u00e5k",
+  popup_language_auto: "Automatisk (nettleser)",
+};
+
+const cs: Translations = {
+  ...en,
+  widget_placeholder: "Zeptejte se na cokoli...",
+  widget_empty: "Zeptejte se na cokoli o t\u00e9to str\u00e1nce...",
+  widget_new_chat: "Nov\u00fd chat",
+  widget_history: "Historie konverzac\u00ed",
+  widget_settings: "Nastaven\u00ed",
+  widget_no_conversations: "Zat\u00edm \u017e\u00e1dn\u00e9 konverzace",
+  widget_just_now: "pr\u00e1v\u011b",
+  popup_save: "Ulo\u017eit Nastaven\u00ed",
+  popup_saved: "Ulo\u017eeno",
+  popup_settings: "Nastaven\u00ed",
+  popup_dark: "Tmav\u00fd",
+  popup_light: "Sv\u011btl\u00fd",
+  popup_language: "Jazyk",
+  popup_language_auto: "Automaticky (prohl\u00ed\u017ee\u010d)",
+};
+
+const ro: Translations = {
+  ...en,
+  widget_placeholder: "\u00centreba\u021bi orice...",
+  widget_empty: "\u00centreba\u021bi orice despre aceast\u0103 pagin\u0103...",
+  widget_new_chat: "Conversa\u021bie nou\u0103",
+  widget_history: "Istoricul conversa\u021biilor",
+  widget_settings: "Set\u0103ri",
+  widget_no_conversations: "\u00cenc\u0103 nu exist\u0103 conversa\u021bii",
+  widget_just_now: "chiar acum",
+  popup_save: "Salveaz\u0103 Set\u0103rile",
+  popup_saved: "Salvat",
+  popup_settings: "Set\u0103ri",
+  popup_dark: "\u00centunecat",
+  popup_light: "Luminos",
+  popup_language: "Limb\u0103",
+  popup_language_auto: "Automat (browser)",
+};
+
+const hu: Translations = {
+  ...en,
+  widget_placeholder: "K\u00e9rdezz b\u00e1rmit...",
+  widget_empty: "K\u00e9rdezz b\u00e1rmit err\u0151l az oldalr\u00f3l...",
+  widget_new_chat: "\u00daj cseveg\u00e9s",
+  widget_history: "Besz\u00e9lget\u00e9s el\u0151zm\u00e9nyek",
+  widget_settings: "Be\u00e1ll\u00edt\u00e1sok",
+  widget_no_conversations: "M\u00e9g nincsenek besz\u00e9lget\u00e9sek",
+  widget_just_now: "\u00e9pp most",
+  popup_save: "Be\u00e1ll\u00edt\u00e1sok Ment\u00e9se",
+  popup_saved: "Mentve",
+  popup_settings: "Be\u00e1ll\u00edt\u00e1sok",
+  popup_dark: "S\u00f6t\u00e9t",
+  popup_light: "Vil\u00e1gos",
+  popup_language: "Nyelv",
+  popup_language_auto: "Automatikus (b\u00f6ng\u00e9sz\u0151)",
+};
+
+const he: Translations = {
+  ...en,
+  widget_placeholder: "...\u05e9\u05d0\u05dc \u05db\u05dc \u05d3\u05d1\u05e8",
+  widget_empty:
+    "...\u05e9\u05d0\u05dc \u05db\u05dc \u05d3\u05d1\u05e8 \u05e2\u05dc \u05d4\u05d3\u05e3 \u05d4\u05d6\u05d4",
+  widget_new_chat: "\u05e6\u05f2\u05d8 \u05d7\u05d3\u05e9",
+  widget_history:
+    "\u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d9\u05ea \u05e9\u05d9\u05d7\u05d5\u05ea",
+  widget_settings: "\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea",
+  widget_no_conversations:
+    "\u05d0\u05d9\u05df \u05e2\u05d3\u05d9\u05d9\u05df \u05e9\u05d9\u05d7\u05d5\u05ea",
+  popup_save: "\u05e9\u05de\u05d5\u05e8 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea",
+  popup_saved: "\u05e0\u05e9\u05de\u05e8",
+  popup_settings: "\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea",
+  popup_dark: "\u05db\u05d4\u05d4",
+  popup_light: "\u05d1\u05d4\u05d9\u05e8",
+  popup_language: "\u05e9\u05e4\u05d4",
+  popup_language_auto:
+    "\u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9 (\u05d3\u05e4\u05d3\u05e4\u05df)",
+};
+
+// ─── Locale map ─────────────────────────────────────────────────────────────
+
+const TRANSLATIONS: Record<string, Translations> = {
+  en,
+  "pt-BR": ptBR,
+  "pt-PT": ptPT,
+  es,
+  fr,
+  de,
+  it,
+  nl,
+  pl,
+  ru,
+  uk,
+  el,
+  tr,
+  ar,
+  hi,
+  ja,
+  ko,
+  "zh-CN": zhCN,
+  "zh-TW": zhTW,
+  th,
+  vi,
+  id,
+  ms,
+  sv,
+  da,
+  fi,
+  nb,
+  cs,
+  ro,
+  hu,
+  he,
+};
+
+// ─── Locale resolution ─────────────────────────────────────────────────────
+
+/**
+ * Detect the best locale from the browser.
+ * Uses navigator.language → exact match → base language match → "en".
+ */
+export function detectBrowserLocale(): LocaleCode {
+  const browserLang = navigator.language; // e.g. "pt-BR", "en-US", "zh-CN"
+  return resolveLocale(browserLang);
+}
+
+/**
+ * Resolve a language tag to a supported locale code.
+ * Tries exact match, then base language (e.g. "pt" → "pt-BR").
+ */
+export function resolveLocale(tag: string): LocaleCode {
+  // Exact match
+  if (tag in TRANSLATIONS) return tag as LocaleCode;
+
+  // Normalize: "pt_BR" → "pt-BR"
+  const normalized = tag.replace("_", "-");
+  if (normalized in TRANSLATIONS) return normalized as LocaleCode;
+
+  // Base language match: "en-US" → "en", "pt" → "pt-BR"
+  const base = tag.split("-")[0].split("_")[0];
+  if (base in TRANSLATIONS) return base as LocaleCode;
+
+  // Special cases: bare "pt" → "pt-BR", bare "zh" → "zh-CN", bare "no" → "nb"
+  const baseMap: Record<string, LocaleCode> = {
+    pt: "pt-BR",
+    zh: "zh-CN",
+    no: "nb",
+  };
+  if (base in baseMap) return baseMap[base];
+
+  return "en";
+}
+
+/**
+ * Get translations for a locale code.
+ */
+export function getTranslations(locale: LocaleCode): Translations {
+  return TRANSLATIONS[locale] || en;
+}
+
+/**
+ * Interpolate placeholders in a translation string.
+ * e.g. t("widget_msg_count", { count: 5 }) → "5 msgs"
+ */
+export function t(
+  translations: Translations,
+  key: keyof Translations,
+  params?: Record<string, string | number>,
+): string {
+  let text = translations[key];
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      text = text.replace(`{${k}}`, String(v));
+    }
+  }
+  return text;
+}

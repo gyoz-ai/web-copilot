@@ -7,6 +7,14 @@ import {
 } from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
+import {
+  type LocaleCode,
+  type Translations,
+  detectBrowserLocale,
+  resolveLocale,
+  getTranslations,
+  t,
+} from "../lib/i18n";
 
 // ─── Module-level state (persists for the lifetime of this content script) ────
 let pendingSnapshotTypes: SnapshotType[] | null = null;
@@ -308,6 +316,7 @@ function GyozaiWidget() {
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [locale, setLocale] = useState<LocaleCode>(detectBrowserLocale());
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
 
@@ -321,7 +330,11 @@ function GyozaiWidget() {
   useEffect(() => {
     const handler = (msg: { type: string; filename?: string }) => {
       if (msg.type === "gyozai_recipe_auto_added" && msg.filename) {
-        setToast(`Recipe auto-imported from ${msg.filename}`);
+        setToast(
+          t(getTranslations(locale), "widget_recipe_imported", {
+            name: msg.filename,
+          }),
+        );
         setTimeout(() => setToast(null), 4000);
       }
     };
@@ -329,19 +342,33 @@ function GyozaiWidget() {
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
-  // Load theme on mount and listen for changes from popup settings
+  // Load theme + language on mount and listen for changes from popup settings
   useEffect(() => {
     chrome.runtime
       .sendMessage({ type: "gyozai_get_settings" })
       .then((s: Record<string, unknown> | undefined) => {
         if (s?.theme === "light" || s?.theme === "dark") setTheme(s.theme);
+        if (typeof s?.language === "string") {
+          setLocale(
+            s.language === "auto"
+              ? detectBrowserLocale()
+              : resolveLocale(s.language),
+          );
+        }
       });
     const handler = (changes: {
       [key: string]: chrome.storage.StorageChange;
     }) => {
-      const newTheme = changes.gyozai_settings?.newValue?.theme;
-      if (newTheme === "light" || newTheme === "dark") {
-        setTheme(newTheme);
+      const newSettings = changes.gyozai_settings?.newValue;
+      if (newSettings?.theme === "light" || newSettings?.theme === "dark") {
+        setTheme(newSettings.theme);
+      }
+      if (typeof newSettings?.language === "string") {
+        setLocale(
+          newSettings.language === "auto"
+            ? detectBrowserLocale()
+            : resolveLocale(newSettings.language),
+        );
       }
     };
     chrome.storage.onChanged.addListener(handler);
@@ -997,16 +1024,18 @@ function GyozaiWidget() {
     }
   };
 
+  const tr = getTranslations(locale);
+
   // Format relative time
   function timeAgo(timestamp: number): string {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return "just now";
+    if (seconds < 60) return t(tr, "widget_just_now");
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return t(tr, "widget_minutes_ago", { n: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t(tr, "widget_hours_ago", { n: hours });
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
+    if (days < 7) return t(tr, "widget_days_ago", { n: days });
     return new Date(timestamp).toLocaleDateString();
   }
 
@@ -1039,7 +1068,7 @@ function GyozaiWidget() {
               <button
                 className="gyozai-icon-btn"
                 onClick={startNewChat}
-                title="New chat"
+                title={tr.widget_new_chat}
               >
                 <svg
                   width="14"
@@ -1061,7 +1090,7 @@ function GyozaiWidget() {
                 onClick={() =>
                   viewMode === "history" ? setViewMode("chat") : openHistory()
                 }
-                title="Conversation history"
+                title={tr.widget_history}
               >
                 <svg
                   width="14"
@@ -1083,7 +1112,7 @@ function GyozaiWidget() {
                 onClick={() =>
                   chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
                 }
-                title="Settings"
+                title={tr.widget_settings}
               >
                 <svg
                   width="14"
@@ -1106,7 +1135,7 @@ function GyozaiWidget() {
           {viewMode === "history" && (
             <div className="gyozai-messages">
               {historyList.length === 0 && (
-                <div className="gyozai-empty">No conversations yet</div>
+                <div className="gyozai-empty">{tr.widget_no_conversations}</div>
               )}
               {historyList.map((conv) => (
                 <div
@@ -1122,8 +1151,9 @@ function GyozaiWidget() {
                       <span>{conv.domain}</span>
                       <span>{timeAgo(conv.updatedAt)}</span>
                       <span>
-                        {conv.messageCount} msg
-                        {conv.messageCount !== 1 ? "s" : ""}
+                        {t(tr, "widget_msg_count", {
+                          count: conv.messageCount,
+                        })}
                       </span>
                     </div>
                   </button>
@@ -1133,7 +1163,7 @@ function GyozaiWidget() {
                       e.stopPropagation();
                       deleteFromHistory(conv.id);
                     }}
-                    title="Delete conversation"
+                    title={tr.widget_delete_conversation}
                   >
                     <svg
                       width="12"
@@ -1160,9 +1190,7 @@ function GyozaiWidget() {
               {/* Messages */}
               <div className="gyozai-messages">
                 {messages.length === 0 && (
-                  <div className="gyozai-empty">
-                    Ask me anything about this page...
-                  </div>
+                  <div className="gyozai-empty">{tr.widget_empty}</div>
                 )}
                 {messages.map((msg) => (
                   <div
@@ -1223,7 +1251,7 @@ function GyozaiWidget() {
                       setExpanded(false);
                     }
                   }}
-                  placeholder="Ask me anything..."
+                  placeholder={tr.widget_placeholder}
                   className="gyozai-input"
                   disabled={loading}
                 />
