@@ -119,7 +119,7 @@ export function GyozaiWidget() {
   const hoverOpenRef = useRef(false);
 
   // Proximity detection — open chatbox when cursor is near avatar
-  const proximityRadius = AVATAR_SIZES[agentSize] * 0.5;
+  const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
