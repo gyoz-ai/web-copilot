@@ -60,11 +60,37 @@ export function injectWidget(
   return host;
 }
 
-/** Inject a tiny script into the MAIN world that patches
- *  history.pushState / replaceState to dispatch a DOM event.
- *  Content scripts run in an isolated world — they can't intercept
- *  the page's history calls directly, but DOM events cross the boundary. */
+/** Patch history.pushState/replaceState in the MAIN world to dispatch
+ *  a 'gyozai:navchange' DOM event.  Uses chrome.scripting.executeScript
+ *  via the background worker (bypasses page CSP entirely).
+ *  Falls back to inline <script> injection if messaging fails. */
+let _historyPatchRequested = false;
 function patchMainWorldHistory() {
+  if (_historyPatchRequested) return;
+  _historyPatchRequested = true;
+  // Ask background worker to inject into MAIN world (CSP-proof)
+  // Guard: chrome.runtime may not exist in test environments
+  if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) {
+    inlineHistoryPatch();
+    return;
+  }
+  chrome.runtime
+    .sendMessage({ type: "gyozai_patch_history" })
+    .then((r) => {
+      if (r?.ok) {
+        log("MAIN-world history patch injected via chrome.scripting");
+      } else {
+        log("chrome.scripting patch failed, trying inline fallback");
+        inlineHistoryPatch();
+      }
+    })
+    .catch(() => {
+      inlineHistoryPatch();
+    });
+}
+
+/** Inline <script> fallback — works on pages without strict CSP. */
+function inlineHistoryPatch() {
   if (document.getElementById("gyozai-nav-patch")) return;
   const script = document.createElement("script");
   script.id = "gyozai-nav-patch";
@@ -78,7 +104,7 @@ function patchMainWorldHistory() {
     history.replaceState=function(){var r=oR.apply(this,arguments);window.dispatchEvent(new Event(E));return r};
   })()`;
   (document.head || document.documentElement).appendChild(script);
-  log("MAIN-world history patch injected");
+  log("MAIN-world history patch injected via inline script");
 }
 
 /** Watch for host element detachment and re-attach it (preserving React state).
@@ -100,6 +126,7 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
     document.body.appendChild(host);
     reobserve();
     // Re-inject the MAIN-world patch too (SPA may have wiped the <script>)
+    _historyPatchRequested = false;
     patchMainWorldHistory();
   }
 

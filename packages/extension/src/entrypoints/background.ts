@@ -12,7 +12,7 @@ import {
 } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
-import { clearWidgetSession } from "../lib/session";
+import { clearWidgetSession, saveWidgetSession } from "../lib/session";
 
 // Pre-compute JSON schema for structured output
 const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
@@ -26,6 +26,51 @@ export default defineBackground(() => {
     if (message.type === "gyozai_get_tab_id") {
       sendResponse({ tabId: sender.tab?.id ?? null });
       return false;
+    }
+
+    if (message.type === "gyozai_patch_history") {
+      const tabId = sender.tab?.id;
+      if (tabId == null) {
+        sendResponse({ ok: false });
+        return false;
+      }
+      chrome.scripting
+        .executeScript({
+          target: { tabId },
+          world: "MAIN",
+          func: () => {
+            if ((window as any).__gyozai_nav_patched__) return;
+            (window as any).__gyozai_nav_patched__ = true;
+            const E = "gyozai:navchange";
+            const oP = history.pushState.bind(history);
+            const oR = history.replaceState.bind(history);
+            history.pushState = function (...args: Parameters<typeof oP>) {
+              const r = oP(...args);
+              window.dispatchEvent(new Event(E));
+              return r;
+            };
+            history.replaceState = function (...args: Parameters<typeof oR>) {
+              const r = oR(...args);
+              window.dispatchEvent(new Event(E));
+              return r;
+            };
+          },
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
+    if (message.type === "gyozai_save_session") {
+      const tabId = sender.tab?.id ?? message.tabId;
+      if (tabId != null) {
+        saveWidgetSession(tabId, message.session).then(() =>
+          sendResponse({ ok: true }),
+        );
+      } else {
+        sendResponse({ ok: false });
+      }
+      return true;
     }
 
     if (message.type === "gyozai_query") {

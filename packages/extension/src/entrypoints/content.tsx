@@ -8,11 +8,7 @@ import {
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
 import { waitForBody, injectWidget, watchForRemoval } from "../lib/injection";
-import {
-  saveWidgetSession,
-  loadWidgetSession,
-  type WidgetSession,
-} from "../lib/session";
+import { loadWidgetSession, type WidgetSession } from "../lib/session";
 import {
   type LocaleCode,
   type Translations,
@@ -72,6 +68,18 @@ const S = {
 
 function log(...args: unknown[]) {
   console.log("%c[gyoza]", S.brand, ...args);
+}
+
+/** Save session via background worker — survives page unload because the
+ *  background worker writes to storage, not the dying content script. */
+function saveSessionViaBackground(tabId: number, session: WidgetSession): void {
+  chrome.runtime
+    .sendMessage({
+      type: "gyozai_save_session",
+      tabId,
+      session,
+    })
+    .catch(() => {});
 }
 
 function mapExtraRequests(extraRequests: string[]): SnapshotType[] {
@@ -449,25 +457,25 @@ function GyozaiWidget() {
         "convId:",
         activeConvIdRef.current,
       );
-      saveWidgetSession(tabId, session).catch(() => {});
+      saveSessionViaBackground(tabId, session);
     }, 100);
   }, [expanded, messages, input, viewMode]);
 
   // ─── Flush session immediately on page unload (cross-origin nav) ───
-  // The debounced save may not fire before the page is destroyed.
+  // Sends to background worker which survives page destruction.
   useEffect(() => {
     const flush = () => {
       if (!sessionRestoredRef.current) return;
       const tabId = tabIdRef.current ?? _preloadedTabId;
       if (tabId == null) return;
-      // Can't await — page is unloading. Fire and hope it lands.
-      saveWidgetSession(tabId, {
+      log("Flushing session on page unload/hide");
+      saveSessionViaBackground(tabId, {
         expanded,
         activeConvId: activeConvIdRef.current,
         messages,
         input,
         viewMode,
-      }).catch(() => {});
+      });
     };
     window.addEventListener("beforeunload", flush);
     // Also fire on visibilitychange hidden (covers mobile/tab switch)
