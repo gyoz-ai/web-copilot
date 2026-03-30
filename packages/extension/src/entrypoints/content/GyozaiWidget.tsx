@@ -671,6 +671,47 @@ export function GyozaiWidget() {
     return undefined;
   }
 
+  // Build a human-readable status line from tool calls
+  function buildToolStatusLines(toolCalls: AgentResult["toolCalls"]): string[] {
+    if (!toolCalls?.length) return [];
+    const lines: string[] = [];
+    for (const tc of toolCalls) {
+      switch (tc.tool) {
+        case "navigate": {
+          const url = (tc.args as { url?: string }).url || "";
+          lines.push(`🔗 Navigated to ${url}`);
+          break;
+        }
+        case "click": {
+          const sel = (tc.args as { selector?: string }).selector || "";
+          lines.push(`👆 Clicked \`${sel}\``);
+          break;
+        }
+        case "execute_js": {
+          const desc =
+            (tc.args as { description?: string }).description || "code";
+          lines.push(`⚡ Executed: ${desc}`);
+          break;
+        }
+        case "highlight_ui": {
+          const sel = (tc.args as { selector?: string }).selector || "";
+          lines.push(`✨ Highlighted \`${sel}\``);
+          break;
+        }
+        case "get_page_context":
+          lines.push(`📖 Read page content`);
+          break;
+        case "fetch_url": {
+          const url = (tc.args as { url?: string }).url || "";
+          lines.push(`🌐 Fetched ${url}`);
+          break;
+        }
+        // show_message, set_expression, clarify — no status line needed
+      }
+    }
+    return lines;
+  }
+
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
     if (result.error) {
@@ -679,18 +720,39 @@ export function GyozaiWidget() {
     }
 
     // ─── Check if this is a legacy managed-mode response ─────
-    // Legacy responses have `actions` array from the old structured output format.
-    // The background worker's convertLegacyToAgentResult includes these.
     if (result.actions && result.actions.length > 0) {
       await handleLegacyResponse(result);
       return;
     }
 
     // ─── BYOK tool-calling response ──────────────────────────
-    // Messages were accumulated by show_message tool calls
-    if (result.messages && result.messages.length > 0) {
-      addAssistantMessage(result.messages.join("\n\n"));
+
+    // Build action status lines from tool calls (e.g. "Navigated to /dashboard")
+    const statusLines = buildToolStatusLines(result.toolCalls);
+
+    // Combine: status lines first, then AI messages
+    const aiMessages = result.messages?.filter((m) => m.trim()) || [];
+    const parts: string[] = [];
+
+    if (statusLines.length > 0) {
+      parts.push(statusLines.join("\n"));
     }
+    if (aiMessages.length > 0) {
+      parts.push(aiMessages.join("\n\n"));
+    }
+
+    // Fallback: if AI didn't send any message, generate one from the actions
+    if (parts.length === 0) {
+      if (result.navigated) {
+        parts.push("Navigating...");
+      } else if (result.toolCalls?.length) {
+        parts.push("Done.");
+      } else {
+        parts.push("I processed your request.");
+      }
+    }
+
+    addAssistantMessage(parts.join("\n\n"));
 
     // Clarify state (from clarify tool)
     if (result.clarify) {
@@ -699,10 +761,6 @@ export function GyozaiWidget() {
         options: result.clarify.options,
       });
     }
-
-    // Navigation was already initiated by the navigate tool in the background.
-    // The pending-nav mechanism on the new page handles continuation.
-    // Nothing to do here — the page will reload.
   }
 
   // Handle legacy managed-mode responses (structured output with actions array)
