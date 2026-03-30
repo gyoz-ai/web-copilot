@@ -261,17 +261,30 @@ export function GyozaiWidget() {
     };
   }, []);
 
-  // Keep latestSessionRef.scrollTop fresh on every scroll
+  // Save scroll position on every scroll (debounced) so it survives navigation
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const onScroll = () => {
+      // Update ref immediately for beforeunload
       if (latestSessionRef.current) {
         latestSessionRef.current.session.scrollTop = container.scrollTop;
       }
+      // Debounced save to background (300ms)
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const latest = latestSessionRef.current;
+        if (latest && sessionRestoredRef.current) {
+          saveSessionViaBackground(latest.tabId, latest.session);
+        }
+      }, 300);
     };
     container.addEventListener("scroll", onScroll, { passive: true });
-    return () => container.removeEventListener("scroll", onScroll);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   });
 
   // Listen for auto-imported recipe notification
