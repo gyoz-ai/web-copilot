@@ -212,6 +212,16 @@ export default defineContentScript({
       return;
     }
 
+    // Load fonts non-blocking — injected into document head so they cascade into Shadow DOM
+    if (!document.querySelector("#gyozai-fonts")) {
+      const fontLink = document.createElement("link");
+      fontLink.id = "gyozai-fonts";
+      fontLink.rel = "stylesheet";
+      fontLink.href =
+        "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap";
+      document.head.appendChild(fontLink);
+    }
+
     const host = document.createElement("div");
     host.id = "gyozai-extension-root";
     document.body.appendChild(host);
@@ -1278,8 +1288,6 @@ function GyozaiWidget() {
 // Dark-only design matching the main gyoza website (warm oklch palette)
 
 const WIDGET_STYLES = `
-  @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap');
-
   :host {
     /* Brand */
     --g-brand-400: oklch(0.72 0.17 74);
