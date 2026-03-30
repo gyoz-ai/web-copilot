@@ -207,13 +207,29 @@ export default defineContentScript({
     tryAutoImportRecipe().catch(() => {});
 
     // Inject installed recipes list as global var for page UI
-    chrome.runtime
-      .sendMessage({ type: "gyozai_get_recipes_list" })
-      .then((recipes) => {
-        (window as any).__GYOZAI_INSTALLED_RECIPES__ = recipes || [];
-      })
-      .catch(() => {
-        (window as any).__GYOZAI_INSTALLED_RECIPES__ = [];
-      });
+    function refreshInstalledRecipes() {
+      chrome.runtime
+        .sendMessage({ type: "gyozai_get_recipes_list" })
+        .then((recipes) => {
+          (window as any).__GYOZAI_INSTALLED_RECIPES__ = recipes || [];
+        })
+        .catch(() => {
+          (window as any).__GYOZAI_INSTALLED_RECIPES__ = [];
+        });
+    }
+    refreshInstalledRecipes();
+
+    // Refresh when recipes change (add/remove/toggle)
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.gyozai_recipes) {
+        refreshInstalledRecipes();
+      }
+    });
+    // Also refresh on auto-import notification
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.type === "gyozai_recipe_auto_added") {
+        refreshInstalledRecipes();
+      }
+    });
   },
 });
