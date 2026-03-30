@@ -372,7 +372,7 @@ export function GyozaiWidget() {
         try {
           autoFollowUpUsed = false;
           const result = await sendQuery(
-            `I just navigated to ${window.location.pathname} as the user requested. Briefly confirm you arrived and ask what they'd like to do next. Keep it to 1-2 sentences. Do NOT describe the page in detail. Original request: ${pendingNav.originalQuery}`,
+            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
             pendingExtraContext || undefined,
           );
           pendingExtraContext = null;
@@ -414,37 +414,52 @@ export function GyozaiWidget() {
     }
   }, [expanded, initialized, viewMode]);
 
-  // Fallback: detect cursor outside panel on fast mouse moves
-  // (shadow DOM onMouseLeave may not fire on very fast exits)
+  // Safety net: periodically check if cursor is still near panel/avatar
+  // Shadow DOM onMouseLeave can miss fast exits — this catches them
   useEffect(() => {
     if (!expanded || !hoverOpenRef.current) return;
-    const handler = (e: MouseEvent) => {
+    let lastX = 0;
+    let lastY = 0;
+    const trackMouse = (e: MouseEvent) => {
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    document.addEventListener("mousemove", trackMouse, { passive: true });
+
+    const interval = setInterval(() => {
+      if (!hoverOpenRef.current || !expanded) return;
       const panel = panelRef.current;
       const avatar = avatarWrapperRef.current;
       if (!panel || !avatar) return;
+
+      const m = 40;
       const pr = panel.getBoundingClientRect();
       const ar = avatar.getBoundingClientRect();
-      const m = 30; // margin
       const inPanel =
-        e.clientX >= pr.left - m &&
-        e.clientX <= pr.right + m &&
-        e.clientY >= pr.top - m &&
-        e.clientY <= pr.bottom + m;
+        lastX >= pr.left - m &&
+        lastX <= pr.right + m &&
+        lastY >= pr.top - m &&
+        lastY <= pr.bottom + m;
       const inAvatar =
-        e.clientX >= ar.left - m &&
-        e.clientX <= ar.right + m &&
-        e.clientY >= ar.top - m &&
-        e.clientY <= ar.bottom + m;
-      if (!inPanel && !inAvatar && insidePanelRef.current) {
-        insidePanelRef.current = false;
-        startLeave();
-      }
-    };
-    document.addEventListener("mousemove", handler, { passive: true });
-    return () => document.removeEventListener("mousemove", handler);
-  }, [expanded, startLeave]);
+        lastX >= ar.left - m &&
+        lastX <= ar.right + m &&
+        lastY >= ar.top - m &&
+        lastY <= ar.bottom + m;
 
-  // Always scroll to bottom when messages change
+      if (!inPanel && !inAvatar) {
+        insidePanelRef.current = false;
+        hoverOpenRef.current = false;
+        setExpanded(false);
+      }
+    }, 300);
+
+    return () => {
+      document.removeEventListener("mousemove", trackMouse);
+      clearInterval(interval);
+    };
+  }, [expanded]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
@@ -452,6 +467,15 @@ export function GyozaiWidget() {
       }, 30);
     }
   }, [messages, loading]);
+
+  // Keep scrolling during typewriter animation
+  useEffect(() => {
+    if (!isTypewriting) return;
+    const interval = setInterval(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+    return () => clearInterval(interval);
+  }, [isTypewriting]);
 
   // Helper to add an assistant message
   const addAssistantMessage = useCallback((content: string) => {
@@ -780,10 +804,10 @@ export function GyozaiWidget() {
       addToolStatusMessage(line);
     }
 
-    // Show AI messages as normal assistant bubbles
+    // Show each AI message as its own bubble (not concatenated)
     const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-    if (aiMessages.length > 0) {
-      addAssistantMessage(aiMessages.join("\n\n"));
+    for (const msg of aiMessages) {
+      addAssistantMessage(msg);
     }
 
     // Fallback: if AI didn't send any message, generate one
