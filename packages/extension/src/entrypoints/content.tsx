@@ -1068,6 +1068,9 @@ function GyozaiWidget() {
 
   return (
     <>
+      {/* Toast — always visible, even when panel is closed */}
+      {toast && <div className="gyozai-floating-toast">{toast}</div>}
+
       {/* Floating bubble */}
       <button className="gyozai-bubble" onClick={handleBubbleClick}>
         <img
@@ -1637,6 +1640,24 @@ const WIDGET_STYLES = `
     background: var(--g-surface-1);
     border-top: 1px solid var(--g-surface-border);
     animation: gyozai-fade-in 0.3s ease-out;
+  }
+
+  .gyozai-floating-toast {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #E8950A;
+    text-align: center;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3a;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 2147483647;
+    animation: gyozai-fade-in 0.3s ease-out;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   @keyframes gyozai-fade-in {
