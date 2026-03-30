@@ -235,6 +235,19 @@ export function GyozaiWidget() {
     };
   }, []);
 
+  // Keep latestSessionRef.scrollTop fresh on every scroll
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      if (latestSessionRef.current) {
+        latestSessionRef.current.session.scrollTop = container.scrollTop;
+      }
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  });
+
   // Listen for auto-imported recipe notification
   useEffect(() => {
     const handler = (msg: { type: string; filename?: string }) => {
