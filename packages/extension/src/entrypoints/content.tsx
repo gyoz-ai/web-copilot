@@ -7,6 +7,7 @@ import {
 } from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
+import { waitForBody, injectWidget, watchForRemoval } from "../lib/injection";
 import {
   type LocaleCode,
   type Translations,
@@ -203,6 +204,56 @@ function formatInline(text: string): React.ReactNode[] {
 
 // ─── Content Script Entry ────────────────────────────────────────────────────
 
+/** Render callback passed to injectWidget / watchForRemoval. */
+function renderWidget(container: HTMLDivElement) {
+  ReactDOM.createRoot(container).render(<GyozaiWidget />);
+}
+
+/** Fire-and-forget recipe auto-import — errors here never affect the widget. */
+async function tryAutoImportRecipe() {
+  const stored = await chrome.storage.local.get("gyozai_settings");
+  const autoImport = stored.gyozai_settings?.autoImportRecipes ?? true;
+  if (!autoImport) return;
+
+  const origin = window.location.origin;
+  const pathname = window.location.pathname;
+  const pathParts = pathname.split("/").filter(Boolean);
+  const urlsToTry = [`${origin}/llms.txt`];
+  for (let i = pathParts.length; i > 0; i--) {
+    urlsToTry.push(`${origin}/${pathParts.slice(0, i).join("/")}/llms.txt`);
+  }
+
+  let foundContent: string | null = null;
+  for (const recipeUrl of urlsToTry) {
+    try {
+      const response = await fetch(recipeUrl, { method: "GET" });
+      if (response.ok) {
+        const text = await response.text();
+        if (
+          text.trimStart().startsWith("# ") &&
+          (text.includes("## Routes") || text.includes("## UI Elements"))
+        ) {
+          foundContent = text;
+          break;
+        }
+      }
+    } catch {
+      // skip this URL
+    }
+  }
+
+  if (foundContent) {
+    const resp = await chrome.runtime.sendMessage({
+      type: "gyozai_auto_import_recipe",
+      filename: "llms.txt",
+      content: foundContent,
+    });
+    if (!resp?.skipped) {
+      log("New recipe auto-imported for this site");
+    }
+  }
+}
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
@@ -213,79 +264,40 @@ export default defineContentScript({
     }
 
     // Load fonts non-blocking — injected into document head so they cascade into Shadow DOM
-    if (!document.querySelector("#gyozai-fonts")) {
-      const fontLink = document.createElement("link");
-      fontLink.id = "gyozai-fonts";
-      fontLink.rel = "stylesheet";
-      fontLink.href =
-        "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap";
-      document.head.appendChild(fontLink);
-    }
-
-    const host = document.createElement("div");
-    host.id = "gyozai-extension-root";
-    document.body.appendChild(host);
-    const shadow = host.attachShadow({ mode: "open" });
-
-    const style = document.createElement("style");
-    style.textContent = WIDGET_STYLES;
-    shadow.appendChild(style);
-
-    const container = document.createElement("div");
-    shadow.appendChild(container);
-
-    ReactDOM.createRoot(container).render(<GyozaiWidget />);
-
-    // Auto-detect recipe from website — check multiple locations
-    // Respect user's autoImportRecipes setting (defaults to true)
-    const stored = await chrome.storage.local.get("gyozai_settings");
-    const autoImport = stored.gyozai_settings?.autoImportRecipes ?? true;
-    if (!autoImport) return;
-
     try {
-      const origin = window.location.origin;
-      const pathname = window.location.pathname;
-      // Try: /llms.txt, /current/path/llms.txt, and path prefixes
-      const pathParts = pathname.split("/").filter(Boolean);
-      const urlsToTry = [`${origin}/llms.txt`];
-      // Build prefix paths: /demos/ginko/llms.txt, /demos/llms.txt, etc.
-      for (let i = pathParts.length; i > 0; i--) {
-        urlsToTry.push(`${origin}/${pathParts.slice(0, i).join("/")}/llms.txt`);
-      }
-
-      let foundContent: string | null = null;
-      for (const recipeUrl of urlsToTry) {
-        try {
-          const response = await fetch(recipeUrl, { method: "GET" });
-          if (response.ok) {
-            const text = await response.text();
-            // Validate it's a gyoza recipe: starts with H1 and has expected sections
-            if (
-              text.trimStart().startsWith("# ") &&
-              (text.includes("## Routes") || text.includes("## UI Elements"))
-            ) {
-              foundContent = text;
-              break;
-            }
-          }
-        } catch {
-          // skip this URL
-        }
-      }
-
-      if (foundContent) {
-        const resp = await chrome.runtime.sendMessage({
-          type: "gyozai_auto_import_recipe",
-          filename: "llms.txt",
-          content: foundContent,
-        });
-        if (!resp?.skipped) {
-          log("New recipe auto-imported for this site");
-        }
+      if (!document.querySelector("#gyozai-fonts")) {
+        const fontLink = document.createElement("link");
+        fontLink.id = "gyozai-fonts";
+        fontLink.rel = "stylesheet";
+        fontLink.href =
+          "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap";
+        document.head.appendChild(fontLink);
       }
     } catch {
-      // No recipe file — that's fine
+      // Font loading is non-critical — widget works without custom fonts
     }
+
+    // Wait for body, then inject with retry
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const body = await waitForBody();
+        const host = injectWidget(body, WIDGET_STYLES, renderWidget);
+        watchForRemoval(host, WIDGET_STYLES, renderWidget);
+        log("Widget injected successfully");
+        break;
+      } catch (err) {
+        if (attempt < MAX_RETRIES) {
+          log(`Injection attempt ${attempt} failed, retrying…`);
+          await new Promise((r) => setTimeout(r, 200 * attempt));
+        } else {
+          log("Widget injection failed after retries:", err);
+        }
+      }
+    }
+
+    // Recipe auto-import runs independently — never blocks or breaks the widget
+    tryAutoImportRecipe().catch(() => {});
   },
 });
 

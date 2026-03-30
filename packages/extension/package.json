@@ -30,6 +30,7 @@
     "@types/chrome": "^0.0.309",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "happy-dom": "^20.8.9",
     "typescript": "^5"
   }
 }
