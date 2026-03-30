@@ -109,10 +109,10 @@ export function Avatar({
           gap: 4,
           cursor: isDragging ? "grabbing" : "grab",
           fontFamily: "'Cabinet Grotesk', system-ui, sans-serif",
-          fontWeight: 700,
-          fontSize: 13,
+          fontWeight: 800,
+          fontSize: 15,
           color: "var(--g-text-secondary)",
-          padding: "4px 10px",
+          padding: "5px 12px",
           borderRadius: 8,
           background: "oklch(0.13 0.015 50 / 0.8)",
           backdropFilter: "blur(4px)",
@@ -132,8 +132,8 @@ export function Avatar({
         </span>
         {/* Drag handle icon (grip dots) */}
         <svg
-          width="14"
-          height="14"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
