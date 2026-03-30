@@ -23,6 +23,31 @@ let pendingExtraContext: string | null = null;
 let autoFollowUpUsed = false;
 let queryCounter = 0;
 
+// Preload settings + tab ID so they're warm before the user clicks the bubble.
+// These fire immediately at module load (document_idle) rather than waiting
+// for React mount, shaving ~50-100ms off the first interaction.
+let _preloadedTabId: number | null = null;
+let _preloadedLocale: LocaleCode | null = null;
+const _preloadReady = Promise.all([
+  chrome.runtime
+    .sendMessage({ type: "gyozai_get_tab_id" })
+    .then((r) => {
+      _preloadedTabId = r?.tabId ?? null;
+    })
+    .catch(() => {}),
+  chrome.runtime
+    .sendMessage({ type: "gyozai_get_settings" })
+    .then((s: Record<string, unknown> | undefined) => {
+      if (typeof s?.language === "string") {
+        _preloadedLocale =
+          s.language === "auto"
+            ? detectBrowserLocale()
+            : resolveLocale(s.language);
+      }
+    })
+    .catch(() => {}),
+]);
+
 const S = {
   brand: "color: #E8950A; font-weight: bold",
   req: "color: #3b82f6; font-weight: bold",
@@ -342,8 +367,10 @@ function GyozaiWidget() {
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // Dark mode only — matches the main website design
-  const [locale, setLocale] = useState<LocaleCode>(detectBrowserLocale());
+  // Use preloaded locale if available, else detect from browser
+  const [locale, setLocale] = useState<LocaleCode>(
+    _preloadedLocale ?? detectBrowserLocale(),
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
 
@@ -397,19 +424,12 @@ function GyozaiWidget() {
     return () => window.removeEventListener("gyozai-install-recipe", handler);
   }, []);
 
-  // Load language on mount and listen for changes from popup settings
+  // Locale is preloaded at module scope; just listen for runtime changes
   useEffect(() => {
-    chrome.runtime
-      .sendMessage({ type: "gyozai_get_settings" })
-      .then((s: Record<string, unknown> | undefined) => {
-        if (typeof s?.language === "string") {
-          setLocale(
-            s.language === "auto"
-              ? detectBrowserLocale()
-              : resolveLocale(s.language),
-          );
-        }
-      });
+    // Apply preloaded locale (may have resolved after initial render)
+    _preloadReady.then(() => {
+      if (_preloadedLocale) setLocale(_preloadedLocale);
+    });
     const handler = (changes: {
       [key: string]: chrome.storage.StorageChange;
     }) => {
@@ -427,8 +447,10 @@ function GyozaiWidget() {
   }, []);
 
   // Get tab ID on mount + check for pending navigation (cross-page resume)
+  // Uses preloaded tab ID if already resolved, otherwise waits for it.
   useEffect(() => {
-    getTabId().then(async (tid) => {
+    _preloadReady.then(async () => {
+      const tid = _preloadedTabId ?? (await getTabId());
       tabIdRef.current = tid;
       setInitialized(true);
 
@@ -1094,7 +1116,7 @@ function GyozaiWidget() {
 
       {/* Chat panel — always mounted so scroll position + state persist */}
       <div
-        className="gyozai-panel"
+        className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{ display: expanded ? "flex" : "none" }}
       >
         {/* Header */}
@@ -1419,7 +1441,16 @@ const WIDGET_STYLES = `
     box-shadow:
       0 8px 40px rgba(0, 0, 0, 0.4),
       0 0 0 1px oklch(0.3 0.01 50 / 0.3);
-    backdrop-filter: blur(8px);
+    will-change: transform, opacity;
+  }
+
+  .gyozai-panel-open {
+    animation: gyozai-panel-in 0.15s ease-out;
+  }
+
+  @keyframes gyozai-panel-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   /* ─── Header ────────────────────────────────────────────── */
