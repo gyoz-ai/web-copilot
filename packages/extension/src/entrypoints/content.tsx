@@ -1049,9 +1049,8 @@ function GyozaiWidget() {
         />
       </button>
 
-      {/* Chat panel */}
-      {expanded && (
-        <div className="gyozai-panel">
+      {/* Chat panel — always mounted so scroll position + state persist */}
+      <div className="gyozai-panel" style={{ display: expanded ? "flex" : "none" }}>
           {/* Header */}
           <div className="gyozai-header">
             <div className="gyozai-header-title">
@@ -1277,7 +1276,6 @@ function GyozaiWidget() {
             </>
           )}
         </div>
-      )}
     </>
   );
 }
@@ -1376,18 +1374,6 @@ const WIDGET_STYLES = `
       0 8px 40px rgba(0, 0, 0, 0.4),
       0 0 0 1px oklch(0.3 0.01 50 / 0.3);
     backdrop-filter: blur(8px);
-    animation: gyozai-panel-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  @keyframes gyozai-panel-in {
-    from {
-      opacity: 0;
-      transform: translateY(12px) scale(0.96);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
   }
 
   /* ─── Header ────────────────────────────────────────────── */
