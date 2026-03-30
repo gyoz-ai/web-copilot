@@ -1003,12 +1003,12 @@ function GyozaiWidget() {
 
   const handleBubbleClick = () => {
     if (expanded) {
-      // Closing — reset to fresh state for next open
-      startNewChat();
       setExpanded(false);
     } else {
-      // Opening — always fresh conversation
-      startNewChat();
+      // Only start fresh if no active conversation
+      if (!activeConvIdRef.current && messages.length === 0) {
+        startNewChat();
+      }
       setExpanded(true);
     }
   };
