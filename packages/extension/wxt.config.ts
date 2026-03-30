@@ -43,8 +43,8 @@ export default defineConfig({
     commands: {
       toggle_widget: {
         suggested_key: {
-          default: "Ctrl+Shift+G",
-          mac: "Command+Shift+G",
+          default: "Ctrl+Shift+E",
+          mac: "Command+Shift+E",
         },
         description: "Toggle gyoza widget",
       },
