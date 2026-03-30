@@ -455,6 +455,33 @@ export function App() {
                 {settings.typingSound ? "ON" : "OFF"}
               </button>
             </div>
+
+            {/* Bubble Opacity */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">Bubble Opacity</div>
+                <div className="setting-desc">
+                  Transparency of chat message bubbles (
+                  {Math.round((settings.bubbleOpacity ?? 0.85) * 100)}%)
+                </div>
+              </div>
+              <input
+                type="range"
+                min="0.3"
+                max="1"
+                step="0.05"
+                value={settings.bubbleOpacity ?? 0.85}
+                onChange={(e) => {
+                  const updated = {
+                    ...settings,
+                    bubbleOpacity: parseFloat(e.target.value),
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+                style={{ width: 80, accentColor: "#E8950A" }}
+              />
+            </div>
           </div>
         </>
       )}

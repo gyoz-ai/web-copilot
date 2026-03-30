@@ -95,6 +95,8 @@ export function GyozaiWidget() {
   const [agentSize, setAgentSize] =
     useState<ExtensionSettings["agentSize"]>("medium");
   const [typingSound, setTypingSound] = useState(true);
+  const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
+  const [isTypewriting, setIsTypewriting] = useState(false);
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
@@ -130,7 +132,7 @@ export function GyozaiWidget() {
         setExpanded(false);
       }
     },
-    leaveDelay: 500,
+    leaveDelay: 200,
   });
 
   // ─── Restore session from chrome.storage.session after preload ───
@@ -281,6 +283,8 @@ export function GyozaiWidget() {
           if (s?.agentSize) setAgentSize(s.agentSize);
           if (typeof s?.typingSound === "boolean")
             setTypingSound(s.typingSound);
+          if (typeof s?.bubbleOpacity === "number")
+            setBubbleOpacity(s.bubbleOpacity);
         })
         .catch(() => {});
     });
@@ -300,6 +304,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.typingSound === "boolean") {
         setTypingSound(newSettings.typingSound);
+      }
+      if (typeof newSettings?.bubbleOpacity === "number") {
+        setBubbleOpacity(newSettings.bubbleOpacity);
       }
     };
     chrome.storage.onChanged.addListener(handler);
@@ -934,19 +941,7 @@ export function GyozaiWidget() {
     }
   };
 
-  const handleAvatarClick = () => {
-    if (expanded) {
-      setExpanded(false);
-      hoverOpenRef.current = false;
-    } else {
-      // Click-opened stays open (ignores proximity leave)
-      hoverOpenRef.current = false;
-      if (!activeConvIdRef.current && messages.length === 0) {
-        startNewChat();
-      }
-      setExpanded(true);
-    }
-  };
+  // Avatar click disabled — chatbox opens via proximity only
 
   const tr = getTranslations(locale);
 
@@ -968,7 +963,7 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
-      {/* Speech bubble — shows last message when chatbox is closed */}
+      {/* Speech bubble — always shows last message (hidden when chatbox is open) */}
       {!expanded &&
         messages.length > 0 &&
         (() => {
@@ -996,7 +991,7 @@ export function GyozaiWidget() {
               <SpeechBubble
                 text={isThinking ? "" : lastMsg.content}
                 isThinking={isThinking}
-                autoDismissMs={8000}
+                autoDismissMs={0}
               />
             </div>
           );
@@ -1007,10 +1002,10 @@ export function GyozaiWidget() {
         size={agentSize}
         iconUrl={chrome.runtime.getURL("/icon-128.png")}
         talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
-        isTalking={loading}
+        isTalking={isTypewriting}
         position={avatarPosition}
         onDragEnd={(pos) => setAvatarPosition(pos)}
-        onClick={handleAvatarClick}
+        onClick={() => {}}
         wrapperRef={avatarWrapperRef}
       />
 
@@ -1107,9 +1102,7 @@ export function GyozaiWidget() {
           <>
             {/* Messages — speech bubble style */}
             <div className="gyozai-messages">
-              {messages.length === 0 && (
-                <div className="gyozai-empty">{tr.widget_empty}</div>
-              )}
+              {/* No empty state text — input placeholder is sufficient */}
               {messages.map((msg, idx) => {
                 const isLatestAssistant =
                   msg.role === "assistant" && idx === messages.length - 1;
@@ -1117,14 +1110,16 @@ export function GyozaiWidget() {
                   <div
                     key={msg.id}
                     className={`gyozai-msg gyozai-msg-${msg.role}`}
+                    style={{ opacity: bubbleOpacity }}
                   >
                     {msg.role === "assistant" ? (
                       isLatestAssistant ? (
                         <TypewriterText
                           text={msg.content}
-                          speed={25}
+                          speed={10}
                           enabled={true}
                           soundEnabled={typingSound}
+                          onTypingChange={setIsTypewriting}
                         />
                       ) : (
                         <FormatMessage text={msg.content} />

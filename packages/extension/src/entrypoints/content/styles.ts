@@ -349,6 +349,9 @@ export const WIDGET_STYLES = `
     align-items: center;
     gap: 4px;
     border-radius: 10px;
+    background: oklch(0.16 0.012 48 / 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
     transition: background 0.2s ease;
   }
   .gyozai-history-item:hover {

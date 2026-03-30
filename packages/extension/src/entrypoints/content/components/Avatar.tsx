@@ -61,10 +61,10 @@ export function Avatar({
         cursor: isDragging ? "grabbing" : "default",
       }}
     >
-      {/* Avatar image — swaps between idle and talking */}
+      {/* Avatar image — swaps between idle and talking, also draggable */}
       <button
         className={`gyozai-avatar ${isTalking ? "gyozai-avatar-talking" : ""}`}
-        onClick={handleClick}
+        onPointerDown={onPointerDown}
         style={{
           width: px,
           height: px,
@@ -110,10 +110,10 @@ export function Avatar({
           cursor: isDragging ? "grabbing" : "grab",
           fontFamily: "'Cabinet Grotesk', system-ui, sans-serif",
           fontWeight: 700,
-          fontSize: 11,
+          fontSize: 13,
           color: "var(--g-text-secondary)",
-          padding: "2px 6px",
-          borderRadius: 6,
+          padding: "4px 10px",
+          borderRadius: 8,
           background: "oklch(0.13 0.015 50 / 0.8)",
           backdropFilter: "blur(4px)",
           whiteSpace: "nowrap",
@@ -132,8 +132,8 @@ export function Avatar({
         </span>
         {/* Drag handle icon (grip dots) */}
         <svg
-          width="10"
-          height="10"
+          width="14"
+          height="14"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

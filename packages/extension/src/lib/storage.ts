@@ -10,6 +10,8 @@ export interface ExtensionSettings {
   language: string; // locale code or "auto" for browser detection
   agentSize: "small" | "medium" | "big";
   typingSound: boolean;
+  /** Opacity of chat speech bubbles (0.0–1.0). */
+  bubbleOpacity: number;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   language: "auto",
   agentSize: "medium",
   typingSound: true,
+  bubbleOpacity: 0.85,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
