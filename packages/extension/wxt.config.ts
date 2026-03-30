@@ -43,8 +43,8 @@ export default defineConfig({
     commands: {
       toggle_widget: {
         suggested_key: {
-          default: "Alt+G",
-          mac: "Alt+G",
+          default: "Ctrl+Shift+G",
+          mac: "MacCtrl+Command+G",
         },
         description: "Toggle gyoza widget",
       },
