@@ -36,7 +36,7 @@ export default defineConfig({
     permissions: ["activeTab", "tabs", "storage", "scripting", "notifications"],
     web_accessible_resources: [
       {
-        resources: ["/icon-128.png"],
+        resources: ["/icon-128.png", "/icon-talking.png"],
         matches: ["<all_urls>"],
       },
     ],

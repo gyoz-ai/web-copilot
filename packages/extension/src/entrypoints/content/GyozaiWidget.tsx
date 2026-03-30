@@ -974,23 +974,23 @@ export function GyozaiWidget() {
         (() => {
           const lastMsg = messages[messages.length - 1];
           const isThinking = lastMsg.role === "user" || loading;
+          const rect = avatarWrapperRef.current?.getBoundingClientRect();
+          const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
+          const posStyle: React.CSSProperties = rect
+            ? {
+                left: rect.left + rect.width / 2 - 140,
+                ...(showAbove
+                  ? { bottom: window.innerHeight - rect.top + 8 }
+                  : { top: rect.bottom + 8 }),
+              }
+            : { right: 20, bottom: 100 };
           return (
             <div
               style={{
                 position: "fixed",
-                left: avatarWrapperRef.current
-                  ? avatarWrapperRef.current.getBoundingClientRect().left +
-                    avatarWrapperRef.current.getBoundingClientRect().width / 2 -
-                    140
-                  : "auto",
-                bottom: avatarWrapperRef.current
-                  ? window.innerHeight -
-                    avatarWrapperRef.current.getBoundingClientRect().top +
-                    8
-                  : "auto",
-                right: avatarWrapperRef.current ? "auto" : 20,
                 zIndex: 2147483647,
                 pointerEvents: "none",
+                ...posStyle,
               }}
             >
               <SpeechBubble
@@ -1012,10 +1012,30 @@ export function GyozaiWidget() {
         wrapperRef={avatarWrapperRef}
       />
 
-      {/* Chat panel — always mounted so scroll position + state persist */}
+      {/* Chat panel — positioned dynamically relative to avatar */}
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
-        style={{ display: expanded ? "flex" : "none" }}
+        style={{
+          display: expanded ? "flex" : "none",
+          ...(avatarWrapperRef.current
+            ? (() => {
+                const rect = avatarWrapperRef.current.getBoundingClientRect();
+                const avatarCenterX = rect.left + rect.width / 2;
+                const showAbove = rect.top > window.innerHeight / 2;
+                const panelWidth = 380;
+                const left = Math.max(
+                  8,
+                  Math.min(
+                    avatarCenterX - panelWidth / 2,
+                    window.innerWidth - panelWidth - 8,
+                  ),
+                );
+                return showAbove
+                  ? { left, bottom: window.innerHeight - rect.top + 8 }
+                  : { left, top: rect.bottom + 8 };
+              })()
+            : {}),
+        }}
         ref={panelRef}
         onMouseEnter={() => {
           insidePanelRef.current = true;
