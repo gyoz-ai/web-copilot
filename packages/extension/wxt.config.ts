@@ -43,8 +43,8 @@ export default defineConfig({
     commands: {
       _execute_action: {
         suggested_key: {
-          default: "Ctrl+Shift+G",
-          mac: "Command+Shift+G",
+          default: "Alt+G",
+          mac: "Alt+G",
         },
         description: "Open gyoza assistant",
       },
