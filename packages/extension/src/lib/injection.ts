@@ -8,6 +8,11 @@
 
 const HOST_ID = "gyozai-extension-root";
 
+const S = "color: #E8950A; font-weight: bold";
+function log(...args: unknown[]) {
+  console.log("%c[gyoza:inject]", S, ...args);
+}
+
 /** Wait for document.body to be available (handles edge cases where
  *  document_idle fires before body exists, e.g. about:blank → real page). */
 export function waitForBody(timeoutMs = 2000): Promise<HTMLElement> {
@@ -55,14 +60,6 @@ export function injectWidget(
   return host;
 }
 
-/** Re-attach a detached host element to document.body.
- *  The React tree inside the shadow DOM stays alive — no state loss. */
-function reattachHost(host: HTMLDivElement): boolean {
-  if (!document.body) return false;
-  document.body.appendChild(host);
-  return host.isConnected;
-}
-
 /** Inject a tiny script into the MAIN world that patches
  *  history.pushState / replaceState to dispatch a DOM event.
  *  Content scripts run in an isolated world — they can't intercept
@@ -81,6 +78,7 @@ function patchMainWorldHistory() {
     history.replaceState=function(){var r=oR.apply(this,arguments);window.dispatchEvent(new Event(E));return r};
   })()`;
   (document.head || document.documentElement).appendChild(script);
+  log("MAIN-world history patch injected");
 }
 
 /** Watch for host element detachment and re-attach it (preserving React state).
@@ -88,17 +86,21 @@ function patchMainWorldHistory() {
  *  Uses three complementary strategies:
  *  1. MutationObserver on body — catches direct child removal
  *  2. MAIN-world history patch — catches SPA pushState/replaceState
- *  3. Periodic liveness check — catches anything else (2s interval)
+ *  3. Periodic liveness check — catches anything else (300ms interval)
  *
  *  Returns a cleanup function (used in tests). */
 export function watchForRemoval(host: HTMLDivElement): () => void {
-  function check() {
+  function reattach(source: string) {
     if (host.isConnected) return;
-    // Re-attach the SAME host element — React tree stays alive
-    if (document.body) {
-      document.body.appendChild(host);
-      reobserve();
+    if (!document.body) {
+      log(`[${source}] host detached but document.body missing — waiting`);
+      return;
     }
+    log(`[${source}] host detached — re-attaching to body`);
+    document.body.appendChild(host);
+    reobserve();
+    // Re-inject the MAIN-world patch too (SPA may have wiped the <script>)
+    patchMainWorldHistory();
   }
 
   function reobserve() {
@@ -109,17 +111,19 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
   }
 
   // 1. MutationObserver on the parent — catches direct child removal
-  const observer = new MutationObserver(check);
+  const observer = new MutationObserver(() => reattach("MutationObserver"));
   reobserve();
+  log("MutationObserver watching body for child removal");
 
   // 2. SPA navigation hooks via MAIN world script injection
   patchMainWorldHistory();
-  const onNavChange = () => setTimeout(check, 50);
+  const onNavChange = () => setTimeout(() => reattach("navchange-event"), 50);
   window.addEventListener("popstate", onNavChange);
   window.addEventListener("gyozai:navchange", onNavChange);
+  log("Listening for popstate + gyozai:navchange events");
 
-  // 3. Periodic liveness check — fallback for edge cases
-  const intervalId = setInterval(check, 2000);
+  // 3. Periodic liveness check — fast fallback (300ms)
+  const intervalId = setInterval(() => reattach("periodic-300ms"), 300);
 
   return () => {
     observer.disconnect();

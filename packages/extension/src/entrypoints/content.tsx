@@ -399,12 +399,21 @@ function GyozaiWidget() {
   // ─── Restore session from chrome.storage.session after preload ───
   useEffect(() => {
     _preloadReady.then(() => {
+      log(
+        "Session preload resolved — tabId:",
+        _preloadedTabId,
+        "session:",
+        _preloadedSession
+          ? `expanded=${_preloadedSession.expanded}, msgs=${_preloadedSession.messages.length}, convId=${_preloadedSession.activeConvId}`
+          : "null",
+      );
       if (_preloadedSession) {
         setExpanded(_preloadedSession.expanded);
         setInput(_preloadedSession.input);
         setMessages(_preloadedSession.messages);
         setViewMode(_preloadedSession.viewMode);
         activeConvIdRef.current = _preloadedSession.activeConvId;
+        log("Session restored from storage");
       }
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
@@ -418,10 +427,40 @@ function GyozaiWidget() {
     // the stored session with empty defaults on first render).
     if (!sessionRestoredRef.current) return;
     const tabId = tabIdRef.current ?? _preloadedTabId;
-    if (tabId == null) return;
+    if (tabId == null) {
+      log("Session save skipped — no tab ID yet");
+      return;
+    }
     // Debounce saves to avoid thrashing storage on rapid state changes
     if (saveSessionRef.current) clearTimeout(saveSessionRef.current);
     saveSessionRef.current = setTimeout(() => {
+      const session = {
+        expanded,
+        activeConvId: activeConvIdRef.current,
+        messages,
+        input,
+        viewMode,
+      };
+      log(
+        "Saving session — expanded:",
+        expanded,
+        "msgs:",
+        messages.length,
+        "convId:",
+        activeConvIdRef.current,
+      );
+      saveWidgetSession(tabId, session).catch(() => {});
+    }, 100);
+  }, [expanded, messages, input, viewMode]);
+
+  // ─── Flush session immediately on page unload (cross-origin nav) ───
+  // The debounced save may not fire before the page is destroyed.
+  useEffect(() => {
+    const flush = () => {
+      if (!sessionRestoredRef.current) return;
+      const tabId = tabIdRef.current ?? _preloadedTabId;
+      if (tabId == null) return;
+      // Can't await — page is unloading. Fire and hope it lands.
       saveWidgetSession(tabId, {
         expanded,
         activeConvId: activeConvIdRef.current,
@@ -429,7 +468,17 @@ function GyozaiWidget() {
         input,
         viewMode,
       }).catch(() => {});
-    }, 100);
+    };
+    window.addEventListener("beforeunload", flush);
+    // Also fire on visibilitychange hidden (covers mobile/tab switch)
+    const onVisChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onVisChange);
+    };
   }, [expanded, messages, input, viewMode]);
 
   // Listen for auto-imported recipe notification
