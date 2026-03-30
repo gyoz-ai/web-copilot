@@ -41,12 +41,12 @@ export default defineConfig({
       },
     ],
     commands: {
-      _execute_action: {
+      toggle_widget: {
         suggested_key: {
           default: "Alt+G",
           mac: "Alt+G",
         },
-        description: "Open gyoza assistant",
+        description: "Toggle gyoza widget",
       },
     },
   },
