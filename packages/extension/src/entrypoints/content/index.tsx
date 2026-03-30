@@ -207,23 +207,11 @@ export default defineContentScript({
     tryAutoImportRecipe().catch(() => {});
 
     // Inject installed recipes list as global var for page UI (main world)
-    function setMainWorldVar(
-      recipes: Array<{ domain: string; name: string; enabled: boolean }>,
-    ) {
-      const script = document.createElement("script");
-      script.textContent = `window.__GYOZAI_INSTALLED_RECIPES__=${JSON.stringify(recipes)};`;
-      document.documentElement.appendChild(script);
-      script.remove();
-    }
+    // Uses chrome.scripting.executeScript via background (CSP-immune)
     function refreshInstalledRecipes() {
       chrome.runtime
-        .sendMessage({ type: "gyozai_get_recipes_list" })
-        .then((recipes) => {
-          setMainWorldVar(recipes || []);
-        })
-        .catch(() => {
-          setMainWorldVar([]);
-        });
+        .sendMessage({ type: "gyozai_set_recipes_global" })
+        .catch(() => {});
     }
     refreshInstalledRecipes();
 

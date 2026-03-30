@@ -414,14 +414,18 @@ export function GyozaiWidget() {
     }
   }, [expanded, initialized, viewMode]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom only for NEW messages (not on session restore)
+  const prevMsgCountRef = useRef(messages.length);
   useEffect(() => {
-    if (messages.length > 0) {
+    const prevCount = prevMsgCountRef.current;
+    prevMsgCountRef.current = messages.length;
+    // Only scroll if a new message was added (not on restore or initial load)
+    if (messages.length > prevCount && prevCount > 0) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 30);
     }
-  }, [messages, loading]);
+  }, [messages.length]);
 
   // Helper to add an assistant message
   const addAssistantMessage = useCallback((content: string) => {
@@ -1158,7 +1162,7 @@ export function GyozaiWidget() {
                       animatedMsgIdRef.current !== msg.id ? (
                         <TypewriterText
                           text={msg.content}
-                          speed={10}
+                          speed={5}
                           enabled={true}
                           soundEnabled={typingSound}
                           onTypingChange={(typing) => {

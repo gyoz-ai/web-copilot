@@ -184,6 +184,33 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === "gyozai_set_recipes_global") {
+      const tabId = sender.tab?.id;
+      if (tabId == null) {
+        sendResponse({ ok: false });
+        return false;
+      }
+      getRecipes()
+        .then((recipes) => {
+          const data = recipes.map((r) => ({
+            domain: r.domain,
+            name: r.name,
+            enabled: r.enabled,
+          }));
+          return chrome.scripting.executeScript({
+            target: { tabId },
+            world: "MAIN",
+            func: (d: unknown) => {
+              (window as any).__GYOZAI_INSTALLED_RECIPES__ = d;
+            },
+            args: [data],
+          });
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
     if (message.type === "gyozai_open_popup") {
       chrome.action.openPopup();
       return false;
