@@ -136,7 +136,7 @@ export const WIDGET_STYLES = `
     text-align: center;
     padding: 24px 16px;
     font-size: 13px;
-    color: oklch(0.85 0.03 60);
+    color: #fff;
     line-height: 1.5;
     background: oklch(0.15 0.02 50);
     border-radius: 12px;
