@@ -115,7 +115,33 @@ export function GyozaiWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number | null>(null);
+  const scrollRestoredRef = useRef(false);
   const avatarWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Callback ref for messages container — restores scroll when element mounts
+  const messagesContainerCallbackRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      messagesContainerRef.current = node;
+      if (
+        node &&
+        savedScrollTopRef.current !== null &&
+        !scrollRestoredRef.current
+      ) {
+        const saved = savedScrollTopRef.current;
+        scrollRestoredRef.current = true;
+        savedScrollTopRef.current = null;
+        // Apply after DOM settles
+        requestAnimationFrame(() => {
+          node.scrollTop = saved;
+          // Double-apply to survive any layout shifts
+          requestAnimationFrame(() => {
+            node.scrollTop = saved;
+          });
+        });
+      }
+    },
+    [],
+  );
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
@@ -481,34 +507,17 @@ export function GyozaiWidget() {
     };
   }, [expanded]);
 
-  // Scroll management: restore saved position OR scroll to bottom on new messages
+  // Scroll to bottom only when NEW messages are added (not on restore)
   const lastMsgCountRef = useRef(0);
-  const scrollRestoredRef = useRef(false);
-
-  // Apply saved scroll after session restore — run once after messages render
   useEffect(() => {
+    // Skip if scroll was just restored from session
     if (
-      savedScrollTopRef.current !== null &&
-      !scrollRestoredRef.current &&
-      messages.length > 0 &&
-      messagesContainerRef.current
+      scrollRestoredRef.current &&
+      messages.length <= lastMsgCountRef.current
     ) {
-      const saved = savedScrollTopRef.current;
-      scrollRestoredRef.current = true;
-      savedScrollTopRef.current = null;
       lastMsgCountRef.current = messages.length;
-      // Apply immediately + delayed to survive layout shifts
-      messagesContainerRef.current.scrollTop = saved;
-      requestAnimationFrame(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = saved;
-        }
-      });
+      return;
     }
-  });
-
-  // Scroll to bottom only when NEW messages are added
-  useEffect(() => {
     if (
       messages.length > lastMsgCountRef.current &&
       lastMsgCountRef.current > 0
@@ -1234,7 +1243,7 @@ export function GyozaiWidget() {
         {viewMode === "chat" && (
           <>
             {/* Messages — speech bubble style */}
-            <div className="gyozai-messages" ref={messagesContainerRef}>
+            <div className="gyozai-messages" ref={messagesContainerCallbackRef}>
               {messages.length === 0 && (
                 <div className="gyozai-empty" style={{ opacity: 0.6 }}>
                   {(() => {

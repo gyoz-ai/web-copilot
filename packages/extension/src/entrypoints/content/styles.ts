@@ -80,6 +80,7 @@ export const WIDGET_STYLES = `
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: 12px;
     z-index: 2147483647;
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
