@@ -83,10 +83,10 @@ export const WIDGET_STYLES = `
     z-index: 2147483647;
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    background: oklch(0.95 0 0 / 0.03);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid oklch(0.95 0 0 / 0.06);
+    background: transparent;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: none;
     color: var(--g-text-primary);
     will-change: transform, opacity;
   }
