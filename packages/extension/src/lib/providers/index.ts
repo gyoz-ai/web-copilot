@@ -28,6 +28,9 @@ export function createProvider(settings: ExtensionSettings): ProviderResult {
     case "claude": {
       const anthropic = createAnthropic({
         apiKey: settings.apiKey,
+        headers: {
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
       });
       return { type: "model", model: anthropic(settings.model) };
     }
