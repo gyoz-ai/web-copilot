@@ -13,6 +13,12 @@ import {
 } from "../../lib/i18n";
 import { GyozaiWidget, setPreloadState } from "./GyozaiWidget";
 import { WIDGET_STYLES } from "./styles";
+import {
+  capturePageContext,
+  formatPageContext,
+  captureCleanHtml,
+} from "@gyoz-ai/engine";
+import type { SnapshotType } from "@gyoz-ai/engine";
 
 // ─── Module-level preload ────────────────────────────────────────────────────
 
@@ -123,6 +129,36 @@ async function tryAutoImportRecipe() {
   }
 }
 
+// ─── Tool Execution Listener (for background worker tool calls) ─────────────
+
+const SNAPSHOT_MAP: Record<string, SnapshotType> = {
+  buttons: "buttons",
+  links: "links",
+  forms: "forms",
+  inputs: "inputs",
+  textContent: "textContent",
+  fullPage: "all",
+};
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "gyozai_tool_capture_context") {
+    try {
+      const types: SnapshotType[] = (msg.snapshotTypes || []).map(
+        (t: string) => SNAPSHOT_MAP[t] || "all",
+      );
+      const pageCtx = capturePageContext(types);
+      const ctxText = formatPageContext(pageCtx);
+      sendResponse({ context: ctxText || captureCleanHtml() });
+    } catch (e) {
+      sendResponse({
+        context:
+          "Failed to capture: " + (e instanceof Error ? e.message : String(e)),
+      });
+    }
+    return false;
+  }
+});
+
 // ─── Content Script Entry ────────────────────────────────────────────────────
 
 export default defineContentScript({
@@ -169,5 +205,27 @@ export default defineContentScript({
 
     // Recipe auto-import runs independently
     tryAutoImportRecipe().catch(() => {});
+
+    // Inject installed recipes list as global var for page UI (main world)
+    // Uses chrome.scripting.executeScript via background (CSP-immune)
+    function refreshInstalledRecipes() {
+      chrome.runtime
+        .sendMessage({ type: "gyozai_set_recipes_global" })
+        .catch(() => {});
+    }
+    refreshInstalledRecipes();
+
+    // Refresh when recipes change (add/remove/toggle)
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.gyozai_recipes) {
+        refreshInstalledRecipes();
+      }
+    });
+    // Also refresh on auto-import notification
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.type === "gyozai_recipe_auto_added") {
+        refreshInstalledRecipes();
+      }
+    });
   },
 });

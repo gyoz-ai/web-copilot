@@ -8,65 +8,60 @@ export interface Capabilities {
   clarify?: boolean;
 }
 
-const BASE_RULES = `- Always include at least one action
-- EVERY response MUST include a show-message action explaining what you're doing or what you found. NEVER perform navigate, click, execute-js, or highlight-ui without also including a show-message. The user must always see feedback in the chat. The only exception: batch operations (e.g. translating multiple elements) where only the FINAL action should have a show-message summarizing what was done.
-- Be concise in messages
-- Use the user context (language, timezone, current URL, page title, screen size, and any custom user info) to give relevant responses
-- If the user is already on the page they're asking about, help them USE the page rather than navigating to it
-- For TRANSLATION requests: you MUST have fullPageSnapshot before attempting any translation. If you don't have page context yet, request "fullPageSnapshot" via extraRequests with a brief show-message "Let me read the page to translate it...". Once you have the snapshot, use execute-js to replace each element's FULL text (el.textContent = "complete translated sentence"), never use .replace() for partial word swaps. Use the exact selectors from the snapshot. Translate the complete text content, not word-by-word. IMPORTANT: translate ALL visible text — headings, paragraphs, labels, placeholders, buttons, links, table headers, list items. Do not skip any text element. Go through the page snapshot systematically top-to-bottom.
-- For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight-ui to point at the element being explained. Use execute-js to add a tooltip, annotation, or small label next to the element (e.g. insert a span with explanation text, add a title attribute, or change the element's style to draw attention). Combine with a concise show-message. The goal is to explain IN CONTEXT on the page, not just in the chat bubble.
-- Keep execute-js code simple. Target one element per action. NEVER set document.body.innerHTML, document.documentElement.innerHTML, or replace the entire page content. Only modify individual elements.
-- SELECTOR RULES for execute-js: NEVER use nth-child, nth-of-type, or querySelectorAll()[index] — these break when the DOM changes. Instead:
-  - First choice: use #id or [name="..."] selectors if available (special characters in IDs are handled automatically)
-  - Second choice: use a unique class or attribute selector
-  - Third choice: find elements by their TEXT CONTENT. Example: \`Array.from(document.querySelectorAll('a')).find(el => el.textContent.trim() === '入金する')\`. This is more reliable than positional selectors.
-  - NEVER assume element positions. Always match by content or unique attributes.
-  - For translation: find the element by its CURRENT text, then set the new text. Example: \`const el = Array.from(document.querySelectorAll('h2')).find(e => e.textContent.includes('お知らせ')); if (el) el.textContent = 'Announcements';\`
-  - Always null-check: \`if (el) el.textContent = '...'\` — never set properties on potentially null elements.`;
+const BASE_RULES = `- You MUST call the show_message tool in EVERY response to explain what you're doing. Never perform actions silently. The only exception: batch operations (e.g. translating multiple elements) where only the FINAL step should include show_message.
+- Be concise in messages.
+- Use the user context (language, timezone, current URL, page title, screen size, and any custom user info) to give relevant responses.
+- If the user is already on the page they're asking about, help them USE the page rather than navigating to it.
+- For TRANSLATION requests: you MUST call get_page_context with ["fullPage"] before attempting any translation. Once you have the snapshot, use execute_js to replace each element's FULL text (el.textContent = "complete translated sentence"), never use .replace() for partial word swaps. Translate ALL visible text — headings, paragraphs, labels, placeholders, buttons, links, table headers, list items. Go through the page snapshot systematically top-to-bottom.
+- For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight_ui to point at the element being explained. Use execute_js to add a tooltip or annotation. Combine with a concise show_message.
+- Keep execute_js code simple. Target one element per call. NEVER set document.body.innerHTML or replace entire page content.
+- SELECTOR RULES for execute_js: NEVER use nth-child, nth-of-type, or querySelectorAll()[index]. Instead:
+  - First: use #id or [name="..."] selectors if available
+  - Second: use a unique class or attribute selector
+  - Third: find elements by TEXT CONTENT. Example: Array.from(document.querySelectorAll('a')).find(el => el.textContent.trim() === '入金する')
+  - Always null-check: if (el) el.textContent = '...'
+- After calling navigate, do NOT call any more tools — the page will reload and your context will be lost.
+- Call set_expression at the start of your response to set the avatar mood.`;
 
-function buildCapabilityRules(caps: Capabilities): string {
-  const rules: string[] = [];
+function buildCapabilityNotes(caps: Capabilities): string {
+  const notes: string[] = [];
 
   if (caps.navigate !== false) {
-    rules.push(
-      '- "navigate": send the user to a specific page. Set "target" to the URL path.',
-    );
-  }
-  if (caps.showMessage !== false) {
-    rules.push(
-      '- "show-message": communicate information to the user. Use when no other action fits.',
+    notes.push(
+      "- navigate: send the user to a specific page. Causes full page reload — do not use other tools after this.",
     );
   }
   if (caps.click) {
-    rules.push(
-      '- "click": click a specific element on the current page. Set "selector" to a CSS selector.',
+    notes.push(
+      "- click: click a specific element on the current page by CSS selector.",
     );
   }
   if (caps.executeJs) {
-    rules.push(
-      '- "execute-js": run JavaScript on the page. Set "code" to the JS code string. Use for: filling forms, clicking buttons, editing text content (translation), changing styles (colors, highlights), and any DOM manipulation. For translation: use el.textContent = "translated text". For styling: use el.style.backgroundColor = "#color". Target elements with querySelector/querySelectorAll. Keep code simple — one element per action when possible. NEVER modify body, html, or framework wrapper elements.',
+    notes.push(
+      "- execute_js: run JavaScript on the page. For filling forms, clicking buttons, editing text, changing styles. NEVER modify body/html/framework wrappers.",
     );
   } else {
-    rules.push(
-      '- "execute-js": DISABLED. Do NOT use this action type. If the user asks you to interact with a form or edit page content, use "show-message" to explain instead.',
+    notes.push(
+      "- execute_js: DISABLED. Do NOT use. If the user asks to interact with a form or edit page content, use show_message to explain instead.",
     );
   }
   if (caps.highlightUi !== false) {
-    rules.push(
-      '- "highlight-ui": draw attention to an element with a glowing outline. Set "selector" to a CSS selector. The element will glow gold and scroll into view. Use this to point at things.',
+    notes.push(
+      "- highlight_ui: draw attention to an element with a glowing gold outline. Scrolls into view.",
     );
   }
   if (caps.fetch) {
-    rules.push(
-      '- "fetch": make an HTTP request to get data before deciding. Set "url" and "method". The result will be sent back to you.',
+    notes.push(
+      "- fetch_url: make an HTTP request to get data before deciding.",
     );
   }
   if (caps.clarify !== false) {
-    rules.push(
-      '- "clarify": ask the user a follow-up question. Set "message" and "options" (array of strings). When used together with execute-js (e.g. you filled a form), your clarify message MUST reference what you just did on screen — e.g. "I\'ve filled in the form with 1000 JPY to account 123. Take a look and confirm if you want to submit." with options like ["Yes, submit", "No, cancel"]. Do NOT repeat the action on confirmation — just click the submit button.',
+    notes.push(
+      "- clarify: ask the user a follow-up question with clickable options. After clarify, stop and wait for the user's response — do not call more action tools.",
     );
   }
-  return rules.join("\n");
+
+  return notes.join("\n");
 }
 
 export function buildSystemPrompt(
@@ -76,10 +71,10 @@ export function buildSystemPrompt(
 ): string {
   const intro =
     mode === "manifest"
-      ? `You are an AI website navigation assistant. You help users find what they need on a website by interpreting their questions and responding with specific actions.
+      ? `You are an AI website navigation assistant. You help users find what they need on a website by interpreting their questions and using your tools to take actions.
 
 You have access to the website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. Use this information to determine the best action.`
-      : `You are an AI website navigation assistant operating without a recipe. You help users navigate by analyzing the raw HTML of the current page.
+      : `You are an AI website navigation assistant operating without a recipe. You help users navigate by analyzing the page content.
 
 You will receive the page's HTML content. Analyze it to understand:
 - Navigation links and their destinations
@@ -87,48 +82,34 @@ You will receive the page's HTML content. Analyze it to understand:
 - Page structure and content
 - Forms and their purposes`;
 
-  const capabilitySection = `Available action types (ONLY use these — any other type is invalid):
-${buildCapabilityRules(caps)}`;
+  const capabilitySection = `Available tools and when to use them:
+- show_message: communicate information to the user. MUST be called in every response.
+- set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
+- get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
+${buildCapabilityNotes(caps)}`;
 
-  const extraRequestSection = `Extra requests (extraRequests field):
-You can request additional page context by including "extraRequests" in your response. Available types:
-- "textContentSnapshot": visible text content. Use to UNDERSTAND what the page says, give context, or answer questions about the page.
-- "linksSnapshot": all links with hrefs. Use to know WHERE to navigate the user.
-- "buttonsSnapshot": all buttons. Use to know what actions are available to click.
-- "formsSnapshot": all forms with fields. Use when you need to FILL a form or interact with form elements.
-- "inputsSnapshot": standalone inputs not in forms. Use for search bars or other inputs outside forms.
-- "fullPageSnapshot": everything above combined. Use when you need to EDIT or TRANSLATE the page — this gives you all selectors and text needed to modify elements with execute-js.
-
-CRITICAL rules for extraRequests:
-- ALWAYS include extraRequests when you need page content you don't already have. NEVER ask the user to describe page content — use extraRequests to read it yourself.
-- For TRANSLATION or EDITING page text: ALWAYS use "fullPageSnapshot" — you need the full DOM structure with selectors to target elements with execute-js.
-- For understanding/explaining page content: use "textContentSnapshot" — lighter, just the text.
-- For navigation help: use "linksSnapshot".
-- For form interactions: use "formsSnapshot" and/or "inputsSnapshot".
-- For clicking buttons: use "buttonsSnapshot".
-- When navigating to a page where you'll need to interact, include extraRequests preemptively.
-- If you need to confirm an action with the user, use "clarify" AND include extraRequests at the same time so context arrives with the user's answer.
-- Do NOT ask the user "what does the page say?" or "can you tell me?" — you have extraRequests to read the page yourself.
-
-Auto-continue (autoContinue field):
-When you include "extraRequests" and you want the engine to automatically re-query you with the captured page context (so you can complete the task in the next turn), set "autoContinue": true. If you want to stop and wait for the user's next message, omit it or set false.
-- For TRANSLATION: set autoContinue: true with fullPageSnapshot so you get the context and can immediately translate.
-- For NAVIGATION + form filling: set autoContinue: true so you can fill the form after the page loads.
-- For simple answers or when you already have enough context: omit autoContinue.`;
+  const contextSection = `Using get_page_context:
+- Call get_page_context when you need page content you don't already have. NEVER ask the user to describe page content — read it yourself.
+- For TRANSLATION or EDITING: use ["fullPage"] — you need the full DOM structure with selectors.
+- For understanding/explaining: use ["textContent"].
+- For navigation help: use ["links"].
+- For form interactions: use ["forms", "inputs"].
+- For clicking buttons: use ["buttons"].
+- When navigating to a page where you'll need to interact, first navigate, then on the next turn use get_page_context.`;
 
   const yoloSection = yoloMode
-    ? `\n\nYOLO MODE IS ON: The user wants you to act immediately without asking for confirmation. Do NOT use clarify actions. Do NOT ask "should I submit?" or "are you sure?". Just DO IT — fill forms and submit them, click buttons, navigate pages. Complete the entire task in one go. If you fill a form, also click the submit button in the same response.`
+    ? `\n\nYOLO MODE IS ON: Act immediately without asking for confirmation. Do NOT use clarify. Do NOT ask "should I submit?" or "are you sure?". Just DO IT — fill forms and submit them, click buttons, navigate pages. Complete the entire task in one go.`
     : "";
 
   return `${intro}
 
 ${capabilitySection}
 
-${extraRequestSection}
+${contextSection}
 
 Rules:
 ${BASE_RULES}
-${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, use \"show-message\" to suggest alternatives" : "- Derive your understanding from the HTML provided"}${yoloSection}`;
+${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, use show_message to suggest alternatives." : "- Derive your understanding from the HTML provided."}${yoloSection}`;
 }
 
 export function buildUserPrompt(opts: {

@@ -80,13 +80,14 @@ export const WIDGET_STYLES = `
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: 12px;
     z-index: 2147483647;
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    /* rgba(0,0,0,0.01) instead of transparent — invisible but gives
-       the panel a solid hit area for mouse events so cursor doesn't
-       "fall through" gaps between message bubbles */
-    background: rgba(0, 0, 0, 0.01);
+    background: transparent;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    border: none;
     color: var(--g-text-primary);
     will-change: transform, opacity;
   }
@@ -136,8 +137,10 @@ export const WIDGET_STYLES = `
     text-align: center;
     padding: 24px 16px;
     font-size: 13px;
-    color: var(--g-text-muted);
+    color: #fff;
     line-height: 1.5;
+    background: oklch(0.25 0.02 50);
+    border-radius: 12px;
   }
 
   .gyozai-msg {
@@ -189,6 +192,24 @@ export const WIDGET_STYLES = `
     border-width: 6px 6px 0 0;
     border-style: solid;
     border-color: oklch(0.2 0.01 46 / 0.85) transparent transparent transparent;
+  }
+
+  /* ─── Tool Status Messages ────────────────────────────────── */
+
+  .gyozai-msg-status {
+    align-self: flex-start;
+    background: oklch(0.18 0.015 50 / 0.9);
+    color: oklch(0.6 0.02 50);
+    border: none;
+    border-left: 2px solid oklch(0.55 0.15 60 / 0.7);
+    border-radius: 4px;
+    font-size: 11px;
+    font-style: italic;
+    padding: 5px 10px;
+    max-width: 90%;
+  }
+  .gyozai-msg-status::after {
+    display: none;
   }
 
   /* ─── Typing Indicator ──────────────────────────────────── */

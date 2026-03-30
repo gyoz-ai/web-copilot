@@ -1,9 +1,9 @@
-import type { LLMProvider, Message } from "./types";
+import type { LegacyLLMProvider, Message } from "./types";
 import type { ActionResponse } from "@gyoz-ai/engine";
 
 const PLATFORM_URL = "https://api.gyoz.ai";
 
-export class ManagedProvider implements LLMProvider {
+export class ManagedProvider implements LegacyLLMProvider {
   private token: string;
 
   constructor(token: string) {

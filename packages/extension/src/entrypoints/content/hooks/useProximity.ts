@@ -103,9 +103,24 @@ export function useProximity({
       });
     };
 
+    // When cursor leaves the viewport entirely, trigger leave
+    const handleMouseOut = (e: MouseEvent) => {
+      if (!e.relatedTarget && isInsideRef.current) {
+        cancelLeave();
+        leaveTimerRef.current = setTimeout(() => {
+          if (isInsideRef.current) {
+            isInsideRef.current = false;
+            onLeaveRef.current();
+          }
+        }, leaveDelay);
+      }
+    };
+
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
+    document.addEventListener("mouseout", handleMouseOut);
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseout", handleMouseOut);
       cancelLeave();
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);

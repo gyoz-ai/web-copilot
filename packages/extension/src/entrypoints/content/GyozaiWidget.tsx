@@ -20,7 +20,7 @@ import {
   t,
 } from "../../lib/i18n";
 import { FormatMessage } from "./components/FormatMessage";
-import type { Message, ClarifyState, ActionResult, ViewMode } from "./types";
+import type { Message, ClarifyState, AgentResult, ViewMode } from "./types";
 import {
   mapExtraRequests,
   sanitizeError,
@@ -113,7 +113,31 @@ export function GyozaiWidget() {
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef<number | null>(null);
+  const scrollRestoredRef = useRef(false);
   const avatarWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Restore scroll position after session restore + messages render
+  const [scrollReady, setScrollReady] = useState(false);
+  useEffect(() => {
+    if (
+      !scrollRestoredRef.current &&
+      savedScrollTopRef.current !== null &&
+      messagesContainerRef.current &&
+      messages.length > 0
+    ) {
+      const saved = savedScrollTopRef.current;
+      scrollRestoredRef.current = true;
+      savedScrollTopRef.current = null;
+      log("Restoring scroll to", saved);
+      const container = messagesContainerRef.current;
+      container.scrollTop = saved;
+      requestAnimationFrame(() => {
+        container.scrollTop = saved;
+      });
+    }
+  }, [messages, scrollReady]);
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
@@ -121,6 +145,7 @@ export function GyozaiWidget() {
   // Proximity detection — open chatbox when cursor is near avatar
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
+  const speechBubbleRef = useRef<HTMLDivElement>(null);
   const insidePanelRef = useRef(false);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
@@ -156,6 +181,7 @@ export function GyozaiWidget() {
         setViewMode(_preloadedSession.viewMode);
         setAvatarPosition(_preloadedSession.avatarPosition ?? null);
         activeConvIdRef.current = _preloadedSession.activeConvId;
+        savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         log("Session restored from storage");
       }
       // Mark restored so the save effect can start persisting
@@ -185,6 +211,7 @@ export function GyozaiWidget() {
       input,
       viewMode,
       avatarPosition,
+      scrollTop: messagesContainerRef.current?.scrollTop ?? 0,
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
@@ -229,6 +256,32 @@ export function GyozaiWidget() {
       document.removeEventListener("visibilitychange", onVisChange);
     };
   }, []);
+
+  // Save scroll position on every scroll (debounced) so it survives navigation
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      // Update ref immediately for beforeunload
+      if (latestSessionRef.current) {
+        latestSessionRef.current.session.scrollTop = container.scrollTop;
+      }
+      // Debounced save to background (300ms)
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const latest = latestSessionRef.current;
+        if (latest && sessionRestoredRef.current) {
+          saveSessionViaBackground(latest.tabId, latest.session);
+        }
+      }, 300);
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  });
 
   // Listen for auto-imported recipe notification
   useEffect(() => {
@@ -346,6 +399,17 @@ export function GyozaiWidget() {
         setExpanded(true);
         setLoading(true);
 
+        // Show navigate status so user sees what happened
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Navigated to ${window.location.pathname}`,
+            type: "tool-status" as const,
+          },
+        ]);
+
         // Small delay to let the new page render fully
         await new Promise((r) => setTimeout(r, 500));
 
@@ -360,10 +424,12 @@ export function GyozaiWidget() {
 
         try {
           autoFollowUpUsed = false;
-          await handleFullQuery(
-            `I've already navigated to this page. Complete the remaining task without repeating what was already said. Original request: ${pendingNav.originalQuery}`,
-            false,
+          const result = await sendQuery(
+            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
+            pendingExtraContext || undefined,
           );
+          pendingExtraContext = null;
+          await processAgentResult(result);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
@@ -401,14 +467,85 @@ export function GyozaiWidget() {
     }
   }, [expanded, initialized, viewMode]);
 
-  // Auto-scroll to bottom when messages change
+  // Safety net: periodically check if cursor is still near panel/avatar
+  // Shadow DOM onMouseLeave can miss fast exits — this catches them
   useEffect(() => {
-    if (messages.length > 0) {
+    if (!expanded || !hoverOpenRef.current) return;
+    let lastX = 0;
+    let lastY = 0;
+    const trackMouse = (e: MouseEvent) => {
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    document.addEventListener("mousemove", trackMouse, { passive: true });
+
+    const isInRect = (x: number, y: number, r: DOMRect, margin: number) =>
+      x >= r.left - margin &&
+      x <= r.right + margin &&
+      y >= r.top - margin &&
+      y <= r.bottom + margin;
+
+    const interval = setInterval(() => {
+      if (!hoverOpenRef.current || !expanded) return;
+      const panel = panelRef.current;
+      const avatar = avatarWrapperRef.current;
+      const bubble = speechBubbleRef.current;
+      if (!panel || !avatar) return;
+
+      const m = 40;
+      const inPanel = isInRect(lastX, lastY, panel.getBoundingClientRect(), m);
+      const inAvatar = isInRect(
+        lastX,
+        lastY,
+        avatar.getBoundingClientRect(),
+        m,
+      );
+      const inBubble =
+        bubble && isInRect(lastX, lastY, bubble.getBoundingClientRect(), m);
+
+      if (!inPanel && !inAvatar && !inBubble) {
+        insidePanelRef.current = false;
+        hoverOpenRef.current = false;
+        setExpanded(false);
+      }
+    }, 300);
+
+    return () => {
+      document.removeEventListener("mousemove", trackMouse);
+      clearInterval(interval);
+    };
+  }, [expanded]);
+
+  // Scroll to bottom only when NEW messages are added (not on restore)
+  const lastMsgCountRef = useRef(0);
+  useEffect(() => {
+    // Skip if scroll was just restored from session
+    if (
+      scrollRestoredRef.current &&
+      messages.length <= lastMsgCountRef.current
+    ) {
+      lastMsgCountRef.current = messages.length;
+      return;
+    }
+    if (
+      messages.length > lastMsgCountRef.current &&
+      lastMsgCountRef.current > 0
+    ) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 30);
     }
+    lastMsgCountRef.current = messages.length;
   }, [messages, loading]);
+
+  // Keep scrolling during typewriter animation
+  useEffect(() => {
+    if (!isTypewriting) return;
+    const interval = setInterval(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+    return () => clearInterval(interval);
+  }, [isTypewriting]);
 
   // Helper to add an assistant message
   const addAssistantMessage = useCallback((content: string) => {
@@ -504,7 +641,7 @@ export function GyozaiWidget() {
   async function sendQuery(
     query: string,
     extraPageContext?: string,
-  ): Promise<ActionResult> {
+  ): Promise<AgentResult> {
     const currentRoute = window.location.pathname;
 
     const [recipe, extSettings] = await Promise.all([
@@ -517,9 +654,7 @@ export function GyozaiWidget() {
 
     const manifestMode = !!recipe?.content;
 
-    // For no-manifest mode, capture clean HTML — DOM structure with
-    // meaningful attrs, no scripts/styles/CSS classes/noise.
-    // Gives AI both structure and content in a compact format.
+    // For no-manifest mode, capture clean HTML
     let pageSnapshot: string | undefined;
     if (!manifestMode && !extraPageContext) {
       pageSnapshot = captureCleanHtml();
@@ -570,36 +705,16 @@ export function GyozaiWidget() {
       "",
     );
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
-    console.log(
-      `%cRecipe:%c ${recipe ? `${recipe.names.join(", ")}` : "none"}`,
-      S.req,
-      "",
-    );
     if (manifestMode && recipe?.content) {
-      console.log(
-        `%cRecipe:%c ${recipe.content.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
-        S.req,
-        "",
-      );
+      console.log(`%cRecipe:%c ${recipe.content.length} chars`, S.req, "");
     }
     if (!manifestMode && pageSnapshot) {
-      console.log(
-        `%cClean HTML:%c ${pageSnapshot.length} chars sent to AI`,
-        S.req,
-        "",
-      );
-    }
-    if (extraPageContext) {
-      console.log(
-        `%cPage context:%c ${extraPageContext.length} chars (from extraRequests capture)`,
-        S.req,
-        "",
-      );
+      console.log(`%cClean HTML:%c ${pageSnapshot.length} chars`, S.req, "");
     }
     console.groupEnd();
 
     const start = Date.now();
-    const result = (await chrome.runtime.sendMessage(payload)) as ActionResult;
+    const result = (await chrome.runtime.sendMessage(payload)) as AgentResult;
     const ms = Date.now() - start;
 
     // ─── Log response ──────────────────
@@ -607,55 +722,38 @@ export function GyozaiWidget() {
     if (result?.error) {
       console.log(`%c Error:%c ${result.error}`, S.err, "");
     } else {
-      const actions = result?.actions || [];
-      for (const action of actions) {
-        const parts: string[] = [];
-        if (action.target) parts.push(`target="${action.target}"`);
-        if (action.selector) parts.push(`selector="${action.selector}"`);
-        if (action.url) parts.push(`url="${action.url}"`);
-        if (action.code)
-          parts.push(
-            `code="${action.code.slice(0, 80)}${action.code.length > 80 ? "..." : ""}"`,
+      console.log(`%cMessages:%c ${result?.messages?.length || 0}`, S.res, "");
+      if (result?.toolCalls?.length) {
+        for (const tc of result.toolCalls) {
+          console.log(
+            `%c  → ${tc.tool}%c ${JSON.stringify(tc.args).slice(0, 100)}`,
+            S.action,
+            S.dim,
           );
-        if (action.message)
-          parts.push(
-            `msg="${action.message.slice(0, 80)}${action.message.length > 80 ? "..." : ""}"`,
-          );
-        if (action.options)
-          parts.push(`options=[${action.options.join(", ")}]`);
-        console.log(
-          `%c  → ${action.type}%c ${parts.join(" ")}`,
-          S.action,
-          S.dim,
-        );
+        }
       }
-      if (result?.extraRequests?.length) {
-        const ac = (result as { autoContinue?: boolean }).autoContinue;
+      if (result?.navigated) {
+        console.log(`%c  navigated:%c true`, S.action, "");
+      }
+      if (result?.clarify) {
         console.log(
-          `%c  extraRequests:%c ${result.extraRequests.join(", ")} | autoContinue: ${ac ? "yes" : "no"}`,
+          `%c  clarify:%c ${result.clarify.options.join(", ")}`,
           S.action,
           "",
         );
       }
-      if (
-        (result as { autoContinue?: boolean }).autoContinue &&
-        !result?.extraRequests?.length
-      ) {
-        console.log(`%c  autoContinue:%c true`, S.action, "");
-      }
     }
     console.groupEnd();
 
-    // Raw payload/response for debugging (collapsed)
+    // Raw response for debugging
     console.groupCollapsed(`%c[gyoza] RAW #${qn}`, S.dim);
-    console.log("Request payload:", payload);
     console.log("Response:", result);
     console.groupEnd();
 
     return result;
   }
 
-  // Dispatch a single DOM action; returns error string if execute-js fails
+  // Dispatch a single DOM action (legacy managed mode only)
   async function dispatchDomAction(action: {
     type: string;
     target?: string;
@@ -680,18 +778,11 @@ export function GyozaiWidget() {
         break;
       case "execute-js":
         if (action.code) {
-          console.log(
-            `%c[gyoza] execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
-            S.action,
-            S.dim,
-          );
-          // Execute in page's main world via background worker (CSP blocks eval in content scripts)
           const result = await chrome.runtime.sendMessage({
             type: "gyozai_exec",
             code: action.code,
           });
           if (result?.error) {
-            console.error(`%c[gyoza] JS error:%c ${result.error}`, S.err, "");
             return result.error;
           }
         }
@@ -701,7 +792,6 @@ export function GyozaiWidget() {
           const el = document.querySelector(
             action.selector,
           ) as HTMLElement | null;
-          log("Highlight →", action.selector, el ? "(found)" : "(NOT FOUND)");
           if (el) {
             const prev = el.style.cssText;
             el.style.cssText += `;outline:3px solid #E8950A!important;outline-offset:4px!important;border-radius:8px!important;box-shadow:0 0 20px rgba(232,149,10,0.4)!important;transition:all 0.3s ease!important;`;
@@ -716,135 +806,170 @@ export function GyozaiWidget() {
     return undefined;
   }
 
-  // Full query lifecycle: handles extraRequests, auto-follow-up, fetch, JS errors
-  async function handleFullQuery(
-    query: string,
-    isUserMessage: boolean,
-  ): Promise<void> {
-    let pageContextForQuery: string | null = null;
-
-    if (pendingExtraContext) {
-      pageContextForQuery = pendingExtraContext;
-      pendingExtraContext = null;
-      log(
-        "Attaching pending extra context:",
-        pageContextForQuery!.length,
-        "chars",
-      );
-    }
-
-    if (pendingSnapshotTypes && pendingSnapshotTypes.length > 0) {
-      const types = pendingSnapshotTypes;
-      pendingSnapshotTypes = null;
-      log("Capturing pending snapshots:", types.join(", "));
-      const pageCtx = capturePageContext(types);
-      const ctxText = formatPageContext(pageCtx);
-      if (ctxText) {
-        pageContextForQuery = ctxText;
-        log("Captured", ctxText.length, "chars of page context");
+  // Build simplified status lines from tool calls
+  function buildToolStatusLines(toolCalls: AgentResult["toolCalls"]): string[] {
+    if (!toolCalls?.length) return [];
+    const lines: string[] = [];
+    for (const tc of toolCalls) {
+      switch (tc.tool) {
+        case "navigate": {
+          const url = (tc.args as { url?: string }).url || "";
+          lines.push(`Navigated to ${url}`);
+          break;
+        }
+        case "click":
+          lines.push("Clicked element");
+          break;
+        case "execute_js": {
+          const desc =
+            (tc.args as { description?: string }).description || "Ran code";
+          lines.push(desc.length > 40 ? "Ran code" : desc);
+          break;
+        }
+        case "highlight_ui":
+          lines.push("Highlighted element");
+          break;
+        case "get_page_context":
+          lines.push("Read page");
+          break;
+        case "fetch_url":
+          lines.push("Fetched data");
+          break;
       }
     }
+    return lines;
+  }
 
-    const result = await sendQuery(query, pageContextForQuery || undefined);
+  // Add a tool-status message (visually distinct from normal chat)
+  const addToolStatusMessage = useCallback((content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content,
+        type: "tool-status" as const,
+      },
+    ]);
+  }, []);
 
-    if (result?.error) {
+  // Process the agent result from the background worker
+  async function processAgentResult(result: AgentResult): Promise<void> {
+    if (result.error) {
       setError(result.error);
       return;
     }
 
-    const actions = result?.actions || [];
-    const extraRequests = result?.extraRequests;
-    const autoContinue = (result as { autoContinue?: boolean }).autoContinue;
+    // ─── Check if this is a legacy managed-mode response ─────
+    if (result.actions && result.actions.length > 0) {
+      await handleLegacyResponse(result);
+      return;
+    }
 
-    // ─── Handle extraRequests ─────────────────────────────────
+    // ─── BYOK tool-calling response ──────────────────────────
+
+    // Show each tool action as its own status pill
+    const statusLines = buildToolStatusLines(result.toolCalls);
+    for (const line of statusLines) {
+      addToolStatusMessage(line);
+    }
+
+    // Show each AI message as its own bubble (not concatenated)
+    const aiMessages = result.messages?.filter((m) => m.trim()) || [];
+    for (const msg of aiMessages) {
+      addAssistantMessage(msg);
+    }
+
+    // Fallback: if AI didn't send any message, generate one
+    if (statusLines.length === 0 && aiMessages.length === 0) {
+      if (result.navigated) {
+        addToolStatusMessage("Navigating...");
+      } else if (result.toolCalls?.length) {
+        addAssistantMessage("Done.");
+      } else {
+        addAssistantMessage("I processed your request.");
+      }
+    }
+
+    // Clarify state (from clarify tool)
+    if (result.clarify) {
+      setClarify({
+        message: result.clarify.message,
+        options: result.clarify.options,
+      });
+    }
+  }
+
+  // Handle legacy managed-mode responses (structured output with actions array)
+  async function handleLegacyResponse(result: AgentResult): Promise<void> {
+    const actions = result.actions || [];
+    const extraRequests = result.extraRequests;
+    const autoContinue = result.autoContinue;
+
+    // Handle extraRequests (legacy only)
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
-      console.log(
-        `%c[gyoza] AI requested extraRequests:%c ${extraRequests.join(", ")} ${autoContinue ? "(autoContinue)" : "(wait)"}`,
-        S.action,
-        "",
-      );
 
       const hasPageChange = actions.some(
         (a) => a.type === "navigate" || a.type === "click",
       );
 
       if (hasPageChange) {
-        // Page will change — stash snapshot types for after navigation
-        log("navigate/click + extraRequests → saving for auto-resume");
         await savePendingNav({
           snapshotTypes,
-          originalQuery: query,
+          originalQuery: "",
           conversationId: activeConvIdRef.current || "",
           tabId: tabIdRef.current ?? 0,
           timestamp: Date.now(),
         });
-        await dispatchActionsInOrder(actions);
+        await dispatchLegacyActions(actions);
         return;
       }
 
-      // Capture context now (page isn't changing)
       const pageCtx = capturePageContext(snapshotTypes);
       const ctxText = formatPageContext(pageCtx);
-
-      // Dispatch current actions (show-message, clarify, etc.)
-      await dispatchActionsInOrder(actions);
+      await dispatchLegacyActions(actions);
 
       if (autoContinue) {
-        // If structured capture is empty, fall back to clean HTML
         const context = ctxText || captureCleanHtml();
-        if (!context) {
-          log("autoContinue but no context captured — waiting");
-          return;
-        }
-        // AI wants to continue — re-query with captured context
-        console.log(
-          `%c[gyoza] AUTO-CONTINUE:%c captured ${context.length} chars, re-querying...`,
-          S.brand,
-          "",
-        );
+        if (!context) return;
         pendingExtraContext = context;
-        await handleFullQuery(
-          "Page context is now available. Complete the task using this context. Do not repeat previous messages.",
-          false,
+        const followUp = await sendQuery(
+          "Page context is now available. Complete the task.",
+          context,
         );
-      } else {
-        // AI wants to wait — stash context for next user query
-        log("Stashing", ctxText.length, "chars for next query");
+        await processAgentResult(followUp);
+      } else if (ctxText) {
         pendingExtraContext = ctxText;
       }
       return;
     }
 
-    // ─── Handle fetch actions ─────────────────────────────────
+    // Handle fetch (legacy only)
     const fetchAction = actions.find((a) => a.type === "fetch");
     if (fetchAction && fetchAction.url) {
       if (fetchAction.message) addAssistantMessage(fetchAction.message);
-      log("Fetch action →", fetchAction.url);
-
       try {
         const fetchResult = await fetch(fetchAction.url, {
           method: fetchAction.method || "GET",
         }).then((r) => r.text());
-        log("Fetch result:", fetchResult.length, "chars");
-
-        await handleFullQuery(
-          `Based on the fetched results from ${fetchAction.url}: ${fetchResult}\n\nAnswer my original question: ${query}`,
-          false,
+        const followUp = await sendQuery(
+          `Based on fetched results from ${fetchAction.url}: ${fetchResult}`,
         );
+        await processAgentResult(followUp);
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        addAssistantMessage(`Failed to fetch ${fetchAction.url}: ${errMsg}`);
+        addAssistantMessage(
+          `Failed to fetch ${fetchAction.url}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
       return;
     }
 
-    // ─── Dispatch actions (messages first, then DOM) ──────────
-    await dispatchActionsInOrder(actions);
+    await dispatchLegacyActions(actions);
   }
 
-  // Dispatch show-message first, wait 50ms, then DOM actions
-  async function dispatchActionsInOrder(
+  // Dispatch legacy actions (managed mode)
+  async function dispatchLegacyActions(
     actions: Array<{
       type: string;
       target?: string;
@@ -854,7 +979,6 @@ export function GyozaiWidget() {
       options?: string[];
     }>,
   ): Promise<void> {
-    // Consolidate all show-messages into ONE chat bubble (prevents duplicates)
     const showMessages = actions
       .filter((a) => a.type === "show-message" && a.message)
       .map((a) => a.message!);
@@ -862,7 +986,6 @@ export function GyozaiWidget() {
       addAssistantMessage(showMessages.join("\n\n"));
     }
 
-    // Clarify stays separate (has options)
     const clarifyAction = actions.find(
       (a) => a.type === "clarify" && a.message,
     );
@@ -876,7 +999,6 @@ export function GyozaiWidget() {
 
     await new Promise((r) => setTimeout(r, 50));
 
-    // DOM actions (messages only from show-message/clarify above, not from DOM actions)
     for (const action of actions) {
       if (
         action.type === "show-message" ||
@@ -887,17 +1009,14 @@ export function GyozaiWidget() {
       }
 
       const jsError = await dispatchDomAction(action);
-
       if (jsError && action.type === "execute-js") {
         const errorMsg = sanitizeError(jsError);
-        // Don't show JS errors to user — just log and let AI retry silently
         log("JS failed, re-querying AI:", errorMsg);
-        // Reset so the error re-query gets its own auto-follow-up allowance
         autoFollowUpUsed = false;
-        await handleFullQuery(
-          `The code you tried to execute failed with this error: "${errorMsg}". Please try a different approach or explain what went wrong.`,
-          false,
+        const retry = await sendQuery(
+          `The code failed with error: "${errorMsg}". Try a different approach.`,
         );
+        await processAgentResult(retry);
         return;
       }
     }
@@ -918,7 +1037,9 @@ export function GyozaiWidget() {
 
     try {
       autoFollowUpUsed = false;
-      await handleFullQuery(trimmed, true);
+      const result = await sendQuery(trimmed, pendingExtraContext || undefined);
+      pendingExtraContext = null;
+      await processAgentResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -939,7 +1060,9 @@ export function GyozaiWidget() {
 
     try {
       autoFollowUpUsed = false;
-      await handleFullQuery(option, true);
+      const result = await sendQuery(option, pendingExtraContext || undefined);
+      pendingExtraContext = null;
+      await processAgentResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -974,7 +1097,10 @@ export function GyozaiWidget() {
         messages.length > 0 &&
         (() => {
           const lastMsg = messages[messages.length - 1];
-          const isThinking = lastMsg.role === "user" || loading;
+          // Only show thinking when actively loading — don't infer from
+          // lastMsg.role because after session restore the last msg may be
+          // "user" even though no query is in flight.
+          const isThinking = loading;
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
           const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
           const bubbleWidth = 280;
@@ -995,11 +1121,15 @@ export function GyozaiWidget() {
             : { right: 20, bottom: 100 };
           return (
             <div
+              ref={speechBubbleRef}
               style={{
                 position: "fixed",
                 zIndex: 2147483647,
-                pointerEvents: "none",
                 ...posStyle,
+              }}
+              onMouseEnter={() => {
+                hoverOpenRef.current = true;
+                setExpanded(true);
               }}
             >
               <SpeechBubble
@@ -1122,7 +1252,13 @@ export function GyozaiWidget() {
         {viewMode === "chat" && (
           <>
             {/* Messages — speech bubble style */}
-            <div className="gyozai-messages">
+            <div
+              className="gyozai-messages"
+              ref={(node) => {
+                messagesContainerRef.current = node;
+                if (node && !scrollReady) setScrollReady(true);
+              }}
+            >
               {messages.length === 0 && (
                 <div className="gyozai-empty" style={{ opacity: 0.6 }}>
                   {(() => {
@@ -1135,20 +1271,28 @@ export function GyozaiWidget() {
                 </div>
               )}
               {messages.map((msg, idx) => {
+                const isToolStatus = msg.type === "tool-status";
                 const isLatestAssistant =
-                  msg.role === "assistant" && idx === messages.length - 1;
+                  msg.role === "assistant" &&
+                  !isToolStatus &&
+                  idx === messages.length - 1;
+                const msgClass = isToolStatus
+                  ? "gyozai-msg gyozai-msg-status"
+                  : `gyozai-msg gyozai-msg-${msg.role}`;
                 return (
                   <div
                     key={msg.id}
-                    className={`gyozai-msg gyozai-msg-${msg.role}`}
-                    style={{ opacity: bubbleOpacity }}
+                    className={msgClass}
+                    style={{ opacity: isToolStatus ? 1 : bubbleOpacity }}
                   >
-                    {msg.role === "assistant" ? (
+                    {isToolStatus ? (
+                      msg.content
+                    ) : msg.role === "assistant" ? (
                       isLatestAssistant &&
                       animatedMsgIdRef.current !== msg.id ? (
                         <TypewriterText
                           text={msg.content}
-                          speed={10}
+                          speed={5}
                           enabled={true}
                           soundEnabled={typingSound}
                           onTypingChange={(typing) => {
