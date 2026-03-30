@@ -212,8 +212,10 @@ export default defineBackground(() => {
   });
 
   chrome.commands.onCommand.addListener((command) => {
+    console.log("[gyoza] Command received:", command);
     if (command === "toggle_widget") {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        console.log("[gyoza] Active tab:", tabs[0]?.id, tabs[0]?.url);
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, { type: "gyozai_toggle" });
         }
