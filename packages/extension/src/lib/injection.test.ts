@@ -1,10 +1,5 @@
-import { describe, expect, test, beforeEach, mock } from "bun:test";
-import {
-  waitForBody,
-  injectWidget,
-  ensureWidget,
-  watchForRemoval,
-} from "./injection";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { waitForBody, injectWidget, watchForRemoval } from "./injection";
 
 // Bun uses happy-dom by default when running tests — DOM APIs are available.
 
@@ -117,118 +112,88 @@ describe("injectWidget", () => {
   });
 });
 
-describe("ensureWidget", () => {
-  beforeEach(() => {
-    document.getElementById(HOST_ID)?.remove();
-  });
-
-  test("returns existing host if it is connected", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    const calls: HTMLDivElement[] = [];
-    const result = ensureWidget(MOCK_STYLES, trackingRender(calls));
-    expect(result).toBe(host);
-    // Should NOT have called renderWidget again
-    expect(calls).toHaveLength(0);
-  });
-
-  test("re-injects and returns new host if old one was removed", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    host.remove();
-
-    const calls: HTMLDivElement[] = [];
-    const result = ensureWidget(MOCK_STYLES, trackingRender(calls));
-    expect(result).not.toBeNull();
-    expect(result!.id).toBe(HOST_ID);
-    expect(result!.isConnected).toBe(true);
-    expect(calls).toHaveLength(1);
-  });
-
-  test("returns null when document.body is unavailable", () => {
-    const origBody = document.body;
-    document.documentElement.removeChild(document.body);
-
-    try {
-      const result = ensureWidget(MOCK_STYLES, noopRender);
-      expect(result).toBeNull();
-    } finally {
-      document.documentElement.appendChild(origBody);
-    }
-  });
-});
-
 describe("watchForRemoval", () => {
+  let cleanup: (() => void) | undefined;
+
   beforeEach(() => {
     document.getElementById(HOST_ID)?.remove();
+    cleanup = undefined;
   });
 
-  test("re-injects widget when host is removed from DOM", async () => {
-    const calls: HTMLDivElement[] = [];
-    const render = trackingRender(calls);
-    const host = injectWidget(document.body, MOCK_STYLES, render);
-    watchForRemoval(host, MOCK_STYLES, render);
+  afterEach(() => {
+    cleanup?.();
+  });
+
+  test("re-attaches SAME host element when removed from DOM", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
 
     // Remove the host (simulating SPA body replacement)
     host.remove();
+    expect(host.isConnected).toBe(false);
 
     // MutationObserver callbacks are async — wait a tick
     await new Promise((r) => setTimeout(r, 10));
 
-    // Widget should have been re-injected
-    const newHost = document.getElementById(HOST_ID);
-    expect(newHost).not.toBeNull();
-    expect(newHost!.isConnected).toBe(true);
-    // renderWidget should have been called again (initial + re-inject)
-    expect(calls.length).toBeGreaterThanOrEqual(2);
+    // The SAME host element should be back in the DOM (not a new one)
+    expect(host.isConnected).toBe(true);
+    expect(document.getElementById(HOST_ID)).toBe(host);
   });
 
-  test("re-injects on popstate when host is missing", async () => {
+  test("preserves shadow DOM content after re-attach", async () => {
     const calls: HTMLDivElement[] = [];
-    const render = trackingRender(calls);
-    const host = injectWidget(document.body, MOCK_STYLES, render);
-    watchForRemoval(host, MOCK_STYLES, render);
+    const host = injectWidget(
+      document.body,
+      MOCK_STYLES,
+      trackingRender(calls),
+    );
+    cleanup = watchForRemoval(host);
 
-    // Simulate: SPA removed host, then popstate fires
+    const shadowChildCount = host.shadowRoot!.childNodes.length;
+
+    host.remove();
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Shadow DOM should still have the same children (style + container)
+    expect(host.shadowRoot!.childNodes.length).toBe(shadowChildCount);
+    // renderWidget should NOT have been called again — only the initial call
+    expect(calls).toHaveLength(1);
+  });
+
+  test("re-attaches on popstate when host is missing", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
+
     host.remove();
     window.dispatchEvent(new Event("popstate"));
 
-    // Wait for the 50ms delay + processing
     await new Promise((r) => setTimeout(r, 100));
 
-    const newHost = document.getElementById(HOST_ID);
-    expect(newHost).not.toBeNull();
-    expect(newHost!.isConnected).toBe(true);
+    expect(host.isConnected).toBe(true);
+    expect(document.getElementById(HOST_ID)).toBe(host);
   });
 
-  test("re-injects on gyozai:navchange event when host is missing", async () => {
-    const calls: HTMLDivElement[] = [];
-    const render = trackingRender(calls);
-    const host = injectWidget(document.body, MOCK_STYLES, render);
-    watchForRemoval(host, MOCK_STYLES, render);
+  test("re-attaches on gyozai:navchange event when host is missing", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
 
     host.remove();
     window.dispatchEvent(new Event("gyozai:navchange"));
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const newHost = document.getElementById(HOST_ID);
-    expect(newHost).not.toBeNull();
-    expect(newHost!.isConnected).toBe(true);
+    expect(host.isConnected).toBe(true);
   });
 
-  test("does not re-inject if host is still connected", async () => {
-    const calls: HTMLDivElement[] = [];
-    const render = trackingRender(calls);
-    const host = injectWidget(document.body, MOCK_STYLES, render);
-    watchForRemoval(host, MOCK_STYLES, render);
-
-    const callsBefore = calls.length;
+  test("does not re-attach if host is still connected", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
 
     // Fire nav event without removing host
     window.dispatchEvent(new Event("gyozai:navchange"));
     await new Promise((r) => setTimeout(r, 100));
 
-    // renderWidget should NOT have been called again
-    expect(calls.length).toBe(callsBefore);
+    // Same host, still in DOM
     expect(document.getElementById(HOST_ID)).toBe(host);
   });
 });

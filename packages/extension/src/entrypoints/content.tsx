@@ -242,7 +242,7 @@ function formatInline(text: string): React.ReactNode[] {
 
 // ─── Content Script Entry ────────────────────────────────────────────────────
 
-/** Render callback passed to injectWidget / watchForRemoval. */
+/** Render callback passed to injectWidget. */
 function renderWidget(container: HTMLDivElement) {
   ReactDOM.createRoot(container).render(<GyozaiWidget />);
 }
@@ -321,7 +321,7 @@ export default defineContentScript({
       try {
         const body = await waitForBody();
         const host = injectWidget(body, WIDGET_STYLES, renderWidget);
-        watchForRemoval(host, WIDGET_STYLES, renderWidget);
+        watchForRemoval(host);
         log("Widget injected successfully");
         break;
       } catch (err) {

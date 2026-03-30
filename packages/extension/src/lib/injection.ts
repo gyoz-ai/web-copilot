@@ -1,8 +1,9 @@
 /** Widget injection helpers — extracted for testability.
  *
- *  These functions handle injecting the gyoza bubble widget into the page DOM
- *  with resilience against: missing document.body, SPA body replacement,
- *  and host element removal by third-party scripts.
+ *  Key design: the host element + shadow DOM + React root are created ONCE.
+ *  If the host gets detached (SPA body swap, framework cleanup, etc.) we
+ *  simply re-append the *same* element to document.body — the React tree
+ *  stays alive with all its state intact.
  */
 
 const HOST_ID = "gyozai-extension-root";
@@ -35,7 +36,7 @@ export function injectWidget(
   styles: string,
   renderWidget: (container: HTMLDivElement) => void,
 ): HTMLDivElement {
-  // Remove stale host if it exists (e.g. SPA body replacement left an orphan)
+  // Remove stale host if it exists (leftover from a previous content script)
   document.getElementById(HOST_ID)?.remove();
 
   const host = document.createElement("div");
@@ -54,16 +55,12 @@ export function injectWidget(
   return host;
 }
 
-/** Ensure the widget is in the DOM; re-inject if missing.
- *  Returns the (possibly new) host element, or null if body is unavailable. */
-export function ensureWidget(
-  styles: string,
-  renderWidget: (container: HTMLDivElement) => void,
-): HTMLDivElement | null {
-  const existing = document.getElementById(HOST_ID) as HTMLDivElement | null;
-  if (existing?.isConnected) return existing;
-  if (!document.body) return null;
-  return injectWidget(document.body, styles, renderWidget);
+/** Re-attach a detached host element to document.body.
+ *  The React tree inside the shadow DOM stays alive — no state loss. */
+function reattachHost(host: HTMLDivElement): boolean {
+  if (!document.body) return false;
+  document.body.appendChild(host);
+  return host.isConnected;
 }
 
 /** Inject a tiny script into the MAIN world that patches
@@ -86,37 +83,34 @@ function patchMainWorldHistory() {
   (document.head || document.documentElement).appendChild(script);
 }
 
-/** Watch for host element removal (SPA frameworks replacing body contents)
- *  and re-inject the widget when that happens.  Also hooks into SPA
- *  navigation events (pushState / replaceState / popstate) as a safety net.
+/** Watch for host element detachment and re-attach it (preserving React state).
  *
  *  Uses three complementary strategies:
  *  1. MutationObserver on body — catches direct child removal
  *  2. MAIN-world history patch — catches SPA pushState/replaceState
- *  3. Periodic liveness check — catches anything else (2s interval) */
-export function watchForRemoval(
-  host: HTMLDivElement,
-  styles: string,
-  renderWidget: (container: HTMLDivElement) => void,
-) {
+ *  3. Periodic liveness check — catches anything else (2s interval)
+ *
+ *  Returns a cleanup function (used in tests). */
+export function watchForRemoval(host: HTMLDivElement): () => void {
   function check() {
-    if (document.getElementById(HOST_ID)?.isConnected) return;
+    if (host.isConnected) return;
+    // Re-attach the SAME host element — React tree stays alive
+    if (document.body) {
+      document.body.appendChild(host);
+      reobserve();
+    }
+  }
+
+  function reobserve() {
     observer.disconnect();
-    const newHost = ensureWidget(styles, renderWidget);
-    if (newHost && newHost !== host) {
-      host = newHost;
-      // Re-observe the new host's parent
-      if (host.parentElement) {
-        observer.observe(host.parentElement, { childList: true });
-      }
+    if (host.parentElement) {
+      observer.observe(host.parentElement, { childList: true });
     }
   }
 
   // 1. MutationObserver on the parent — catches direct child removal
   const observer = new MutationObserver(check);
-  if (host.parentElement) {
-    observer.observe(host.parentElement, { childList: true });
-  }
+  reobserve();
 
   // 2. SPA navigation hooks via MAIN world script injection
   patchMainWorldHistory();
@@ -125,5 +119,12 @@ export function watchForRemoval(
   window.addEventListener("gyozai:navchange", onNavChange);
 
   // 3. Periodic liveness check — fallback for edge cases
-  setInterval(check, 2000);
+  const intervalId = setInterval(check, 2000);
+
+  return () => {
+    observer.disconnect();
+    clearInterval(intervalId);
+    window.removeEventListener("popstate", onNavChange);
+    window.removeEventListener("gyozai:navchange", onNavChange);
+  };
 }
