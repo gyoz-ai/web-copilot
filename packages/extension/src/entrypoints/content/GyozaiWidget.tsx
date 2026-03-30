@@ -118,30 +118,26 @@ export function GyozaiWidget() {
   const scrollRestoredRef = useRef(false);
   const avatarWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Callback ref for messages container — restores scroll when element mounts
-  const messagesContainerCallbackRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      messagesContainerRef.current = node;
-      if (
-        node &&
-        savedScrollTopRef.current !== null &&
-        !scrollRestoredRef.current
-      ) {
-        const saved = savedScrollTopRef.current;
-        scrollRestoredRef.current = true;
-        savedScrollTopRef.current = null;
-        // Apply after DOM settles
-        requestAnimationFrame(() => {
-          node.scrollTop = saved;
-          // Double-apply to survive any layout shifts
-          requestAnimationFrame(() => {
-            node.scrollTop = saved;
-          });
-        });
-      }
-    },
-    [],
-  );
+  // Restore scroll position after session restore + messages render
+  const [scrollReady, setScrollReady] = useState(false);
+  useEffect(() => {
+    if (
+      !scrollRestoredRef.current &&
+      savedScrollTopRef.current !== null &&
+      messagesContainerRef.current &&
+      messages.length > 0
+    ) {
+      const saved = savedScrollTopRef.current;
+      scrollRestoredRef.current = true;
+      savedScrollTopRef.current = null;
+      log("Restoring scroll to", saved);
+      const container = messagesContainerRef.current;
+      container.scrollTop = saved;
+      requestAnimationFrame(() => {
+        container.scrollTop = saved;
+      });
+    }
+  }, [messages, scrollReady]);
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
@@ -1256,7 +1252,13 @@ export function GyozaiWidget() {
         {viewMode === "chat" && (
           <>
             {/* Messages — speech bubble style */}
-            <div className="gyozai-messages" ref={messagesContainerCallbackRef}>
+            <div
+              className="gyozai-messages"
+              ref={(node) => {
+                messagesContainerRef.current = node;
+                if (node && !scrollReady) setScrollReady(true);
+              }}
+            >
               {messages.length === 0 && (
                 <div className="gyozai-empty" style={{ opacity: 0.6 }}>
                   {(() => {
