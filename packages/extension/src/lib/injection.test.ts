@@ -159,7 +159,6 @@ describe("ensureWidget", () => {
 describe("watchForRemoval", () => {
   beforeEach(() => {
     document.getElementById(HOST_ID)?.remove();
-    delete (window as any).__gyozai_nav_patched__;
   });
 
   test("re-injects widget when host is removed from DOM", async () => {
@@ -182,17 +181,17 @@ describe("watchForRemoval", () => {
     expect(calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("re-injects widget after history.pushState", async () => {
+  test("re-injects on popstate when host is missing", async () => {
     const calls: HTMLDivElement[] = [];
     const render = trackingRender(calls);
     const host = injectWidget(document.body, MOCK_STYLES, render);
     watchForRemoval(host, MOCK_STYLES, render);
 
-    // Simulate SPA navigation: remove host then pushState
+    // Simulate: SPA removed host, then popstate fires
     host.remove();
-    history.pushState({}, "", "/new-page");
+    window.dispatchEvent(new Event("popstate"));
 
-    // Wait for the 50ms delay in onNavChange + processing
+    // Wait for the 50ms delay + processing
     await new Promise((r) => setTimeout(r, 100));
 
     const newHost = document.getElementById(HOST_ID);
@@ -200,14 +199,14 @@ describe("watchForRemoval", () => {
     expect(newHost!.isConnected).toBe(true);
   });
 
-  test("re-injects widget after history.replaceState", async () => {
+  test("re-injects on gyozai:navchange event when host is missing", async () => {
     const calls: HTMLDivElement[] = [];
     const render = trackingRender(calls);
     const host = injectWidget(document.body, MOCK_STYLES, render);
     watchForRemoval(host, MOCK_STYLES, render);
 
     host.remove();
-    history.replaceState({}, "", "/replaced-page");
+    window.dispatchEvent(new Event("gyozai:navchange"));
 
     await new Promise((r) => setTimeout(r, 100));
 
@@ -216,7 +215,7 @@ describe("watchForRemoval", () => {
     expect(newHost!.isConnected).toBe(true);
   });
 
-  test("does not re-inject if host is still connected after navigation", async () => {
+  test("does not re-inject if host is still connected", async () => {
     const calls: HTMLDivElement[] = [];
     const render = trackingRender(calls);
     const host = injectWidget(document.body, MOCK_STYLES, render);
@@ -224,29 +223,12 @@ describe("watchForRemoval", () => {
 
     const callsBefore = calls.length;
 
-    // Navigate without removing host
-    history.pushState({}, "", "/still-here");
-
+    // Fire nav event without removing host
+    window.dispatchEvent(new Event("gyozai:navchange"));
     await new Promise((r) => setTimeout(r, 100));
 
     // renderWidget should NOT have been called again
     expect(calls.length).toBe(callsBefore);
-    // Same host should still be in DOM
     expect(document.getElementById(HOST_ID)).toBe(host);
-  });
-
-  test("patches history methods only once", () => {
-    const host1 = injectWidget(document.body, MOCK_STYLES, noopRender);
-    watchForRemoval(host1, MOCK_STYLES, noopRender);
-    const pushAfterFirst = history.pushState;
-
-    // Clean up and do it again
-    host1.remove();
-    const host2 = injectWidget(document.body, MOCK_STYLES, noopRender);
-    watchForRemoval(host2, MOCK_STYLES, noopRender);
-    const pushAfterSecond = history.pushState;
-
-    // Should be the same patched function, not double-wrapped
-    expect(pushAfterFirst).toBe(pushAfterSecond);
   });
 });

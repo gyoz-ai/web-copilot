@@ -372,11 +372,9 @@ type ViewMode = "chat" | "history";
 // ─── Widget Component ────────────────────────────────────────────────────────
 
 function GyozaiWidget() {
-  // Restore state from preloaded session (persisted across navigations)
-  const s = _preloadedSession;
-  const [expanded, setExpanded] = useState(s?.expanded ?? false);
-  const [input, setInput] = useState(s?.input ?? "");
-  const [messages, setMessages] = useState<Message[]>(s?.messages ?? []);
+  const [expanded, setExpanded] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
@@ -386,18 +384,39 @@ function GyozaiWidget() {
   const [locale, setLocale] = useState<LocaleCode>(
     _preloadedLocale ?? detectBrowserLocale(),
   );
-  const [viewMode, setViewMode] = useState<ViewMode>(s?.viewMode ?? "chat");
+  const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
+  // Tracks whether session has been restored — prevents the save effect
+  // from immediately overwriting the stored session with empty defaults.
+  const sessionRestoredRef = useRef(false);
 
   // Active conversation tracking — null means fresh/new conversation
-  const activeConvIdRef = useRef<string | null>(s?.activeConvId ?? null);
+  const activeConvIdRef = useRef<string | null>(null);
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // ─── Restore session from chrome.storage.session after preload ───
+  useEffect(() => {
+    _preloadReady.then(() => {
+      if (_preloadedSession) {
+        setExpanded(_preloadedSession.expanded);
+        setInput(_preloadedSession.input);
+        setMessages(_preloadedSession.messages);
+        setViewMode(_preloadedSession.viewMode);
+        activeConvIdRef.current = _preloadedSession.activeConvId;
+      }
+      // Mark restored so the save effect can start persisting
+      sessionRestoredRef.current = true;
+    });
+  }, []);
+
   // ─── Persist widget session to chrome.storage.session on state changes ───
   const saveSessionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    // Don't save until session has been restored (avoids overwriting
+    // the stored session with empty defaults on first render).
+    if (!sessionRestoredRef.current) return;
     const tabId = tabIdRef.current ?? _preloadedTabId;
     if (tabId == null) return;
     // Debounce saves to avoid thrashing storage on rapid state changes

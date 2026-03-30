@@ -66,58 +66,64 @@ export function ensureWidget(
   return injectWidget(document.body, styles, renderWidget);
 }
 
+/** Inject a tiny script into the MAIN world that patches
+ *  history.pushState / replaceState to dispatch a DOM event.
+ *  Content scripts run in an isolated world — they can't intercept
+ *  the page's history calls directly, but DOM events cross the boundary. */
+function patchMainWorldHistory() {
+  if (document.getElementById("gyozai-nav-patch")) return;
+  const script = document.createElement("script");
+  script.id = "gyozai-nav-patch";
+  script.textContent = `(function(){
+    if(window.__gyozai_nav_patched__)return;
+    window.__gyozai_nav_patched__=true;
+    var E="gyozai:navchange";
+    var oP=history.pushState.bind(history);
+    var oR=history.replaceState.bind(history);
+    history.pushState=function(){var r=oP.apply(this,arguments);window.dispatchEvent(new Event(E));return r};
+    history.replaceState=function(){var r=oR.apply(this,arguments);window.dispatchEvent(new Event(E));return r};
+  })()`;
+  (document.head || document.documentElement).appendChild(script);
+}
+
 /** Watch for host element removal (SPA frameworks replacing body contents)
  *  and re-inject the widget when that happens.  Also hooks into SPA
  *  navigation events (pushState / replaceState / popstate) as a safety net.
  *
- *  `onReinject` is called with the new host element whenever re-injection
- *  occurs, so callers can update their references. */
+ *  Uses three complementary strategies:
+ *  1. MutationObserver on body — catches direct child removal
+ *  2. MAIN-world history patch — catches SPA pushState/replaceState
+ *  3. Periodic liveness check — catches anything else (2s interval) */
 export function watchForRemoval(
   host: HTMLDivElement,
   styles: string,
   renderWidget: (container: HTMLDivElement) => void,
 ) {
-  // 1. MutationObserver on the parent — catches direct child removal
-  const observer = new MutationObserver(() => {
-    if (!host.isConnected) {
-      observer.disconnect();
-      const newHost = ensureWidget(styles, renderWidget);
-      if (newHost) watchForRemoval(newHost, styles, renderWidget);
+  function check() {
+    if (document.getElementById(HOST_ID)?.isConnected) return;
+    observer.disconnect();
+    const newHost = ensureWidget(styles, renderWidget);
+    if (newHost && newHost !== host) {
+      host = newHost;
+      // Re-observe the new host's parent
+      if (host.parentElement) {
+        observer.observe(host.parentElement, { childList: true });
+      }
     }
-  });
+  }
+
+  // 1. MutationObserver on the parent — catches direct child removal
+  const observer = new MutationObserver(check);
   if (host.parentElement) {
     observer.observe(host.parentElement, { childList: true });
   }
 
-  // 2. SPA navigation hooks — verify widget after pushState / replaceState
-  const onNavChange = () => {
-    // Small delay so the SPA has time to update the DOM
-    setTimeout(() => {
-      if (!document.getElementById(HOST_ID)?.isConnected) {
-        observer.disconnect();
-        const newHost = ensureWidget(styles, renderWidget);
-        if (newHost) watchForRemoval(newHost, styles, renderWidget);
-      }
-    }, 50);
-  };
-
-  // Monkey-patch history methods once per content script lifetime
-  if (!(window as any).__gyozai_nav_patched__) {
-    (window as any).__gyozai_nav_patched__ = true;
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = function (...args: Parameters<typeof origPush>) {
-      const result = origPush(...args);
-      window.dispatchEvent(new Event("gyozai:navchange"));
-      return result;
-    };
-    history.replaceState = function (...args: Parameters<typeof origReplace>) {
-      const result = origReplace(...args);
-      window.dispatchEvent(new Event("gyozai:navchange"));
-      return result;
-    };
-  }
-
+  // 2. SPA navigation hooks via MAIN world script injection
+  patchMainWorldHistory();
+  const onNavChange = () => setTimeout(check, 50);
   window.addEventListener("popstate", onNavChange);
   window.addEventListener("gyozai:navchange", onNavChange);
+
+  // 3. Periodic liveness check — fallback for edge cases
+  setInterval(check, 2000);
 }
