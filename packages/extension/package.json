@@ -17,10 +17,11 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@gyoz-ai/engine": "workspace:*",
+    "@wxt-dev/module-react": "^1.1.4",
     "openai": "^5.8.2",
+    "preact": "^10.29.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "@wxt-dev/module-react": "^1.1.4",
     "wxt": "^0.20.7",
     "zod": "^4.3.6"
   },

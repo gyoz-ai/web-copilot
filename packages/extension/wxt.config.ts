@@ -6,6 +6,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   srcDir: "src",
+  // Alias React → Preact (3KB vs 130KB) for instant popup/widget load
+  vite: () => ({
+    resolve: {
+      alias: {
+        react: "preact/compat",
+        "react-dom": "preact/compat",
+        "react/jsx-runtime": "preact/jsx-runtime",
+      },
+    },
+  }),
   dev: {
     server: {
       port: 3100,
