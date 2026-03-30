@@ -468,24 +468,40 @@ export function GyozaiWidget() {
     };
   }, [expanded]);
 
-  // Scroll to bottom when new messages arrive
+  // Track message count to distinguish new messages from session restore
+  const lastMsgCountRef = useRef(0);
   useEffect(() => {
-    if (messages.length > 0) {
-      // If we have a saved scroll position from session restore, use that once
-      if (savedScrollTopRef.current !== null) {
-        const saved = savedScrollTopRef.current;
-        savedScrollTopRef.current = null;
-        setTimeout(() => {
-          if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = saved;
-          }
-        }, 50);
-        return;
-      }
+    if (messages.length === 0) {
+      lastMsgCountRef.current = 0;
+      return;
+    }
+
+    // Session restore: apply saved scroll position once
+    if (savedScrollTopRef.current !== null) {
+      const saved = savedScrollTopRef.current;
+      savedScrollTopRef.current = null;
+      lastMsgCountRef.current = messages.length;
+      // Use multiple delays to ensure DOM has rendered
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = saved;
+        }
+      }, 60);
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = saved;
+        }
+      }, 200);
+      return;
+    }
+
+    // New message added → scroll to bottom
+    if (messages.length > lastMsgCountRef.current) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 30);
     }
+    lastMsgCountRef.current = messages.length;
   }, [messages, loading]);
 
   // Keep scrolling during typewriter animation
