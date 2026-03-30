@@ -6,10 +6,16 @@
 export interface WidgetSession {
   expanded: boolean;
   activeConvId: string | null;
-  messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    type?: "chat" | "tool-status";
+  }>;
   input: string;
   viewMode: "chat" | "history";
   avatarPosition: { x: number; y: number } | null;
+  scrollTop?: number;
 }
 
 const SESSION_PREFIX = "gyozai_tab_";

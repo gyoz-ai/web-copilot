@@ -113,6 +113,8 @@ export function GyozaiWidget() {
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef<number | null>(null);
   const avatarWrapperRef = useRef<HTMLDivElement>(null);
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
@@ -157,6 +159,7 @@ export function GyozaiWidget() {
         setViewMode(_preloadedSession.viewMode);
         setAvatarPosition(_preloadedSession.avatarPosition ?? null);
         activeConvIdRef.current = _preloadedSession.activeConvId;
+        savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         log("Session restored from storage");
       }
       // Mark restored so the save effect can start persisting
@@ -186,6 +189,7 @@ export function GyozaiWidget() {
       input,
       viewMode,
       avatarPosition,
+      scrollTop: messagesContainerRef.current?.scrollTop ?? 0,
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
@@ -464,9 +468,20 @@ export function GyozaiWidget() {
     };
   }, [expanded]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages.length > 0) {
+      // If we have a saved scroll position from session restore, use that once
+      if (savedScrollTopRef.current !== null) {
+        const saved = savedScrollTopRef.current;
+        savedScrollTopRef.current = null;
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = saved;
+          }
+        }, 50);
+        return;
+      }
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 30);
@@ -1187,7 +1202,7 @@ export function GyozaiWidget() {
         {viewMode === "chat" && (
           <>
             {/* Messages — speech bubble style */}
-            <div className="gyozai-messages">
+            <div className="gyozai-messages" ref={messagesContainerRef}>
               {messages.length === 0 && (
                 <div className="gyozai-empty" style={{ opacity: 0.6 }}>
                   {(() => {
