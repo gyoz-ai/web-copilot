@@ -426,4 +426,77 @@ export const WIDGET_STYLES = `
     color: oklch(0.65 0.22 25);
     background: oklch(0.63 0.24 25 / 0.1);
   }
+
+  /* ─── Speech Bubble (out-of-proximity) ─────────────────── */
+
+  .gyozai-speech-bubble {
+    max-width: 280px;
+    width: max-content;
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .gyozai-speech-content {
+    padding: 10px 14px;
+    border-radius: 14px 14px 14px 4px;
+    background: oklch(0.16 0.012 48 / 0.92);
+    border: 1px solid var(--g-surface-border);
+    color: var(--g-text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+    max-height: 120px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Tail pointing down toward avatar */
+  .gyozai-speech-content::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0 6px;
+    border-style: solid;
+    border-color: oklch(0.16 0.012 48 / 0.92) transparent transparent transparent;
+  }
+
+  .gyozai-speech-enter {
+    animation: gyozai-speech-in 0.3s ease-out;
+  }
+
+  .gyozai-speech-exit {
+    animation: gyozai-speech-out 0.3s ease-in forwards;
+  }
+
+  @keyframes gyozai-speech-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes gyozai-speech-out {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-8px); }
+  }
+
+  .gyozai-speech-thinking {
+    color: var(--g-text-muted);
+    font-style: italic;
+  }
+
+  .gyozai-thinking-dots span {
+    animation: gyozai-dot-pulse 1.4s infinite ease-in-out;
+  }
+  .gyozai-thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .gyozai-thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes gyozai-dot-pulse {
+    0%, 80%, 100% { opacity: 0.3; }
+    40% { opacity: 1; }
+  }
 `;

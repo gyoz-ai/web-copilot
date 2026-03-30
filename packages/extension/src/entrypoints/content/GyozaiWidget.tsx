@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { ExtensionSettings } from "../../lib/storage";
 import { Avatar, AVATAR_SIZES } from "./components/Avatar";
+import { SpeechBubble } from "./components/SpeechBubble";
 import { useProximity } from "./hooks/useProximity";
 import {
   capturePageContext,
@@ -112,6 +113,8 @@ export function GyozaiWidget() {
 
   // Proximity detection — open chatbox when cursor is near avatar
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.5;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const insidePanelRef = useRef(false);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
     radius: proximityRadius,
@@ -120,8 +123,8 @@ export function GyozaiWidget() {
       setExpanded(true);
     },
     onLeave: () => {
-      // Only auto-close if opened by proximity (not by click)
-      if (hoverOpenRef.current) {
+      // Only auto-close if opened by proximity AND cursor isn't in panel
+      if (hoverOpenRef.current && !insidePanelRef.current) {
         setExpanded(false);
       }
     },
@@ -958,6 +961,40 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
+      {/* Speech bubble — shows last message when chatbox is closed */}
+      {!expanded &&
+        messages.length > 0 &&
+        (() => {
+          const lastMsg = messages[messages.length - 1];
+          const isThinking = lastMsg.role === "user" || loading;
+          return (
+            <div
+              style={{
+                position: "fixed",
+                left: avatarWrapperRef.current
+                  ? avatarWrapperRef.current.getBoundingClientRect().left +
+                    avatarWrapperRef.current.getBoundingClientRect().width / 2 -
+                    140
+                  : "auto",
+                bottom: avatarWrapperRef.current
+                  ? window.innerHeight -
+                    avatarWrapperRef.current.getBoundingClientRect().top +
+                    8
+                  : "auto",
+                right: avatarWrapperRef.current ? "auto" : 20,
+                zIndex: 2147483647,
+                pointerEvents: "none",
+              }}
+            >
+              <SpeechBubble
+                text={isThinking ? "" : lastMsg.content}
+                isThinking={isThinking}
+                autoDismissMs={8000}
+              />
+            </div>
+          );
+        })()}
+
       {/* Avatar widget */}
       <Avatar
         size={agentSize}
@@ -972,8 +1009,16 @@ export function GyozaiWidget() {
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{ display: expanded ? "flex" : "none" }}
-        onMouseEnter={forceInside}
-        onMouseLeave={startLeave}
+        ref={panelRef}
+        onMouseEnter={() => {
+          insidePanelRef.current = true;
+        }}
+        onMouseLeave={() => {
+          insidePanelRef.current = false;
+          if (hoverOpenRef.current) {
+            startLeave();
+          }
+        }}
       >
         {/* Header */}
         <div className="gyozai-header">
