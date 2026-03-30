@@ -413,6 +413,17 @@ export const WIDGET_STYLES = `
     background: oklch(0.63 0.24 25 / 0.1);
   }
 
+  /* ─── Avatar Talking Animation ───────────────────────────── */
+
+  .gyozai-avatar-talking {
+    animation: gyozai-avatar-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes gyozai-avatar-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
   /* ─── Speech Bubble (out-of-proximity) ─────────────────── */
 
   .gyozai-speech-bubble {

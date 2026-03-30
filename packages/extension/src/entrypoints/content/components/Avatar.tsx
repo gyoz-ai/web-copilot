@@ -6,6 +6,10 @@ export const AVATAR_SIZES = { small: 48, medium: 72, big: 96 } as const;
 interface AvatarProps {
   size: "small" | "medium" | "big";
   iconUrl: string;
+  /** Animated icon shown when the agent is talking/responding. */
+  talkingIconUrl?: string;
+  /** Whether the agent is currently talking (shows talking icon + pulse). */
+  isTalking?: boolean;
   position: { x: number; y: number } | null;
   onDragEnd: (pos: { x: number; y: number }) => void;
   onClick: () => void;
@@ -16,6 +20,8 @@ interface AvatarProps {
 export function Avatar({
   size,
   iconUrl,
+  talkingIconUrl,
+  isTalking = false,
   position,
   onDragEnd,
   onClick,
@@ -55,35 +61,40 @@ export function Avatar({
         cursor: isDragging ? "grabbing" : "default",
       }}
     >
-      {/* Avatar image */}
+      {/* Avatar image — swaps between idle and talking */}
       <button
-        className="gyozai-avatar"
+        className={`gyozai-avatar ${isTalking ? "gyozai-avatar-talking" : ""}`}
         onClick={handleClick}
         style={{
           width: px,
           height: px,
           borderRadius: "50%",
-          border: "1px solid var(--g-surface-border)",
+          border: isTalking
+            ? "2px solid var(--g-brand-500)"
+            : "1px solid var(--g-surface-border)",
           background: "var(--g-surface-1)",
           cursor: isDragging ? "grabbing" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: 0,
-          boxShadow:
-            "0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 0 oklch(0.66 0.18 72 / 0)",
+          boxShadow: isTalking
+            ? "0 4px 24px rgba(0, 0, 0, 0.35), 0 0 12px oklch(0.66 0.18 72 / 0.3)"
+            : "0 4px 24px rgba(0, 0, 0, 0.35)",
           transition:
-            "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+            "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border 0.3s ease",
+          overflow: "hidden",
         }}
       >
         <img
-          src={iconUrl}
+          src={isTalking && talkingIconUrl ? talkingIconUrl : iconUrl}
           alt="gyoza"
           style={{
-            width: px * 0.6,
-            height: px * 0.6,
+            width: isTalking ? px : px * 0.6,
+            height: isTalking ? px : px * 0.6,
             borderRadius: "50%",
             pointerEvents: "none",
+            transition: "width 0.2s ease, height 0.2s ease",
           }}
         />
       </button>

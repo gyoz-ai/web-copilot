@@ -1006,6 +1006,8 @@ export function GyozaiWidget() {
       <Avatar
         size={agentSize}
         iconUrl={chrome.runtime.getURL("/icon-128.png")}
+        talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
+        isTalking={loading}
         position={avatarPosition}
         onDragEnd={(pos) => setAvatarPosition(pos)}
         onClick={handleAvatarClick}
