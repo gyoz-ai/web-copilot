@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FormatMessage } from "./FormatMessage";
+import { TypewriterText } from "./TypewriterText";
 
 interface SpeechBubbleProps {
   /** The text to display. */
@@ -10,13 +10,19 @@ interface SpeechBubbleProps {
   autoDismissMs?: number;
   /** Called when the bubble should be dismissed. */
   onDismiss?: () => void;
+  /** Enable typing sound in the typewriter. */
+  soundEnabled?: boolean;
+  /** Called when typewriter typing state changes. */
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
 export function SpeechBubble({
   text,
   isThinking = false,
-  autoDismissMs = 8000,
+  autoDismissMs = 0,
   onDismiss,
+  soundEnabled = false,
+  onTypingChange,
 }: SpeechBubbleProps) {
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
@@ -65,7 +71,13 @@ export function SpeechBubble({
             </span>
           </span>
         ) : (
-          <FormatMessage text={text} />
+          <TypewriterText
+            text={text}
+            speed={10}
+            enabled={true}
+            soundEnabled={soundEnabled}
+            onTypingChange={onTypingChange}
+          />
         )}
       </div>
     </div>
