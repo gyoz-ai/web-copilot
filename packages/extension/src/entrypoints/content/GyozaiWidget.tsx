@@ -1120,7 +1120,17 @@ export function GyozaiWidget() {
           <>
             {/* Messages — speech bubble style */}
             <div className="gyozai-messages">
-              {/* No empty state text — input placeholder is sufficient */}
+              {messages.length === 0 && (
+                <div className="gyozai-empty" style={{ opacity: 0.6 }}>
+                  {(() => {
+                    const isMac =
+                      navigator.platform?.includes("Mac") ??
+                      navigator.userAgent.includes("Mac");
+                    const shortcut = isMac ? "⌘⇧G" : "Ctrl+Shift+G";
+                    return `Tip: press ${shortcut} to talk to me anytime`;
+                  })()}
+                </div>
+              )}
               {messages.map((msg, idx) => {
                 const isLatestAssistant =
                   msg.role === "assistant" && idx === messages.length - 1;
