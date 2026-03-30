@@ -1,0 +1,429 @@
+// ─── Widget Styles ───────────────────────────────────────────────────────────
+// Dark-only design matching the main gyoza website (warm oklch palette)
+
+export const WIDGET_STYLES = `
+  :host {
+    /* Brand */
+    --g-brand-400: oklch(0.72 0.17 74);
+    --g-brand-500: oklch(0.66 0.18 72);
+    --g-brand-600: oklch(0.58 0.16 70);
+
+    /* Surfaces */
+    --g-surface-0: oklch(0.13 0.015 50);
+    --g-surface-1: oklch(0.16 0.012 48);
+    --g-surface-2: oklch(0.2 0.01 46);
+    --g-surface-3: oklch(0.25 0.008 44);
+    --g-surface-border: oklch(0.3 0.01 50);
+
+    /* Text */
+    --g-text-primary: oklch(0.93 0.005 80);
+    --g-text-secondary: oklch(0.65 0.01 70);
+    --g-text-muted: oklch(0.5 0.008 65);
+
+    /* Semantic */
+    --g-error: oklch(0.63 0.24 25);
+    --g-error-bg: oklch(0.18 0.03 25);
+  }
+
+  * { box-sizing: border-box; }
+
+  /* ─── Scrollbar ─────────────────────────────────────────── */
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--g-surface-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--g-surface-3);
+  }
+
+  /* ─── Bubble ────────────────────────────────────────────── */
+
+  .gyozai-bubble {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2147483647;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 0 oklch(0.66 0.18 72 / 0);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  }
+  .gyozai-bubble:hover {
+    transform: scale(1.1);
+    box-shadow:
+      0 6px 28px rgba(0, 0, 0, 0.4),
+      0 0 0 3px oklch(0.66 0.18 72 / 0.2);
+    border-color: var(--g-brand-500);
+  }
+
+  /* ─── Panel ─────────────────────────────────────────────── */
+
+  .gyozai-panel {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 380px;
+    max-height: 520px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 2147483647;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    background: var(--g-surface-0);
+    color: var(--g-text-primary);
+    border: 1px solid var(--g-surface-border);
+    box-shadow:
+      0 8px 40px rgba(0, 0, 0, 0.4),
+      0 0 0 1px oklch(0.3 0.01 50 / 0.3);
+    will-change: transform, opacity;
+  }
+
+  .gyozai-panel-open {
+    animation: gyozai-panel-in 0.15s ease-out;
+  }
+
+  @keyframes gyozai-panel-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ─── Header ────────────────────────────────────────────── */
+
+  .gyozai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
+  }
+  .gyozai-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    background: linear-gradient(135deg, var(--g-brand-400), var(--g-brand-600));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gyozai-header-actions {
+    display: flex;
+    gap: 2px;
+  }
+  .gyozai-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--g-text-muted);
+    transition: all 0.2s ease;
+  }
+  .gyozai-icon-btn:hover {
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.08);
+  }
+  .gyozai-icon-btn-active {
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.1);
+  }
+
+  /* ─── Messages ──────────────────────────────────────────── */
+
+  .gyozai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 120px;
+  }
+
+  .gyozai-empty {
+    text-align: center;
+    padding: 36px 16px;
+    font-size: 13px;
+    color: var(--g-text-muted);
+    line-height: 1.5;
+  }
+
+  .gyozai-msg {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    max-width: 85%;
+    word-break: break-word;
+    line-height: 1.5;
+    animation: gyozai-msg-in 0.25s ease-out;
+  }
+
+  @keyframes gyozai-msg-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .gyozai-msg-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
+    color: #fff;
+    border-radius: 14px 14px 4px 14px;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.2);
+  }
+
+  .gyozai-msg-assistant {
+    align-self: flex-start;
+    background: var(--g-surface-2);
+    color: var(--g-text-primary);
+    border-radius: 14px 14px 14px 4px;
+    border: 1px solid var(--g-surface-border);
+  }
+
+  /* ─── Typing Indicator ──────────────────────────────────── */
+
+  .gyozai-typing {
+    display: flex;
+    gap: 5px;
+    padding: 4px 0;
+  }
+  .gyozai-typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--g-brand-500);
+    opacity: 0.6;
+    animation: gyozai-bounce 1.4s infinite ease-in-out both;
+  }
+  .gyozai-typing span:nth-child(1) { animation-delay: -0.32s; }
+  .gyozai-typing span:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes gyozai-bounce {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ─── Input ─────────────────────────────────────────────── */
+
+  .gyozai-input-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 8px;
+    border-top: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
+  }
+
+  .gyozai-input {
+    flex: 1;
+    border-radius: 10px;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+    padding: 9px 12px;
+    border: 1px solid var(--g-surface-border);
+    color: var(--g-text-primary);
+    background: var(--g-surface-0);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .gyozai-input:focus {
+    border-color: var(--g-brand-500);
+    box-shadow: 0 0 0 3px oklch(0.66 0.18 72 / 0.1);
+  }
+  .gyozai-input:disabled { opacity: 0.5; }
+  .gyozai-input::placeholder { color: var(--g-text-muted); }
+
+  .gyozai-send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
+    color: #fff;
+    cursor: pointer;
+    padding: 9px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
+  }
+  .gyozai-send-btn:hover {
+    box-shadow: 0 4px 12px oklch(0.66 0.18 72 / 0.4);
+    transform: translateY(-1px);
+  }
+  .gyozai-send-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ─── Error ─────────────────────────────────────────────── */
+
+  .gyozai-error {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: oklch(0.72 0.2 25);
+    background: var(--g-error-bg);
+    border-top: 1px solid oklch(0.25 0.04 25);
+  }
+
+  /* ─── Clarify ───────────────────────────────────────────── */
+
+  .gyozai-clarify {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--g-surface-border);
+    animation: gyozai-fade-in 0.2s ease-out;
+  }
+
+  .gyozai-clarify-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    border: 1px solid oklch(0.66 0.18 72 / 0.35);
+    border-radius: 20px;
+    color: var(--g-brand-400);
+    background: oklch(0.66 0.18 72 / 0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .gyozai-clarify-btn:hover {
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
+    border-color: var(--g-brand-500);
+    color: #fff;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
+  }
+
+  /* ─── Toast ─────────────────────────────────────────────── */
+
+  .gyozai-toast {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--g-brand-400);
+    text-align: center;
+    background: var(--g-surface-1);
+    border-top: 1px solid var(--g-surface-border);
+    animation: gyozai-fade-in 0.3s ease-out;
+  }
+
+  .gyozai-floating-toast {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #E8950A;
+    text-align: center;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3a;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 2147483647;
+    animation: gyozai-fade-in 0.3s ease-out;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  @keyframes gyozai-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── History ───────────────────────────────────────────── */
+
+  .gyozai-history-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+  .gyozai-history-item:hover {
+    background: oklch(0.66 0.18 72 / 0.06);
+  }
+  .gyozai-history-item-active {
+    background: oklch(0.66 0.18 72 / 0.1);
+    border: 1px solid oklch(0.66 0.18 72 / 0.15);
+  }
+
+  .gyozai-history-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    min-width: 0;
+  }
+
+  .gyozai-history-title {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--g-text-primary);
+  }
+
+  .gyozai-history-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--g-text-muted);
+  }
+
+  .gyozai-history-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    color: var(--g-text-muted);
+    flex-shrink: 0;
+  }
+  .gyozai-history-item:hover .gyozai-history-delete {
+    opacity: 0.5;
+  }
+  .gyozai-history-delete:hover {
+    opacity: 1 !important;
+    color: oklch(0.65 0.22 25);
+    background: oklch(0.63 0.24 25 / 0.1);
+  }
+`;
