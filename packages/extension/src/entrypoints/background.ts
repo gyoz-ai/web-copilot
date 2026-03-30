@@ -7,6 +7,7 @@ import {
   saveConversationLlmHistory,
 } from "../lib/storage";
 import {
+  getRecipes,
   getMergedRecipeForDomain,
   importRecipeFromFile,
   recipeExists,
@@ -167,6 +168,19 @@ export default defineBackground(() => {
 
     if (message.type === "gyozai_get_recipe") {
       getMergedRecipeForDomain(message.domain).then(sendResponse);
+      return true;
+    }
+
+    if (message.type === "gyozai_get_recipes_list") {
+      getRecipes().then((recipes) => {
+        sendResponse(
+          recipes.map((r) => ({
+            domain: r.domain,
+            name: r.name,
+            enabled: r.enabled,
+          })),
+        );
+      });
       return true;
     }
 
@@ -414,13 +428,18 @@ async function handleQuery(
       ctx.messages.push(result.text.trim());
     }
 
-    // Update conversation history
+    // Update conversation history — include tool summary so AI has context
     history.push({ role: "user", content: message.query });
-    if (ctx.messages.length > 0) {
-      history.push({
-        role: "assistant",
-        content: ctx.messages.join("\n\n").slice(0, 300),
-      });
+    const toolSummary = allToolCalls
+      .filter(
+        (tc) => tc.tool !== "show_message" && tc.tool !== "set_expression",
+      )
+      .map((tc) => `[${tc.tool}]`)
+      .join(" ");
+    const msgContent = ctx.messages.join("\n\n").slice(0, 300);
+    const historyEntry = [toolSummary, msgContent].filter(Boolean).join("\n");
+    if (historyEntry) {
+      history.push({ role: "assistant", content: historyEntry });
     }
     if (conversationId) {
       await saveConversationLlmHistory(conversationId, history);

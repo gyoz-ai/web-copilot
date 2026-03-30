@@ -138,6 +138,8 @@ export const WIDGET_STYLES = `
     font-size: 13px;
     color: var(--g-text-muted);
     line-height: 1.5;
+    background: oklch(0.18 0.015 50 / 0.85);
+    border-radius: 12px;
   }
 
   .gyozai-msg {
@@ -195,16 +197,15 @@ export const WIDGET_STYLES = `
 
   .gyozai-msg-status {
     align-self: flex-start;
-    background: transparent;
-    color: oklch(0.55 0.01 50);
+    background: oklch(0.18 0.015 50 / 0.9);
+    color: oklch(0.6 0.02 50);
     border: none;
-    border-left: 2px solid oklch(0.35 0.02 50 / 0.6);
-    border-radius: 0;
+    border-left: 2px solid oklch(0.55 0.15 60 / 0.7);
+    border-radius: 4px;
     font-size: 11px;
     font-style: italic;
-    padding: 4px 10px;
+    padding: 5px 10px;
     max-width: 90%;
-    opacity: 0.8;
   }
   .gyozai-msg-status::after {
     display: none;

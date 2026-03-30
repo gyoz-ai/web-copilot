@@ -205,5 +205,15 @@ export default defineContentScript({
 
     // Recipe auto-import runs independently
     tryAutoImportRecipe().catch(() => {});
+
+    // Inject installed recipes list as global var for page UI
+    chrome.runtime
+      .sendMessage({ type: "gyozai_get_recipes_list" })
+      .then((recipes) => {
+        (window as any).__GYOZAI_INSTALLED_RECIPES__ = recipes || [];
+      })
+      .catch(() => {
+        (window as any).__GYOZAI_INSTALLED_RECIPES__ = [];
+      });
   },
 });
