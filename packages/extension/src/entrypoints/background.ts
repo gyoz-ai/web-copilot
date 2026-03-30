@@ -349,6 +349,8 @@ async function handleQuery(
     clarify: null,
     expression: null,
     navigated: false,
+    conversationId: conversationId || null,
+    originalQuery: message.query,
   };
 
   const tools = createBrowserTools(ctx, caps, settings.yoloMode);

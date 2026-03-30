@@ -2,6 +2,8 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** "tool-status" for action indicators, default is regular chat */
+  type?: "chat" | "tool-status";
 }
 
 export interface ClarifyState {

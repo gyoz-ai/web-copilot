@@ -671,7 +671,7 @@ export function GyozaiWidget() {
     return undefined;
   }
 
-  // Build a human-readable status line from tool calls
+  // Build simplified status lines from tool calls
   function buildToolStatusLines(toolCalls: AgentResult["toolCalls"]): string[] {
     if (!toolCalls?.length) return [];
     const lines: string[] = [];
@@ -679,38 +679,44 @@ export function GyozaiWidget() {
       switch (tc.tool) {
         case "navigate": {
           const url = (tc.args as { url?: string }).url || "";
-          lines.push(`🔗 Navigated to ${url}`);
+          lines.push(`Navigated to ${url}`);
           break;
         }
-        case "click": {
-          const sel = (tc.args as { selector?: string }).selector || "";
-          lines.push(`👆 Clicked \`${sel}\``);
+        case "click":
+          lines.push("Clicked element");
           break;
-        }
         case "execute_js": {
           const desc =
-            (tc.args as { description?: string }).description || "code";
-          lines.push(`⚡ Executed: ${desc}`);
+            (tc.args as { description?: string }).description || "Ran code";
+          lines.push(desc.length > 40 ? "Ran code" : desc);
           break;
         }
-        case "highlight_ui": {
-          const sel = (tc.args as { selector?: string }).selector || "";
-          lines.push(`✨ Highlighted \`${sel}\``);
+        case "highlight_ui":
+          lines.push("Highlighted element");
           break;
-        }
         case "get_page_context":
-          lines.push(`📖 Read page content`);
+          lines.push("Read page");
           break;
-        case "fetch_url": {
-          const url = (tc.args as { url?: string }).url || "";
-          lines.push(`🌐 Fetched ${url}`);
+        case "fetch_url":
+          lines.push("Fetched data");
           break;
-        }
-        // show_message, set_expression, clarify — no status line needed
       }
     }
     return lines;
   }
+
+  // Add a tool-status message (visually distinct from normal chat)
+  const addToolStatusMessage = useCallback((content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content,
+        type: "tool-status" as const,
+      },
+    ]);
+  }, []);
 
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
@@ -727,32 +733,28 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // Build action status lines from tool calls (e.g. "Navigated to /dashboard")
+    // Show tool action status as a separate, visually distinct message
     const statusLines = buildToolStatusLines(result.toolCalls);
-
-    // Combine: status lines first, then AI messages
-    const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-    const parts: string[] = [];
-
     if (statusLines.length > 0) {
-      parts.push(statusLines.join("\n"));
-    }
-    if (aiMessages.length > 0) {
-      parts.push(aiMessages.join("\n\n"));
+      addToolStatusMessage(statusLines.join(" · "));
     }
 
-    // Fallback: if AI didn't send any message, generate one from the actions
-    if (parts.length === 0) {
+    // Show AI messages as normal assistant bubbles
+    const aiMessages = result.messages?.filter((m) => m.trim()) || [];
+    if (aiMessages.length > 0) {
+      addAssistantMessage(aiMessages.join("\n\n"));
+    }
+
+    // Fallback: if AI didn't send any message, generate one
+    if (statusLines.length === 0 && aiMessages.length === 0) {
       if (result.navigated) {
-        parts.push("Navigating...");
+        addToolStatusMessage("Navigating...");
       } else if (result.toolCalls?.length) {
-        parts.push("Done.");
+        addAssistantMessage("Done.");
       } else {
-        parts.push("I processed your request.");
+        addAssistantMessage("I processed your request.");
       }
     }
-
-    addAssistantMessage(parts.join("\n\n"));
 
     // Clarify state (from clarify tool)
     if (result.clarify) {
@@ -960,7 +962,10 @@ export function GyozaiWidget() {
         messages.length > 0 &&
         (() => {
           const lastMsg = messages[messages.length - 1];
-          const isThinking = lastMsg.role === "user" || loading;
+          // Only show thinking when actively loading — don't infer from
+          // lastMsg.role because after session restore the last msg may be
+          // "user" even though no query is in flight.
+          const isThinking = loading;
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
           const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
           const bubbleWidth = 280;
@@ -1121,15 +1126,23 @@ export function GyozaiWidget() {
                 </div>
               )}
               {messages.map((msg, idx) => {
+                const isToolStatus = msg.type === "tool-status";
                 const isLatestAssistant =
-                  msg.role === "assistant" && idx === messages.length - 1;
+                  msg.role === "assistant" &&
+                  !isToolStatus &&
+                  idx === messages.length - 1;
+                const msgClass = isToolStatus
+                  ? "gyozai-msg gyozai-msg-status"
+                  : `gyozai-msg gyozai-msg-${msg.role}`;
                 return (
                   <div
                     key={msg.id}
-                    className={`gyozai-msg gyozai-msg-${msg.role}`}
-                    style={{ opacity: bubbleOpacity }}
+                    className={msgClass}
+                    style={{ opacity: isToolStatus ? 1 : bubbleOpacity }}
                   >
-                    {msg.role === "assistant" ? (
+                    {isToolStatus ? (
+                      msg.content
+                    ) : msg.role === "assistant" ? (
                       isLatestAssistant &&
                       animatedMsgIdRef.current !== msg.id ? (
                         <TypewriterText

@@ -13,6 +13,10 @@ export interface ToolExecContext {
   expression: string | null;
   /** Set to true when navigation was initiated (page will reload) */
   navigated: boolean;
+  /** Conversation ID for pending-nav persistence */
+  conversationId: string | null;
+  /** Original user query for pending-nav resume */
+  originalQuery: string;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -135,6 +139,19 @@ export function createBrowserTools(
             currentWindow: true,
           });
           const resolved = tab?.url ? new URL(url, tab.url).href : url;
+
+          // Save pending-nav state so the widget auto-resumes on the new page
+          const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+          await chrome.storage.local.set({
+            [pendingNavKey]: {
+              snapshotTypes: ["all"],
+              originalQuery: ctx.originalQuery,
+              conversationId: ctx.conversationId || "",
+              tabId: ctx.tabId,
+              timestamp: Date.now(),
+            },
+          });
+
           await execIsolated(
             ctx.tabId,
             ((targetUrl: string) => {

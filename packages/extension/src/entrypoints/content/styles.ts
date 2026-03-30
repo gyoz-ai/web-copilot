@@ -191,6 +191,25 @@ export const WIDGET_STYLES = `
     border-color: oklch(0.2 0.01 46 / 0.85) transparent transparent transparent;
   }
 
+  /* ─── Tool Status Messages ────────────────────────────────── */
+
+  .gyozai-msg-status {
+    align-self: flex-start;
+    background: transparent;
+    color: oklch(0.55 0.01 50);
+    border: none;
+    border-left: 2px solid oklch(0.35 0.02 50 / 0.6);
+    border-radius: 0;
+    font-size: 11px;
+    font-style: italic;
+    padding: 4px 10px;
+    max-width: 90%;
+    opacity: 0.8;
+  }
+  .gyozai-msg-status::after {
+    display: none;
+  }
+
   /* ─── Typing Indicator ──────────────────────────────────── */
 
   .gyozai-typing {
