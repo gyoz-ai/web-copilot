@@ -97,6 +97,9 @@ export function GyozaiWidget() {
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [isTypewriting, setIsTypewriting] = useState(false);
+  // Track which message ID has already been animated — prevents
+  // re-playing typewriter when toggling chatbox open/closed.
+  const animatedMsgIdRef = useRef<string | null>(null);
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
@@ -991,7 +994,11 @@ export function GyozaiWidget() {
                 isThinking={isThinking}
                 autoDismissMs={0}
                 soundEnabled={typingSound}
-                onTypingChange={setIsTypewriting}
+                typewriterEnabled={animatedMsgIdRef.current !== lastMsg.id}
+                onTypingChange={(typing) => {
+                  setIsTypewriting(typing);
+                  if (!typing) animatedMsgIdRef.current = lastMsg.id;
+                }}
               />
             </div>
           );
@@ -1110,13 +1117,17 @@ export function GyozaiWidget() {
                     style={{ opacity: bubbleOpacity }}
                   >
                     {msg.role === "assistant" ? (
-                      isLatestAssistant ? (
+                      isLatestAssistant &&
+                      animatedMsgIdRef.current !== msg.id ? (
                         <TypewriterText
                           text={msg.content}
                           speed={10}
                           enabled={true}
                           soundEnabled={typingSound}
-                          onTypingChange={setIsTypewriting}
+                          onTypingChange={(typing) => {
+                            setIsTypewriting(typing);
+                            if (!typing) animatedMsgIdRef.current = msg.id;
+                          }}
                         />
                       ) : (
                         <FormatMessage text={msg.content} />

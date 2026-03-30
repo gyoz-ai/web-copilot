@@ -14,6 +14,8 @@ interface SpeechBubbleProps {
   soundEnabled?: boolean;
   /** Called when typewriter typing state changes. */
   onTypingChange?: (isTyping: boolean) => void;
+  /** Whether to animate the text (false = show instantly). */
+  typewriterEnabled?: boolean;
 }
 
 export function SpeechBubble({
@@ -23,6 +25,7 @@ export function SpeechBubble({
   onDismiss,
   soundEnabled = false,
   onTypingChange,
+  typewriterEnabled = true,
 }: SpeechBubbleProps) {
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
@@ -74,8 +77,8 @@ export function SpeechBubble({
           <TypewriterText
             text={text}
             speed={10}
-            enabled={true}
-            soundEnabled={soundEnabled}
+            enabled={typewriterEnabled}
+            soundEnabled={soundEnabled && typewriterEnabled}
             onTypingChange={onTypingChange}
           />
         )}
