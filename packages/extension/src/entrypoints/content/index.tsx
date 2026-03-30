@@ -206,15 +206,23 @@ export default defineContentScript({
     // Recipe auto-import runs independently
     tryAutoImportRecipe().catch(() => {});
 
-    // Inject installed recipes list as global var for page UI
+    // Inject installed recipes list as global var for page UI (main world)
+    function setMainWorldVar(
+      recipes: Array<{ domain: string; name: string; enabled: boolean }>,
+    ) {
+      const script = document.createElement("script");
+      script.textContent = `window.__GYOZAI_INSTALLED_RECIPES__=${JSON.stringify(recipes)};`;
+      document.documentElement.appendChild(script);
+      script.remove();
+    }
     function refreshInstalledRecipes() {
       chrome.runtime
         .sendMessage({ type: "gyozai_get_recipes_list" })
         .then((recipes) => {
-          (window as any).__GYOZAI_INSTALLED_RECIPES__ = recipes || [];
+          setMainWorldVar(recipes || []);
         })
         .catch(() => {
-          (window as any).__GYOZAI_INSTALLED_RECIPES__ = [];
+          setMainWorldVar([]);
         });
     }
     refreshInstalledRecipes();
