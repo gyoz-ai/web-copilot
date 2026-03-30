@@ -8,7 +8,11 @@ import {
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
 import { waitForBody, injectWidget, watchForRemoval } from "../lib/injection";
-import { loadWidgetSession, type WidgetSession } from "../lib/session";
+import {
+  loadWidgetSession,
+  saveWidgetSession,
+  type WidgetSession,
+} from "../lib/session";
 import {
   type LocaleCode,
   type Translations,
@@ -428,8 +432,18 @@ function GyozaiWidget() {
     });
   }, []);
 
-  // ─── Persist widget session to chrome.storage.session on state changes ───
+  // ─── Persist widget session on every state change ───
+  // Writes directly to chrome.storage.session (fast, reliable during
+  // normal operation).  Also sends via background worker as backup for
+  // page-unload scenarios where direct writes may not complete.
   const saveSessionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep a ref to the latest session so beforeunload can read it
+  // synchronously without depending on stale closure values.
+  const latestSessionRef = useRef<{
+    tabId: number;
+    session: WidgetSession;
+  } | null>(null);
+
   useEffect(() => {
     // Don't save until session has been restored (avoids overwriting
     // the stored session with empty defaults on first render).
@@ -439,16 +453,18 @@ function GyozaiWidget() {
       log("Session save skipped — no tab ID yet");
       return;
     }
-    // Debounce saves to avoid thrashing storage on rapid state changes
+    const session: WidgetSession = {
+      expanded,
+      activeConvId: activeConvIdRef.current,
+      messages,
+      input,
+      viewMode,
+    };
+    // Update ref immediately so beforeunload always has latest
+    latestSessionRef.current = { tabId, session };
+    // Debounce the actual storage write
     if (saveSessionRef.current) clearTimeout(saveSessionRef.current);
     saveSessionRef.current = setTimeout(() => {
-      const session = {
-        expanded,
-        activeConvId: activeConvIdRef.current,
-        messages,
-        input,
-        viewMode,
-      };
       log(
         "Saving session — expanded:",
         expanded,
@@ -457,28 +473,25 @@ function GyozaiWidget() {
         "convId:",
         activeConvIdRef.current,
       );
-      saveSessionViaBackground(tabId, session);
+      // Write directly to storage (reliable when page is alive)
+      saveWidgetSession(tabId, session).catch(() => {});
     }, 100);
   }, [expanded, messages, input, viewMode]);
 
-  // ─── Flush session immediately on page unload (cross-origin nav) ───
-  // Sends to background worker which survives page destruction.
+  // ─── Flush session on page unload (cross-origin nav) ───
+  // Uses both direct storage write AND background worker message
+  // to maximize the chance the write lands before the page dies.
   useEffect(() => {
     const flush = () => {
-      if (!sessionRestoredRef.current) return;
-      const tabId = tabIdRef.current ?? _preloadedTabId;
-      if (tabId == null) return;
+      const latest = latestSessionRef.current;
+      if (!latest || !sessionRestoredRef.current) return;
       log("Flushing session on page unload/hide");
-      saveSessionViaBackground(tabId, {
-        expanded,
-        activeConvId: activeConvIdRef.current,
-        messages,
-        input,
-        viewMode,
-      });
+      // Direct write — may complete if browser gives us time
+      saveWidgetSession(latest.tabId, latest.session).catch(() => {});
+      // Background worker write — survives page destruction
+      saveSessionViaBackground(latest.tabId, latest.session);
     };
     window.addEventListener("beforeunload", flush);
-    // Also fire on visibilitychange hidden (covers mobile/tab switch)
     const onVisChange = () => {
       if (document.visibilityState === "hidden") flush();
     };
@@ -487,7 +500,7 @@ function GyozaiWidget() {
       window.removeEventListener("beforeunload", flush);
       document.removeEventListener("visibilitychange", onVisChange);
     };
-  }, [expanded, messages, input, viewMode]);
+  }, []);
 
   // Listen for auto-imported recipe notification
   useEffect(() => {
