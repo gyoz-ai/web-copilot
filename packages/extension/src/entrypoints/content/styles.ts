@@ -355,7 +355,8 @@ export const WIDGET_STYLES = `
     transition: background 0.2s ease;
   }
   .gyozai-history-item:hover {
-    background: oklch(0.66 0.18 72 / 0.06);
+    background: oklch(0.2 0.015 50 / 0.95);
+    border-color: oklch(0.35 0.01 50 / 0.6);
   }
   .gyozai-history-item-active {
     background: oklch(0.66 0.18 72 / 0.1);

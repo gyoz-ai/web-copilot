@@ -121,6 +121,7 @@ export function GyozaiWidget() {
   // Proximity detection — open chatbox when cursor is near avatar
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
+  const insidePanelRef = useRef(false);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
     radius: proximityRadius,
@@ -129,7 +130,8 @@ export function GyozaiWidget() {
       setExpanded(true);
     },
     onLeave: () => {
-      if (hoverOpenRef.current) {
+      // Don't close if cursor is still inside the chatbox/input panel
+      if (hoverOpenRef.current && !insidePanelRef.current) {
         setExpanded(false);
       }
     },
@@ -1049,8 +1051,12 @@ export function GyozaiWidget() {
             : {}),
         }}
         ref={panelRef}
-        onMouseEnter={forceInside}
+        onMouseEnter={() => {
+          insidePanelRef.current = true;
+          forceInside();
+        }}
         onMouseLeave={() => {
+          insidePanelRef.current = false;
           if (hoverOpenRef.current) {
             startLeave();
           }
