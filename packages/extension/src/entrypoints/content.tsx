@@ -433,12 +433,9 @@ function GyozaiWidget() {
   }, []);
 
   // ─── Persist widget session on every state change ───
-  // Writes directly to chrome.storage.session (fast, reliable during
-  // normal operation).  Also sends via background worker as backup for
-  // page-unload scenarios where direct writes may not complete.
-  const saveSessionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Keep a ref to the latest session so beforeunload can read it
-  // synchronously without depending on stale closure values.
+  // Writes IMMEDIATELY (no debounce) to chrome.storage.session so the
+  // session is always up-to-date before any navigation can kill the page.
+  // Keep a ref to the latest session so beforeunload can read it.
   const latestSessionRef = useRef<{
     tabId: number;
     session: WidgetSession;
@@ -449,10 +446,7 @@ function GyozaiWidget() {
     // the stored session with empty defaults on first render).
     if (!sessionRestoredRef.current) return;
     const tabId = tabIdRef.current ?? _preloadedTabId;
-    if (tabId == null) {
-      log("Session save skipped — no tab ID yet");
-      return;
-    }
+    if (tabId == null) return;
     const session: WidgetSession = {
       expanded,
       activeConvId: activeConvIdRef.current,
@@ -460,22 +454,21 @@ function GyozaiWidget() {
       input,
       viewMode,
     };
-    // Update ref immediately so beforeunload always has latest
     latestSessionRef.current = { tabId, session };
-    // Debounce the actual storage write
-    if (saveSessionRef.current) clearTimeout(saveSessionRef.current);
-    saveSessionRef.current = setTimeout(() => {
-      log(
-        "Saving session — expanded:",
-        expanded,
-        "msgs:",
-        messages.length,
-        "convId:",
-        activeConvIdRef.current,
-      );
-      // Write directly to storage (reliable when page is alive)
-      saveWidgetSession(tabId, session).catch(() => {});
-    }, 100);
+    // Write immediately — no debounce. chrome.storage.session.set() is
+    // fast (~1-3ms) and we need it committed before any navigation.
+    saveWidgetSession(tabId, session)
+      .then(() =>
+        log(
+          "Session saved ✓ — expanded:",
+          expanded,
+          "msgs:",
+          messages.length,
+          "convId:",
+          activeConvIdRef.current,
+        ),
+      )
+      .catch((err) => log("Session save FAILED:", err));
   }, [expanded, messages, input, viewMode]);
 
   // ─── Flush session on page unload (cross-origin nav) ───
