@@ -12,6 +12,7 @@ import {
 } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
+import { clearWidgetSession } from "../lib/session";
 
 // Pre-compute JSON schema for structured output
 const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
@@ -159,6 +160,11 @@ export default defineBackground(() => {
         }
       });
     }
+  });
+
+  // Clean up per-tab widget session when a tab is closed
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    clearWidgetSession(tabId).catch(() => {});
   });
 });
 

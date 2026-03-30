@@ -9,6 +9,11 @@ import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
 import { waitForBody, injectWidget, watchForRemoval } from "../lib/injection";
 import {
+  saveWidgetSession,
+  loadWidgetSession,
+  type WidgetSession,
+} from "../lib/session";
+import {
   type LocaleCode,
   type Translations,
   detectBrowserLocale,
@@ -23,30 +28,38 @@ let pendingExtraContext: string | null = null;
 let autoFollowUpUsed = false;
 let queryCounter = 0;
 
-// Preload settings + tab ID so they're warm before the user clicks the bubble.
-// These fire immediately at module load (document_idle) rather than waiting
-// for React mount, shaving ~50-100ms off the first interaction.
+// Preload tab ID, settings, and session at module load (document_idle) so
+// everything is warm before the user interacts with the bubble.
 let _preloadedTabId: number | null = null;
 let _preloadedLocale: LocaleCode | null = null;
-const _preloadReady = Promise.all([
-  chrome.runtime
-    .sendMessage({ type: "gyozai_get_tab_id" })
-    .then((r) => {
-      _preloadedTabId = r?.tabId ?? null;
-    })
-    .catch(() => {}),
-  chrome.runtime
-    .sendMessage({ type: "gyozai_get_settings" })
-    .then((s: Record<string, unknown> | undefined) => {
-      if (typeof s?.language === "string") {
-        _preloadedLocale =
-          s.language === "auto"
-            ? detectBrowserLocale()
-            : resolveLocale(s.language);
-      }
-    })
-    .catch(() => {}),
-]);
+let _preloadedSession: WidgetSession | null = null;
+const _preloadReady = chrome.runtime
+  .sendMessage({ type: "gyozai_get_tab_id" })
+  .then(async (r) => {
+    _preloadedTabId = r?.tabId ?? null;
+    // Tab ID available — load session + settings in parallel
+    await Promise.all([
+      _preloadedTabId != null
+        ? loadWidgetSession(_preloadedTabId)
+            .then((s) => {
+              _preloadedSession = s;
+            })
+            .catch(() => {})
+        : Promise.resolve(),
+      chrome.runtime
+        .sendMessage({ type: "gyozai_get_settings" })
+        .then((s: Record<string, unknown> | undefined) => {
+          if (typeof s?.language === "string") {
+            _preloadedLocale =
+              s.language === "auto"
+                ? detectBrowserLocale()
+                : resolveLocale(s.language);
+          }
+        })
+        .catch(() => {}),
+    ]);
+  })
+  .catch(() => {});
 
 const S = {
   brand: "color: #E8950A; font-weight: bold",
@@ -359,9 +372,11 @@ type ViewMode = "chat" | "history";
 // ─── Widget Component ────────────────────────────────────────────────────────
 
 function GyozaiWidget() {
-  const [expanded, setExpanded] = useState(false);
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Restore state from preloaded session (persisted across navigations)
+  const s = _preloadedSession;
+  const [expanded, setExpanded] = useState(s?.expanded ?? false);
+  const [input, setInput] = useState(s?.input ?? "");
+  const [messages, setMessages] = useState<Message[]>(s?.messages ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
@@ -371,14 +386,32 @@ function GyozaiWidget() {
   const [locale, setLocale] = useState<LocaleCode>(
     _preloadedLocale ?? detectBrowserLocale(),
   );
-  const [viewMode, setViewMode] = useState<ViewMode>("chat");
+  const [viewMode, setViewMode] = useState<ViewMode>(s?.viewMode ?? "chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
 
   // Active conversation tracking — null means fresh/new conversation
-  const activeConvIdRef = useRef<string | null>(null);
+  const activeConvIdRef = useRef<string | null>(s?.activeConvId ?? null);
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ─── Persist widget session to chrome.storage.session on state changes ───
+  const saveSessionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const tabId = tabIdRef.current ?? _preloadedTabId;
+    if (tabId == null) return;
+    // Debounce saves to avoid thrashing storage on rapid state changes
+    if (saveSessionRef.current) clearTimeout(saveSessionRef.current);
+    saveSessionRef.current = setTimeout(() => {
+      saveWidgetSession(tabId, {
+        expanded,
+        activeConvId: activeConvIdRef.current,
+        messages,
+        input,
+        viewMode,
+      }).catch(() => {});
+    }, 100);
+  }, [expanded, messages, input, viewMode]);
 
   // Listen for auto-imported recipe notification
   useEffect(() => {
