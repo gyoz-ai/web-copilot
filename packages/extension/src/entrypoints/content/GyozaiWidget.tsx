@@ -132,7 +132,7 @@ export function GyozaiWidget() {
         setExpanded(false);
       }
     },
-    leaveDelay: 200,
+    leaveDelay: 50,
   });
 
   // ─── Restore session from chrome.storage.session after preload ───
