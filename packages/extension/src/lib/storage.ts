@@ -10,7 +10,7 @@ export interface ExtensionSettings {
   language: string; // locale code or "auto" for browser detection
 }
 
-const DEFAULT_SETTINGS: ExtensionSettings = {
+export const DEFAULT_SETTINGS: ExtensionSettings = {
   mode: "byok",
   provider: "claude",
   apiKey: "",

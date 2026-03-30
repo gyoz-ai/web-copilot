@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   getSettings,
   saveSettings,
+  DEFAULT_SETTINGS,
   type ExtensionSettings,
 } from "../../lib/storage";
 import {
@@ -48,7 +49,8 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
 };
 
 export function App() {
-  const [settings, setSettings] = useState<ExtensionSettings | null>(null);
+  // Initialize with defaults so UI renders instantly — no loading gate
+  const [settings, setSettings] = useState<ExtensionSettings>(DEFAULT_SETTINGS);
   const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
   const [currentDomain, setCurrentDomain] = useState<string>("");
   const [showAllRecipes, setShowAllRecipes] = useState(false);
@@ -67,14 +69,11 @@ export function App() {
     });
   }, []);
 
-  const locale: LocaleCode = settings
-    ? settings.language === "auto"
+  const locale: LocaleCode =
+    settings.language === "auto"
       ? detectBrowserLocale()
-      : resolveLocale(settings.language)
-    : "en";
+      : resolveLocale(settings.language);
   const tr = getTranslations(locale);
-
-  if (!settings) return <div className="popup-loading">{tr.popup_loading}</div>;
 
   const handleSave = async () => {
     await saveSettings(settings);
