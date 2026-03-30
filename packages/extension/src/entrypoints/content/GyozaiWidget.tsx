@@ -972,9 +972,17 @@ export function GyozaiWidget() {
           const isThinking = lastMsg.role === "user" || loading;
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
           const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
+          const bubbleWidth = 280;
+          const pad = 8;
           const posStyle: React.CSSProperties = rect
             ? {
-                left: rect.left + rect.width / 2 - 140,
+                left: Math.max(
+                  pad,
+                  Math.min(
+                    rect.left + rect.width / 2 - bubbleWidth / 2,
+                    window.innerWidth - bubbleWidth - pad,
+                  ),
+                ),
                 ...(showAbove
                   ? { bottom: window.innerHeight - rect.top + 8 }
                   : { top: rect.bottom + 8 }),
