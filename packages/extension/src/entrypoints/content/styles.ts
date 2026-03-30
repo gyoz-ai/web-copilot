@@ -138,7 +138,7 @@ export const WIDGET_STYLES = `
     font-size: 13px;
     color: #fff;
     line-height: 1.5;
-    background: oklch(0.15 0.02 50);
+    background: oklch(0.15 0.02 50 / 0.4);
     border-radius: 12px;
   }
 
