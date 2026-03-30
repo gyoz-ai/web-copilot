@@ -48,14 +48,16 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
+type Tab = "recipes" | "settings";
+
 export function App() {
-  // Initialize with defaults so UI renders instantly — no loading gate
   const [settings, setSettings] = useState<ExtensionSettings>(DEFAULT_SETTINGS);
   const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
   const [currentDomain, setCurrentDomain] = useState<string>("");
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<Tab>("recipes");
 
   useEffect(() => {
     getSettings().then(setSettings);
@@ -107,7 +109,6 @@ export function App() {
 
   const domainRecipes = recipes.filter((r) => r.domain === currentDomain);
   const displayRecipes = showAllRecipes ? recipes : domainRecipes;
-
   const models = MODELS[settings.provider] || [];
 
   return (
@@ -121,254 +122,290 @@ export function App() {
         <span className="popup-version">v0.0.1</span>
       </div>
 
-      {/* Mode Toggle */}
-      <div className="popup-section">
-        <div className="mode-toggle">
-          <button
-            className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
-            onClick={() => setSettings({ ...settings, mode: "byok" })}
-          >
-            BYOK
-          </button>
-          <button
-            className={`mode-btn ${settings.mode === "managed" ? "active" : ""}`}
-            onClick={() => setSettings({ ...settings, mode: "managed" })}
-          >
-            Managed
-          </button>
-        </div>
+      {/* Tab bar */}
+      <div className="popup-tabs">
+        <button
+          className={`popup-tab ${tab === "recipes" ? "active" : ""}`}
+          onClick={() => setTab("recipes")}
+        >
+          {tr.popup_recipes}
+        </button>
+        <button
+          className={`popup-tab ${tab === "settings" ? "active" : ""}`}
+          onClick={() => setTab("settings")}
+        >
+          {tr.popup_settings}
+        </button>
       </div>
 
-      {/* BYOK Config */}
-      {settings.mode === "byok" && (
+      {/* ═══ Recipes Tab ═══ */}
+      {tab === "recipes" && (
         <div className="popup-section">
-          <label className="form-label">{tr.popup_provider}</label>
-          <select
-            className="form-select"
-            value={settings.provider}
-            onChange={(e) => {
-              const provider = e.target.value as ExtensionSettings["provider"];
-              const firstModel = MODELS[provider]?.[0]?.id || "";
-              setSettings({ ...settings, provider, model: firstModel });
-            }}
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-
-          <label className="form-label">{tr.popup_api_key}</label>
-          <div className="key-row">
-            <input
-              type={showKey ? "text" : "password"}
-              className="form-input"
-              value={settings.apiKey}
-              onChange={(e) =>
-                setSettings({ ...settings, apiKey: e.target.value })
-              }
-              placeholder={t(tr, "popup_api_key_placeholder", {
-                provider:
-                  PROVIDERS.find((p) => p.id === settings.provider)?.name || "",
-              })}
-            />
-            <button className="eye-btn" onClick={() => setShowKey(!showKey)}>
-              {showKey ? "\u{1F648}" : "\u{1F441}\uFE0F"}
-            </button>
-          </div>
-
-          <label className="form-label">{tr.popup_model}</label>
-          <select
-            className="form-select"
-            value={settings.model}
-            onChange={(e) =>
-              setSettings({ ...settings, model: e.target.value })
-            }
-          >
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-
-          <button
-            className={`btn-primary ${saved ? "saved" : ""}`}
-            onClick={handleSave}
-          >
-            {saved ? `\u2713 ${tr.popup_saved}` : tr.popup_save}
-          </button>
-        </div>
-      )}
-
-      {/* Managed Mode */}
-      {settings.mode === "managed" && (
-        <div className="popup-section">
-          {settings.managedToken ? (
-            <div>
-              <div className="status-row">
-                <span className="status-dot" />
-                <span>{tr.popup_managed_connected}</span>
-              </div>
+          <div className="section-header">
+            <span className="section-title">
+              {showAllRecipes
+                ? tr.popup_all_recipes
+                : currentDomain
+                  ? t(tr, "popup_recipes_for", { domain: currentDomain })
+                  : tr.popup_recipes}
+            </span>
+            <div style={{ display: "flex", gap: 4 }}>
               <button
-                className="btn-secondary"
-                onClick={() => {
-                  const updated = { ...settings, managedToken: undefined };
-                  setSettings(updated);
-                  saveSettings(updated);
-                }}
+                className="action-btn"
+                onClick={() => setShowAllRecipes(!showAllRecipes)}
+                title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
               >
-                {tr.popup_managed_sign_out}
+                {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
+              </button>
+              <button className="action-btn" onClick={handleImportRecipe}>
+                {tr.popup_import}
               </button>
             </div>
+          </div>
+          {displayRecipes.length === 0 ? (
+            <p className="empty-text">
+              {showAllRecipes
+                ? tr.popup_no_recipes_all
+                : t(tr, "popup_no_recipes_site", {
+                    domain: currentDomain || "this site",
+                  })}
+            </p>
           ) : (
-            <div>
-              <p className="desc-text">{tr.popup_managed_subscribe_desc}</p>
-              <button
-                className="btn-primary"
-                onClick={() =>
-                  chrome.tabs.create({ url: "https://gyoz.ai/subscribe" })
-                }
-              >
-                {tr.popup_managed_subscribe_btn}
-              </button>
+            <div className="recipe-list">
+              {displayRecipes.map((r) => (
+                <div
+                  key={r.id}
+                  className={`recipe-item ${r.enabled === false ? "disabled" : ""}`}
+                >
+                  <div className="recipe-info">
+                    <div className="recipe-name">{r.name}</div>
+                    <div className="recipe-domain">{r.domain}</div>
+                  </div>
+                  <div className="recipe-actions">
+                    <button
+                      className={`toggle-btn ${r.enabled !== false ? "active" : ""}`}
+                      title={r.enabled !== false ? "Disable" : "Enable"}
+                      onClick={() => handleToggleRecipe(r.id)}
+                    >
+                      {r.enabled !== false ? "ON" : "OFF"}
+                    </button>
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDeleteRecipe(r.id)}
+                    >
+                      {"\u2715"}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Recipes */}
-      <div className="popup-section">
-        <div className="section-header">
-          <span className="section-title">
-            {showAllRecipes
-              ? tr.popup_all_recipes
-              : currentDomain
-                ? t(tr, "popup_recipes_for", { domain: currentDomain })
-                : tr.popup_recipes}
-          </span>
-          <div style={{ display: "flex", gap: 4 }}>
-            <button
-              className="action-btn"
-              onClick={() => setShowAllRecipes(!showAllRecipes)}
-              title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
-            >
-              {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
-            </button>
-            <button className="action-btn" onClick={handleImportRecipe}>
-              {tr.popup_import}
-            </button>
-          </div>
-        </div>
-        {displayRecipes.length === 0 ? (
-          <p className="empty-text">
-            {showAllRecipes
-              ? tr.popup_no_recipes_all
-              : t(tr, "popup_no_recipes_site", {
-                  domain: currentDomain || "this site",
-                })}
-          </p>
-        ) : (
-          <div className="recipe-list">
-            {displayRecipes.map((r) => (
-              <div
-                key={r.id}
-                className={`recipe-item ${r.enabled === false ? "disabled" : ""}`}
+      {/* ═══ Settings Tab ═══ */}
+      {tab === "settings" && (
+        <>
+          {/* Mode Toggle */}
+          <div className="popup-section">
+            <div className="section-header">
+              <span className="section-title">{tr.popup_provider}</span>
+            </div>
+            <div className="mode-toggle">
+              <button
+                className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
+                onClick={() => setSettings({ ...settings, mode: "byok" })}
               >
-                <div className="recipe-info">
-                  <div className="recipe-name">{r.name}</div>
-                  <div className="recipe-domain">{r.domain}</div>
-                </div>
-                <div className="recipe-actions">
-                  <button
-                    className={`toggle-btn ${r.enabled !== false ? "active" : ""}`}
-                    title={r.enabled !== false ? "Disable" : "Enable"}
-                    onClick={() => handleToggleRecipe(r.id)}
-                  >
-                    {r.enabled !== false ? "ON" : "OFF"}
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDeleteRecipe(r.id)}
-                  >
-                    {"\u2715"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Settings */}
-      <div className="popup-section">
-        <div className="section-header">
-          <span className="section-title">{tr.popup_settings}</span>
-        </div>
-
-        {/* Language */}
-        <div className="setting-row">
-          <div className="setting-label">{tr.popup_language}</div>
-          <select
-            className="setting-select"
-            value={settings.language}
-            onChange={(e) => {
-              const updated = { ...settings, language: e.target.value };
-              setSettings(updated);
-              saveSettings(updated);
-            }}
-          >
-            <option value="auto">{tr.popup_language_auto}</option>
-            {SUPPORTED_LOCALES.map((loc) => (
-              <option key={loc.code} value={loc.code}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Yolo Mode */}
-        <div className="setting-row">
-          <div className="setting-info">
-            <div className="setting-label">{tr.popup_yolo_mode}</div>
-            <div className="setting-desc">{tr.popup_yolo_desc}</div>
-          </div>
-          <button
-            className={`toggle-btn ${settings.yoloMode ? "active" : ""}`}
-            onClick={() => {
-              const updated = { ...settings, yoloMode: !settings.yoloMode };
-              setSettings(updated);
-              saveSettings(updated);
-            }}
-          >
-            {settings.yoloMode ? "ON" : "OFF"}
-          </button>
-        </div>
-
-        {/* Auto-import Recipes */}
-        <div className="setting-row">
-          <div className="setting-info">
-            <div className="setting-label">{tr.popup_auto_import_recipes}</div>
-            <div className="setting-desc">
-              {tr.popup_auto_import_recipes_desc}
+                BYOK
+              </button>
+              <button
+                className={`mode-btn ${settings.mode === "managed" ? "active" : ""}`}
+                onClick={() => setSettings({ ...settings, mode: "managed" })}
+              >
+                Managed
+              </button>
             </div>
           </div>
-          <button
-            className={`toggle-btn ${settings.autoImportRecipes ? "active" : ""}`}
-            onClick={() => {
-              const updated = {
-                ...settings,
-                autoImportRecipes: !settings.autoImportRecipes,
-              };
-              setSettings(updated);
-              saveSettings(updated);
-            }}
-          >
-            {settings.autoImportRecipes ? "ON" : "OFF"}
-          </button>
-        </div>
-      </div>
+
+          {/* BYOK Config */}
+          {settings.mode === "byok" && (
+            <div className="popup-section">
+              <label className="form-label">{tr.popup_provider}</label>
+              <select
+                className="form-select"
+                value={settings.provider}
+                onChange={(e) => {
+                  const provider = e.target
+                    .value as ExtensionSettings["provider"];
+                  const firstModel = MODELS[provider]?.[0]?.id || "";
+                  setSettings({ ...settings, provider, model: firstModel });
+                }}
+              >
+                {PROVIDERS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
+              <label className="form-label">{tr.popup_api_key}</label>
+              <div className="key-row">
+                <input
+                  type={showKey ? "text" : "password"}
+                  className="form-input"
+                  value={settings.apiKey}
+                  onChange={(e) =>
+                    setSettings({ ...settings, apiKey: e.target.value })
+                  }
+                  placeholder={t(tr, "popup_api_key_placeholder", {
+                    provider:
+                      PROVIDERS.find((p) => p.id === settings.provider)?.name ||
+                      "",
+                  })}
+                />
+                <button
+                  className="eye-btn"
+                  onClick={() => setShowKey(!showKey)}
+                >
+                  {showKey ? "\u{1F648}" : "\u{1F441}\uFE0F"}
+                </button>
+              </div>
+
+              <label className="form-label">{tr.popup_model}</label>
+              <select
+                className="form-select"
+                value={settings.model}
+                onChange={(e) =>
+                  setSettings({ ...settings, model: e.target.value })
+                }
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                className={`btn-primary ${saved ? "saved" : ""}`}
+                onClick={handleSave}
+              >
+                {saved ? `\u2713 ${tr.popup_saved}` : tr.popup_save}
+              </button>
+            </div>
+          )}
+
+          {/* Managed Mode */}
+          {settings.mode === "managed" && (
+            <div className="popup-section">
+              {settings.managedToken ? (
+                <div>
+                  <div className="status-row">
+                    <span className="status-dot" />
+                    <span>{tr.popup_managed_connected}</span>
+                  </div>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      const updated = { ...settings, managedToken: undefined };
+                      setSettings(updated);
+                      saveSettings(updated);
+                    }}
+                  >
+                    {tr.popup_managed_sign_out}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="desc-text">{tr.popup_managed_subscribe_desc}</p>
+                  <button
+                    className="btn-primary"
+                    onClick={() =>
+                      chrome.tabs.create({ url: "https://gyoz.ai/subscribe" })
+                    }
+                  >
+                    {tr.popup_managed_subscribe_btn}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Preferences */}
+          <div className="popup-section">
+            <div className="section-header">
+              <span className="section-title">{tr.popup_settings}</span>
+            </div>
+
+            {/* Language */}
+            <div className="setting-row">
+              <div className="setting-label">{tr.popup_language}</div>
+              <select
+                className="setting-select"
+                value={settings.language}
+                onChange={(e) => {
+                  const updated = { ...settings, language: e.target.value };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                <option value="auto">{tr.popup_language_auto}</option>
+                {SUPPORTED_LOCALES.map((loc) => (
+                  <option key={loc.code} value={loc.code}>
+                    {loc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Yolo Mode */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">{tr.popup_yolo_mode}</div>
+                <div className="setting-desc">{tr.popup_yolo_desc}</div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.yoloMode ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    yoloMode: !settings.yoloMode,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.yoloMode ? "ON" : "OFF"}
+              </button>
+            </div>
+
+            {/* Auto-import Recipes */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">
+                  {tr.popup_auto_import_recipes}
+                </div>
+                <div className="setting-desc">
+                  {tr.popup_auto_import_recipes_desc}
+                </div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.autoImportRecipes ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    autoImportRecipes: !settings.autoImportRecipes,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.autoImportRecipes ? "ON" : "OFF"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
