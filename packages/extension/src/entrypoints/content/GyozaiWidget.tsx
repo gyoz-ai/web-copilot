@@ -20,7 +20,7 @@ import {
   t,
 } from "../../lib/i18n";
 import { FormatMessage } from "./components/FormatMessage";
-import type { Message, ClarifyState, ActionResult, ViewMode } from "./types";
+import type { Message, ClarifyState, AgentResult, ViewMode } from "./types";
 import {
   mapExtraRequests,
   sanitizeError,
@@ -360,10 +360,12 @@ export function GyozaiWidget() {
 
         try {
           autoFollowUpUsed = false;
-          await handleFullQuery(
+          const result = await sendQuery(
             `I've already navigated to this page. Complete the remaining task without repeating what was already said. Original request: ${pendingNav.originalQuery}`,
-            false,
+            pendingExtraContext || undefined,
           );
+          pendingExtraContext = null;
+          await processAgentResult(result);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
@@ -504,7 +506,7 @@ export function GyozaiWidget() {
   async function sendQuery(
     query: string,
     extraPageContext?: string,
-  ): Promise<ActionResult> {
+  ): Promise<AgentResult> {
     const currentRoute = window.location.pathname;
 
     const [recipe, extSettings] = await Promise.all([
@@ -517,9 +519,7 @@ export function GyozaiWidget() {
 
     const manifestMode = !!recipe?.content;
 
-    // For no-manifest mode, capture clean HTML — DOM structure with
-    // meaningful attrs, no scripts/styles/CSS classes/noise.
-    // Gives AI both structure and content in a compact format.
+    // For no-manifest mode, capture clean HTML
     let pageSnapshot: string | undefined;
     if (!manifestMode && !extraPageContext) {
       pageSnapshot = captureCleanHtml();
@@ -570,36 +570,16 @@ export function GyozaiWidget() {
       "",
     );
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
-    console.log(
-      `%cRecipe:%c ${recipe ? `${recipe.names.join(", ")}` : "none"}`,
-      S.req,
-      "",
-    );
     if (manifestMode && recipe?.content) {
-      console.log(
-        `%cRecipe:%c ${recipe.content.length} chars (${recipe.names.length} recipe${recipe.names.length > 1 ? "s" : ""})`,
-        S.req,
-        "",
-      );
+      console.log(`%cRecipe:%c ${recipe.content.length} chars`, S.req, "");
     }
     if (!manifestMode && pageSnapshot) {
-      console.log(
-        `%cClean HTML:%c ${pageSnapshot.length} chars sent to AI`,
-        S.req,
-        "",
-      );
-    }
-    if (extraPageContext) {
-      console.log(
-        `%cPage context:%c ${extraPageContext.length} chars (from extraRequests capture)`,
-        S.req,
-        "",
-      );
+      console.log(`%cClean HTML:%c ${pageSnapshot.length} chars`, S.req, "");
     }
     console.groupEnd();
 
     const start = Date.now();
-    const result = (await chrome.runtime.sendMessage(payload)) as ActionResult;
+    const result = (await chrome.runtime.sendMessage(payload)) as AgentResult;
     const ms = Date.now() - start;
 
     // ─── Log response ──────────────────
@@ -607,55 +587,38 @@ export function GyozaiWidget() {
     if (result?.error) {
       console.log(`%c Error:%c ${result.error}`, S.err, "");
     } else {
-      const actions = result?.actions || [];
-      for (const action of actions) {
-        const parts: string[] = [];
-        if (action.target) parts.push(`target="${action.target}"`);
-        if (action.selector) parts.push(`selector="${action.selector}"`);
-        if (action.url) parts.push(`url="${action.url}"`);
-        if (action.code)
-          parts.push(
-            `code="${action.code.slice(0, 80)}${action.code.length > 80 ? "..." : ""}"`,
+      console.log(`%cMessages:%c ${result?.messages?.length || 0}`, S.res, "");
+      if (result?.toolCalls?.length) {
+        for (const tc of result.toolCalls) {
+          console.log(
+            `%c  → ${tc.tool}%c ${JSON.stringify(tc.args).slice(0, 100)}`,
+            S.action,
+            S.dim,
           );
-        if (action.message)
-          parts.push(
-            `msg="${action.message.slice(0, 80)}${action.message.length > 80 ? "..." : ""}"`,
-          );
-        if (action.options)
-          parts.push(`options=[${action.options.join(", ")}]`);
-        console.log(
-          `%c  → ${action.type}%c ${parts.join(" ")}`,
-          S.action,
-          S.dim,
-        );
+        }
       }
-      if (result?.extraRequests?.length) {
-        const ac = (result as { autoContinue?: boolean }).autoContinue;
+      if (result?.navigated) {
+        console.log(`%c  navigated:%c true`, S.action, "");
+      }
+      if (result?.clarify) {
         console.log(
-          `%c  extraRequests:%c ${result.extraRequests.join(", ")} | autoContinue: ${ac ? "yes" : "no"}`,
+          `%c  clarify:%c ${result.clarify.options.join(", ")}`,
           S.action,
           "",
         );
       }
-      if (
-        (result as { autoContinue?: boolean }).autoContinue &&
-        !result?.extraRequests?.length
-      ) {
-        console.log(`%c  autoContinue:%c true`, S.action, "");
-      }
     }
     console.groupEnd();
 
-    // Raw payload/response for debugging (collapsed)
+    // Raw response for debugging
     console.groupCollapsed(`%c[gyoza] RAW #${qn}`, S.dim);
-    console.log("Request payload:", payload);
     console.log("Response:", result);
     console.groupEnd();
 
     return result;
   }
 
-  // Dispatch a single DOM action; returns error string if execute-js fails
+  // Dispatch a single DOM action (legacy managed mode only)
   async function dispatchDomAction(action: {
     type: string;
     target?: string;
@@ -680,18 +643,11 @@ export function GyozaiWidget() {
         break;
       case "execute-js":
         if (action.code) {
-          console.log(
-            `%c[gyoza] execute-js%c ${action.code.slice(0, 100)}${action.code.length > 100 ? "..." : ""}`,
-            S.action,
-            S.dim,
-          );
-          // Execute in page's main world via background worker (CSP blocks eval in content scripts)
           const result = await chrome.runtime.sendMessage({
             type: "gyozai_exec",
             code: action.code,
           });
           if (result?.error) {
-            console.error(`%c[gyoza] JS error:%c ${result.error}`, S.err, "");
             return result.error;
           }
         }
@@ -701,7 +657,6 @@ export function GyozaiWidget() {
           const el = document.querySelector(
             action.selector,
           ) as HTMLElement | null;
-          log("Highlight →", action.selector, el ? "(found)" : "(NOT FOUND)");
           if (el) {
             const prev = el.style.cssText;
             el.style.cssText += `;outline:3px solid #E8950A!important;outline-offset:4px!important;border-radius:8px!important;box-shadow:0 0 20px rgba(232,149,10,0.4)!important;transition:all 0.3s ease!important;`;
@@ -716,135 +671,110 @@ export function GyozaiWidget() {
     return undefined;
   }
 
-  // Full query lifecycle: handles extraRequests, auto-follow-up, fetch, JS errors
-  async function handleFullQuery(
-    query: string,
-    isUserMessage: boolean,
-  ): Promise<void> {
-    let pageContextForQuery: string | null = null;
-
-    if (pendingExtraContext) {
-      pageContextForQuery = pendingExtraContext;
-      pendingExtraContext = null;
-      log(
-        "Attaching pending extra context:",
-        pageContextForQuery!.length,
-        "chars",
-      );
-    }
-
-    if (pendingSnapshotTypes && pendingSnapshotTypes.length > 0) {
-      const types = pendingSnapshotTypes;
-      pendingSnapshotTypes = null;
-      log("Capturing pending snapshots:", types.join(", "));
-      const pageCtx = capturePageContext(types);
-      const ctxText = formatPageContext(pageCtx);
-      if (ctxText) {
-        pageContextForQuery = ctxText;
-        log("Captured", ctxText.length, "chars of page context");
-      }
-    }
-
-    const result = await sendQuery(query, pageContextForQuery || undefined);
-
-    if (result?.error) {
+  // Process the agent result from the background worker
+  async function processAgentResult(result: AgentResult): Promise<void> {
+    if (result.error) {
       setError(result.error);
       return;
     }
 
-    const actions = result?.actions || [];
-    const extraRequests = result?.extraRequests;
-    const autoContinue = (result as { autoContinue?: boolean }).autoContinue;
+    // ─── Check if this is a legacy managed-mode response ─────
+    // Legacy responses have `actions` array from the old structured output format.
+    // The background worker's convertLegacyToAgentResult includes these.
+    if (result.actions && result.actions.length > 0) {
+      await handleLegacyResponse(result);
+      return;
+    }
 
-    // ─── Handle extraRequests ─────────────────────────────────
+    // ─── BYOK tool-calling response ──────────────────────────
+    // Messages were accumulated by show_message tool calls
+    if (result.messages && result.messages.length > 0) {
+      addAssistantMessage(result.messages.join("\n\n"));
+    }
+
+    // Clarify state (from clarify tool)
+    if (result.clarify) {
+      setClarify({
+        message: result.clarify.message,
+        options: result.clarify.options,
+      });
+    }
+
+    // Navigation was already initiated by the navigate tool in the background.
+    // The pending-nav mechanism on the new page handles continuation.
+    // Nothing to do here — the page will reload.
+  }
+
+  // Handle legacy managed-mode responses (structured output with actions array)
+  async function handleLegacyResponse(result: AgentResult): Promise<void> {
+    const actions = result.actions || [];
+    const extraRequests = result.extraRequests;
+    const autoContinue = result.autoContinue;
+
+    // Handle extraRequests (legacy only)
     if (extraRequests && extraRequests.length > 0) {
       const snapshotTypes = mapExtraRequests(extraRequests);
-      console.log(
-        `%c[gyoza] AI requested extraRequests:%c ${extraRequests.join(", ")} ${autoContinue ? "(autoContinue)" : "(wait)"}`,
-        S.action,
-        "",
-      );
 
       const hasPageChange = actions.some(
         (a) => a.type === "navigate" || a.type === "click",
       );
 
       if (hasPageChange) {
-        // Page will change — stash snapshot types for after navigation
-        log("navigate/click + extraRequests → saving for auto-resume");
         await savePendingNav({
           snapshotTypes,
-          originalQuery: query,
+          originalQuery: "",
           conversationId: activeConvIdRef.current || "",
           tabId: tabIdRef.current ?? 0,
           timestamp: Date.now(),
         });
-        await dispatchActionsInOrder(actions);
+        await dispatchLegacyActions(actions);
         return;
       }
 
-      // Capture context now (page isn't changing)
       const pageCtx = capturePageContext(snapshotTypes);
       const ctxText = formatPageContext(pageCtx);
-
-      // Dispatch current actions (show-message, clarify, etc.)
-      await dispatchActionsInOrder(actions);
+      await dispatchLegacyActions(actions);
 
       if (autoContinue) {
-        // If structured capture is empty, fall back to clean HTML
         const context = ctxText || captureCleanHtml();
-        if (!context) {
-          log("autoContinue but no context captured — waiting");
-          return;
-        }
-        // AI wants to continue — re-query with captured context
-        console.log(
-          `%c[gyoza] AUTO-CONTINUE:%c captured ${context.length} chars, re-querying...`,
-          S.brand,
-          "",
-        );
+        if (!context) return;
         pendingExtraContext = context;
-        await handleFullQuery(
-          "Page context is now available. Complete the task using this context. Do not repeat previous messages.",
-          false,
+        const followUp = await sendQuery(
+          "Page context is now available. Complete the task.",
+          context,
         );
-      } else {
-        // AI wants to wait — stash context for next user query
-        log("Stashing", ctxText.length, "chars for next query");
+        await processAgentResult(followUp);
+      } else if (ctxText) {
         pendingExtraContext = ctxText;
       }
       return;
     }
 
-    // ─── Handle fetch actions ─────────────────────────────────
+    // Handle fetch (legacy only)
     const fetchAction = actions.find((a) => a.type === "fetch");
     if (fetchAction && fetchAction.url) {
       if (fetchAction.message) addAssistantMessage(fetchAction.message);
-      log("Fetch action →", fetchAction.url);
-
       try {
         const fetchResult = await fetch(fetchAction.url, {
           method: fetchAction.method || "GET",
         }).then((r) => r.text());
-        log("Fetch result:", fetchResult.length, "chars");
-
-        await handleFullQuery(
-          `Based on the fetched results from ${fetchAction.url}: ${fetchResult}\n\nAnswer my original question: ${query}`,
-          false,
+        const followUp = await sendQuery(
+          `Based on fetched results from ${fetchAction.url}: ${fetchResult}`,
         );
+        await processAgentResult(followUp);
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        addAssistantMessage(`Failed to fetch ${fetchAction.url}: ${errMsg}`);
+        addAssistantMessage(
+          `Failed to fetch ${fetchAction.url}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
       return;
     }
 
-    // ─── Dispatch actions (messages first, then DOM) ──────────
-    await dispatchActionsInOrder(actions);
+    await dispatchLegacyActions(actions);
   }
 
-  // Dispatch show-message first, wait 50ms, then DOM actions
-  async function dispatchActionsInOrder(
+  // Dispatch legacy actions (managed mode)
+  async function dispatchLegacyActions(
     actions: Array<{
       type: string;
       target?: string;
@@ -854,7 +784,6 @@ export function GyozaiWidget() {
       options?: string[];
     }>,
   ): Promise<void> {
-    // Consolidate all show-messages into ONE chat bubble (prevents duplicates)
     const showMessages = actions
       .filter((a) => a.type === "show-message" && a.message)
       .map((a) => a.message!);
@@ -862,7 +791,6 @@ export function GyozaiWidget() {
       addAssistantMessage(showMessages.join("\n\n"));
     }
 
-    // Clarify stays separate (has options)
     const clarifyAction = actions.find(
       (a) => a.type === "clarify" && a.message,
     );
@@ -876,7 +804,6 @@ export function GyozaiWidget() {
 
     await new Promise((r) => setTimeout(r, 50));
 
-    // DOM actions (messages only from show-message/clarify above, not from DOM actions)
     for (const action of actions) {
       if (
         action.type === "show-message" ||
@@ -887,17 +814,14 @@ export function GyozaiWidget() {
       }
 
       const jsError = await dispatchDomAction(action);
-
       if (jsError && action.type === "execute-js") {
         const errorMsg = sanitizeError(jsError);
-        // Don't show JS errors to user — just log and let AI retry silently
         log("JS failed, re-querying AI:", errorMsg);
-        // Reset so the error re-query gets its own auto-follow-up allowance
         autoFollowUpUsed = false;
-        await handleFullQuery(
-          `The code you tried to execute failed with this error: "${errorMsg}". Please try a different approach or explain what went wrong.`,
-          false,
+        const retry = await sendQuery(
+          `The code failed with error: "${errorMsg}". Try a different approach.`,
         );
+        await processAgentResult(retry);
         return;
       }
     }
@@ -918,7 +842,9 @@ export function GyozaiWidget() {
 
     try {
       autoFollowUpUsed = false;
-      await handleFullQuery(trimmed, true);
+      const result = await sendQuery(trimmed, pendingExtraContext || undefined);
+      pendingExtraContext = null;
+      await processAgentResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -939,7 +865,9 @@ export function GyozaiWidget() {
 
     try {
       autoFollowUpUsed = false;
-      await handleFullQuery(option, true);
+      const result = await sendQuery(option, pendingExtraContext || undefined);
+      pendingExtraContext = null;
+      await processAgentResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { generateText, stepCountIs } from "ai";
 import { ActionResponseSchema } from "@gyoz-ai/engine";
 import {
   getSettings,
@@ -11,17 +12,34 @@ import {
   recipeExists,
 } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
+import type { Message } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
 import {
   clearWidgetSession,
   loadWidgetSession,
   saveWidgetSession,
 } from "../lib/session";
+import { createBrowserTools, type ToolExecContext } from "../lib/tools";
 
-// Pre-compute JSON schema for structured output
+// Pre-compute JSON schema for legacy structured output (managed mode only)
 const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
   target: "jsonSchema7",
 });
+
+// ─── Agent result returned to content script ────────────────────────────────
+
+interface AgentResult {
+  messages: string[];
+  clarify?: { message: string; options: string[] } | null;
+  expression?: string | null;
+  navigated?: boolean;
+  error?: string;
+  /** Summary of tool calls for debugging */
+  toolCalls?: Array<{
+    tool: string;
+    args: Record<string, unknown>;
+  }>;
+}
 
 export default defineBackground(() => {
   console.log("[gyoza] Background worker started");
@@ -88,15 +106,14 @@ export default defineBackground(() => {
     }
 
     if (message.type === "gyozai_query") {
-      handleQuery(message)
+      const senderTabId = sender.tab?.id ?? null;
+      handleQuery(message, senderTabId)
         .then((result) => {
-          // Feature 3: Desktop notification when tab is not focused
+          // Desktop notification when tab is not focused
           if (sender?.tab?.id) {
             chrome.tabs.get(sender.tab.id, (tab) => {
               if (!tab.active) {
-                const msg =
-                  result.actions.find((a: { message?: string }) => a.message)
-                    ?.message || "Action completed";
+                const msg = result.messages?.[0] || "Action completed";
                 chrome.notifications.create({
                   type: "basic",
                   iconUrl: "/icon-128.png",
@@ -111,8 +128,9 @@ export default defineBackground(() => {
         .catch((err) => {
           console.error("[gyoza] Query error:", err);
           sendResponse({
+            messages: [],
             error: err instanceof Error ? err.message : "Unknown error",
-          });
+          } satisfies AgentResult);
         });
       return true;
     }
@@ -129,7 +147,6 @@ export default defineBackground(() => {
           sendResponse({ ok: true, skipped: true });
           return;
         }
-        // Use the tab's actual host as domain (not what's in the file)
         const tabHost = sender.tab?.url
           ? new URL(sender.tab.url).host
           : undefined;
@@ -158,6 +175,7 @@ export default defineBackground(() => {
       return false;
     }
 
+    // Legacy gyozai_exec — kept for backward compatibility but tools now handle this
     if (message.type === "gyozai_exec") {
       chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
         if (!tab?.id) {
@@ -170,12 +188,9 @@ export default defineBackground(() => {
             world: "MAIN",
             func: (code: string) => {
               try {
-                // Auto-fix selectors with special characters before executing
-                // Replace #id selectors containing special chars with CSS.escape'd versions
                 const fixedCode = code.replace(
                   /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
                   (match, selector: string) => {
-                    // If selector has an ID part with special chars, escape it
                     const fixed = selector.replace(
                       /#([^.\s#\[>~+,]+)/g,
                       (_: string, id: string) => {
@@ -223,25 +238,29 @@ export default defineBackground(() => {
     }
   });
 
-  // Clean up per-tab widget session when a tab is closed
   chrome.tabs.onRemoved.addListener((tabId) => {
     clearWidgetSession(tabId).catch(() => {});
   });
 });
 
-async function handleQuery(message: {
-  query: string;
-  manifestMode: boolean;
-  recipe?: string;
-  htmlSnapshot?: string;
-  currentRoute?: string;
-  pageContext?: string;
-  context?: Record<string, unknown>;
-  capabilities?: Record<string, boolean>;
-  conversationId?: string;
-}) {
+// ─── Main query handler ─────────────────────────────────────────────────────
+
+async function handleQuery(
+  message: {
+    query: string;
+    manifestMode: boolean;
+    recipe?: string;
+    htmlSnapshot?: string;
+    currentRoute?: string;
+    pageContext?: string;
+    context?: Record<string, unknown>;
+    capabilities?: Record<string, boolean>;
+    conversationId?: string;
+  },
+  senderTabId: number | null,
+): Promise<AgentResult> {
   const settings = await getSettings();
-  const provider = createProvider(settings);
+  const providerResult = createProvider(settings);
   const conversationId = message.conversationId;
   const history = conversationId
     ? await getConversationLlmHistory(conversationId)
@@ -263,14 +282,6 @@ async function handleQuery(message: {
     pageContext: message.pageContext,
   });
 
-  const messages = [
-    ...history.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user" as const, content: userPrompt },
-  ];
-
   // ─── Log request ───────────────────
   console.group(
     `%c[gyoza] BACKGROUND → LLM`,
@@ -288,52 +299,182 @@ async function handleQuery(message: {
   console.log("  Manifest mode:", message.manifestMode);
   console.log("  Conversation ID:", conversationId ?? "none");
   console.log("  Conversation history:", history.length, "messages");
-  console.log("  System prompt:", systemPrompt.slice(0, 100) + "...");
-  console.log("  User prompt:", userPrompt.slice(0, 150) + "...");
-  if (message.pageContext) {
-    console.log("  Page context:", message.pageContext.length, "chars");
-  }
 
   const start = Date.now();
-  const result = await provider.query(
-    systemPrompt,
+
+  // ─── Managed mode: legacy structured output path ───────────────────────
+  if (providerResult.type === "legacy") {
+    const messages = [
+      ...history.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      { role: "user" as const, content: userPrompt },
+    ];
+
+    const legacyResult = await providerResult.provider.query(
+      systemPrompt,
+      messages,
+      actionJsonSchema as Record<string, unknown>,
+    );
+    const ms = Date.now() - start;
+    console.log(`  ⏱ Response in ${ms}ms (legacy/managed)`);
+    console.groupEnd();
+
+    // Update conversation history
+    history.push({ role: "user", content: message.query });
+    const firstMsg = legacyResult.actions.find(
+      (a) => a.type === "show-message" && a.message,
+    )?.message;
+    if (firstMsg) {
+      history.push({ role: "assistant", content: firstMsg.slice(0, 300) });
+    }
+    if (conversationId) {
+      await saveConversationLlmHistory(conversationId, history);
+    }
+
+    // Convert legacy ActionResponse to AgentResult
+    return convertLegacyToAgentResult(legacyResult);
+  }
+
+  // ─── BYOK mode: Vercel AI SDK with tool calling ───────────────────────
+
+  if (senderTabId == null) {
+    throw new Error("No tab ID available for tool execution");
+  }
+
+  const ctx: ToolExecContext = {
+    tabId: senderTabId,
+    messages: [],
+    clarify: null,
+    expression: null,
+    navigated: false,
+  };
+
+  const tools = createBrowserTools(ctx, caps, settings.yoloMode);
+
+  const aiMessages: Array<{ role: "user" | "assistant"; content: string }> = [
+    ...history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user" as const, content: userPrompt },
+  ];
+
+  try {
+    const result = await generateText({
+      model: providerResult.model,
+      system: systemPrompt,
+      messages: aiMessages,
+      tools,
+      stopWhen: stepCountIs(10),
+      onStepFinish: ({ toolCalls }) => {
+        if (toolCalls?.length) {
+          for (const tc of toolCalls) {
+            const inputStr = "input" in tc ? JSON.stringify(tc.input) : "{}";
+            console.log(
+              `%c  [gyoza] Tool: ${tc.toolName}%c ${inputStr.slice(0, 120)}`,
+              "color: #a855f7; font-weight: bold",
+              "color: #9ca3af",
+            );
+          }
+        }
+      },
+    });
+
+    const ms = Date.now() - start;
+    console.log(`  ⏱ Response in ${ms}ms (${result.steps.length} steps)`);
+
+    // Collect all tool calls for debugging
+    const allToolCalls: Array<{ tool: string; args: Record<string, unknown> }> =
+      [];
+    for (const step of result.steps) {
+      if (step.toolCalls) {
+        for (const tc of step.toolCalls) {
+          const tcInput =
+            "input" in tc ? (tc.input as Record<string, unknown>) : {};
+          allToolCalls.push({
+            tool: tc.toolName,
+            args: tcInput,
+          });
+        }
+      }
+    }
+
+    console.log("  Tool calls:", allToolCalls.length);
+    for (const tc of allToolCalls) {
+      console.log(`    → ${tc.tool}:`, JSON.stringify(tc.args).slice(0, 100));
+    }
+    console.groupEnd();
+
+    // If the model also produced text (outside of tool calls), include it as a message
+    if (result.text && result.text.trim()) {
+      ctx.messages.push(result.text.trim());
+    }
+
+    // Update conversation history
+    history.push({ role: "user", content: message.query });
+    if (ctx.messages.length > 0) {
+      history.push({
+        role: "assistant",
+        content: ctx.messages.join("\n\n").slice(0, 300),
+      });
+    }
+    if (conversationId) {
+      await saveConversationLlmHistory(conversationId, history);
+    }
+
+    return {
+      messages: ctx.messages,
+      clarify: ctx.clarify,
+      expression: ctx.expression,
+      navigated: ctx.navigated,
+      toolCalls: allToolCalls,
+    };
+  } catch (err) {
+    console.error("[gyoza] AI SDK error:", err);
+    console.groupEnd();
+    throw err;
+  }
+}
+
+// ─── Legacy conversion (managed mode) ───────────────────────────────────────
+
+function convertLegacyToAgentResult(
+  legacyResult: import("@gyoz-ai/engine").ActionResponse,
+): AgentResult {
+  const messages: string[] = [];
+  let clarify: AgentResult["clarify"] = null;
+  let navigated = false;
+
+  // We need to return the legacy actions so the content script can dispatch them
+  // For managed mode, the content script still handles action dispatch
+  const toolCalls: AgentResult["toolCalls"] = [];
+
+  for (const action of legacyResult.actions) {
+    if (action.type === "show-message" && action.message) {
+      messages.push(action.message);
+    }
+    if (action.type === "clarify" && action.message) {
+      messages.push(action.message);
+      clarify = { message: action.message, options: action.options || [] };
+    }
+    if (action.type === "navigate") {
+      navigated = true;
+    }
+    // Pass through as tool calls for the content script to dispatch
+    toolCalls.push({
+      tool: action.type,
+      args: action as unknown as Record<string, unknown>,
+    });
+  }
+
+  return {
     messages,
-    actionJsonSchema as Record<string, unknown>,
-  );
-  const ms = Date.now() - start;
-
-  // ─── Log response ──────────────────
-  console.log(`  ⏱ Response in ${ms}ms`);
-  console.log("  Actions:");
-  for (const action of result.actions) {
-    const parts = [`    → ${action.type}`];
-    if (action.target) parts.push(`target="${action.target}"`);
-    if (action.selector) parts.push(`selector="${action.selector}"`);
-    if (action.url) parts.push(`url="${action.url}"`);
-    if (action.code) parts.push(`code="${(action.code || "").slice(0, 60)}"`);
-    if (action.message)
-      parts.push(`msg="${(action.message || "").slice(0, 80)}"`);
-    if (action.options) parts.push(`options=[${action.options.join(", ")}]`);
-    console.log(parts.join(" "));
-  }
-  const extraReqs = (result as { extraRequests?: string[] }).extraRequests;
-  if (extraReqs?.length) {
-    console.log("  Extra requests:", extraReqs.join(", "));
-  }
-  console.groupEnd();
-
-  // Update conversation history — store concise summary, not all verbose messages
-  history.push({ role: "user", content: message.query });
-  const firstMsg = result.actions.find(
-    (a) => a.type === "show-message" && a.message,
-  )?.message;
-  if (firstMsg) {
-    // Store only the first show-message, truncated to avoid bloating context
-    history.push({ role: "assistant", content: firstMsg.slice(0, 300) });
-  }
-  if (conversationId) {
-    await saveConversationLlmHistory(conversationId, history);
-  }
-
-  return result;
+    clarify,
+    navigated,
+    toolCalls,
+    // Pass legacy actions and extra requests for content script dispatch
+    ...(legacyResult as unknown as Record<string, unknown>),
+  };
 }
