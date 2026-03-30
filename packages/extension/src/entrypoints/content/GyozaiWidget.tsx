@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { ExtensionSettings } from "../../lib/storage";
-import { Avatar } from "./components/Avatar";
+import { Avatar, AVATAR_SIZES } from "./components/Avatar";
+import { useProximity } from "./hooks/useProximity";
 import {
   capturePageContext,
   formatPageContext,
@@ -104,6 +105,28 @@ export function GyozaiWidget() {
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const avatarWrapperRef = useRef<HTMLDivElement>(null);
+  // hoverOpen: true = chatbox was opened by proximity (closes on leave)
+  // false = chatbox was opened by click (stays open until clicked again)
+  const hoverOpenRef = useRef(false);
+
+  // Proximity detection — open chatbox when cursor is near avatar
+  const proximityRadius = AVATAR_SIZES[agentSize] * 0.5;
+  const { forceInside, startLeave } = useProximity({
+    elementRef: avatarWrapperRef,
+    radius: proximityRadius,
+    onEnter: () => {
+      hoverOpenRef.current = true;
+      setExpanded(true);
+    },
+    onLeave: () => {
+      // Only auto-close if opened by proximity (not by click)
+      if (hoverOpenRef.current) {
+        setExpanded(false);
+      }
+    },
+    leaveDelay: 500,
+  });
 
   // ─── Restore session from chrome.storage.session after preload ───
   useEffect(() => {
@@ -901,11 +924,13 @@ export function GyozaiWidget() {
     }
   };
 
-  const handleBubbleClick = () => {
+  const handleAvatarClick = () => {
     if (expanded) {
       setExpanded(false);
+      hoverOpenRef.current = false;
     } else {
-      // Only start fresh if no active conversation
+      // Click-opened stays open (ignores proximity leave)
+      hoverOpenRef.current = false;
       if (!activeConvIdRef.current && messages.length === 0) {
         startNewChat();
       }
@@ -939,13 +964,16 @@ export function GyozaiWidget() {
         iconUrl={chrome.runtime.getURL("/icon-128.png")}
         position={avatarPosition}
         onDragEnd={(pos) => setAvatarPosition(pos)}
-        onClick={handleBubbleClick}
+        onClick={handleAvatarClick}
+        wrapperRef={avatarWrapperRef}
       />
 
       {/* Chat panel — always mounted so scroll position + state persist */}
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{ display: expanded ? "flex" : "none" }}
+        onMouseEnter={forceInside}
+        onMouseLeave={startLeave}
       >
         {/* Header */}
         <div className="gyozai-header">

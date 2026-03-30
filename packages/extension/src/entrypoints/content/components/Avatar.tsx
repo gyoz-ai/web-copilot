@@ -9,6 +9,8 @@ interface AvatarProps {
   position: { x: number; y: number } | null;
   onDragEnd: (pos: { x: number; y: number }) => void;
   onClick: () => void;
+  /** Ref to the wrapper element (used for proximity detection). */
+  wrapperRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function Avatar({
@@ -17,6 +19,7 @@ export function Avatar({
   position,
   onDragEnd,
   onClick,
+  wrapperRef,
 }: AvatarProps) {
   const px = AVATAR_SIZES[size];
   const {
@@ -37,6 +40,7 @@ export function Avatar({
 
   return (
     <div
+      ref={wrapperRef}
       className="gyozai-avatar-wrapper"
       style={{
         position: "fixed",
