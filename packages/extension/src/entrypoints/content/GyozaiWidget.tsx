@@ -20,7 +20,13 @@ import {
   t,
 } from "../../lib/i18n";
 import { FormatMessage } from "./components/FormatMessage";
-import type { Message, ClarifyState, AgentResult, ViewMode } from "./types";
+import type {
+  Message,
+  ClarifyState,
+  AgentResult,
+  ViewMode,
+  StreamEventMessage,
+} from "./types";
 import {
   mapExtraRequests,
   sanitizeError,
@@ -110,6 +116,8 @@ export function GyozaiWidget() {
 
   // Active conversation tracking — null means fresh/new conversation
   const activeConvIdRef = useRef<string | null>(null);
+  // Streaming: tracks the current query's ID to correlate streaming events
+  const currentQueryIdRef = useRef<string | null>(null);
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -660,8 +668,13 @@ export function GyozaiWidget() {
       pageSnapshot = captureCleanHtml();
     }
 
+    // Generate a queryId for streaming event correlation
+    const queryId = crypto.randomUUID();
+    currentQueryIdRef.current = queryId;
+
     const payload: Record<string, unknown> = {
       type: "gyozai_query",
+      queryId,
       query,
       manifestMode,
       recipe: recipe?.content,
@@ -853,8 +866,40 @@ export function GyozaiWidget() {
     ]);
   }, []);
 
+  // ─── Listen for streaming events from background worker ───
+  useEffect(() => {
+    const handler = (msg: StreamEventMessage) => {
+      if (
+        msg.type !== "gyozai_stream_event" ||
+        msg.queryId !== currentQueryIdRef.current
+      )
+        return;
+
+      const evt = msg.event;
+      switch (evt.kind) {
+        case "message":
+          addAssistantMessage(evt.content);
+          break;
+        case "tool-status":
+          addToolStatusMessage(evt.content);
+          break;
+        case "expression":
+          // Expression received via streaming — can be used for avatar mood later
+          break;
+        case "clarify":
+          setClarify({ message: evt.message, options: evt.options });
+          break;
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
+  }, [addAssistantMessage, addToolStatusMessage]);
+
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
+    // Clear the streaming queryId — no more events expected
+    currentQueryIdRef.current = null;
+
     if (result.error) {
       setError(result.error);
       return;
@@ -868,19 +913,35 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // Show each tool action as its own status pill
+    // If events were already streamed to the UI, skip duplicate rendering.
+    // Only handle clarify (already set via streaming) and edge-case fallbacks.
+    if (result.streamed) {
+      // Fallback: if streaming sent nothing, show a generic message
+      const aiMessages = result.messages?.filter((m) => m.trim()) || [];
+      const statusLines = buildToolStatusLines(result.toolCalls);
+      if (statusLines.length === 0 && aiMessages.length === 0) {
+        if (result.navigated) {
+          addToolStatusMessage("Navigating...");
+        } else if (result.toolCalls?.length) {
+          addAssistantMessage("Done.");
+        } else {
+          addAssistantMessage("I processed your request.");
+        }
+      }
+      return;
+    }
+
+    // Non-streamed fallback (e.g. no queryId was set)
     const statusLines = buildToolStatusLines(result.toolCalls);
     for (const line of statusLines) {
       addToolStatusMessage(line);
     }
 
-    // Show each AI message as its own bubble (not concatenated)
     const aiMessages = result.messages?.filter((m) => m.trim()) || [];
     for (const msg of aiMessages) {
       addAssistantMessage(msg);
     }
 
-    // Fallback: if AI didn't send any message, generate one
     if (statusLines.length === 0 && aiMessages.length === 0) {
       if (result.navigated) {
         addToolStatusMessage("Navigating...");
@@ -891,7 +952,6 @@ export function GyozaiWidget() {
       }
     }
 
-    // Clarify state (from clarify tool)
     if (result.clarify) {
       setClarify({
         message: result.clarify.message,

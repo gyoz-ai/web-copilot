@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { generateText, stepCountIs } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { ActionResponseSchema } from "@gyoz-ai/engine";
 import {
   getSettings,
@@ -40,6 +40,8 @@ interface AgentResult {
     tool: string;
     args: Record<string, unknown>;
   }>;
+  /** True when streaming events were sent — content script should not duplicate UI updates */
+  streamed?: boolean;
 }
 
 export default defineBackground(() => {
@@ -297,6 +299,7 @@ async function handleQuery(
     context?: Record<string, unknown>;
     capabilities?: Record<string, boolean>;
     conversationId?: string;
+    queryId?: string;
   },
   senderTabId: number | null,
 ): Promise<AgentResult> {
@@ -378,11 +381,32 @@ async function handleQuery(
     return convertLegacyToAgentResult(legacyResult);
   }
 
-  // ─── BYOK mode: Vercel AI SDK with tool calling ───────────────────────
+  // ─── BYOK mode: Vercel AI SDK with streaming tool calling ──────────
 
   if (senderTabId == null) {
     throw new Error("No tab ID available for tool execution");
   }
+
+  const queryId = message.queryId;
+
+  // Helper to forward streaming events to content script
+  const sendStreamEvent = (event: {
+    kind: string;
+    content?: string;
+    face?: string;
+    options?: string[];
+  }) => {
+    if (!queryId) return; // No streaming without queryId
+    chrome.tabs
+      .sendMessage(senderTabId, {
+        type: "gyozai_stream_event",
+        queryId,
+        event,
+      })
+      .catch(() => {
+        // Content script may have disconnected (e.g. navigation)
+      });
+  };
 
   const ctx: ToolExecContext = {
     tabId: senderTabId,
@@ -392,6 +416,7 @@ async function handleQuery(
     navigated: false,
     conversationId: conversationId || null,
     originalQuery: message.query,
+    onStreamEvent: sendStreamEvent,
   };
 
   const tools = createBrowserTools(ctx, caps, settings.yoloMode);
@@ -405,7 +430,12 @@ async function handleQuery(
   ];
 
   try {
-    const result = await generateText({
+    const allToolCalls: Array<{
+      tool: string;
+      args: Record<string, unknown>;
+    }> = [];
+
+    const stream = streamText({
       model: providerResult.model,
       system: systemPrompt,
       messages: aiMessages,
@@ -414,7 +444,11 @@ async function handleQuery(
       onStepFinish: ({ toolCalls }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
-            const inputStr = "input" in tc ? JSON.stringify(tc.input) : "{}";
+            const tcInput =
+              "input" in tc ? (tc.input as Record<string, unknown>) : {};
+            allToolCalls.push({ tool: tc.toolName, args: tcInput });
+
+            const inputStr = JSON.stringify(tcInput);
             console.log(
               `%c  [gyoza] Tool: ${tc.toolName}%c ${inputStr.slice(0, 120)}`,
               "color: #a855f7; font-weight: bold",
@@ -425,25 +459,12 @@ async function handleQuery(
       },
     });
 
+    // Consume the stream — tools execute as their blocks arrive
+    const finalText = await stream.text;
+
     const ms = Date.now() - start;
-    console.log(`  ⏱ Response in ${ms}ms (${result.steps.length} steps)`);
-
-    // Collect all tool calls for debugging
-    const allToolCalls: Array<{ tool: string; args: Record<string, unknown> }> =
-      [];
-    for (const step of result.steps) {
-      if (step.toolCalls) {
-        for (const tc of step.toolCalls) {
-          const tcInput =
-            "input" in tc ? (tc.input as Record<string, unknown>) : {};
-          allToolCalls.push({
-            tool: tc.toolName,
-            args: tcInput,
-          });
-        }
-      }
-    }
-
+    const steps = await stream.steps;
+    console.log(`  ⏱ Response in ${ms}ms (${steps.length} steps)`);
     console.log("  Tool calls:", allToolCalls.length);
     for (const tc of allToolCalls) {
       console.log(`    → ${tc.tool}:`, JSON.stringify(tc.args).slice(0, 100));
@@ -451,8 +472,8 @@ async function handleQuery(
     console.groupEnd();
 
     // If the model also produced text (outside of tool calls), include it as a message
-    if (result.text && result.text.trim()) {
-      ctx.messages.push(result.text.trim());
+    if (finalText && finalText.trim()) {
+      ctx.messages.push(finalText.trim());
     }
 
     // Update conversation history — include tool summary so AI has context
@@ -478,6 +499,8 @@ async function handleQuery(
       expression: ctx.expression,
       navigated: ctx.navigated,
       toolCalls: allToolCalls,
+      // Signal that streaming events were sent (content script should not duplicate)
+      streamed: !!queryId,
     };
   } catch (err) {
     console.error("[gyoza] AI SDK error:", err);

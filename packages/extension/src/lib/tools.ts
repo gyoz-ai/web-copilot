@@ -17,6 +17,13 @@ export interface ToolExecContext {
   conversationId: string | null;
   /** Original user query for pending-nav resume */
   originalQuery: string;
+  /** Streaming callback — fires as each tool produces user-visible output */
+  onStreamEvent?: (event: {
+    kind: "message" | "tool-status" | "expression" | "clarify";
+    content?: string;
+    face?: string;
+    options?: string[];
+  }) => void;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -77,6 +84,7 @@ export function createBrowserTools(
     }),
     execute: async ({ message }) => {
       ctx.messages.push(message);
+      ctx.onStreamEvent?.({ kind: "message", content: message });
       return { displayed: true };
     },
   });
@@ -107,6 +115,7 @@ export function createBrowserTools(
     }),
     execute: async ({ face }) => {
       ctx.expression = face;
+      ctx.onStreamEvent?.({ kind: "expression", face });
       return { applied: true };
     },
   });
@@ -139,6 +148,11 @@ export function createBrowserTools(
             currentWindow: true,
           });
           const resolved = tab?.url ? new URL(url, tab.url).href : url;
+
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: `Navigating to ${resolved}`,
+          });
 
           // Save pending-nav state so the widget auto-resumes on the new page
           const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
@@ -218,6 +232,10 @@ export function createBrowserTools(
               error: `No element found for selector: ${selector}`,
             };
           }
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: "Clicked element",
+          });
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
@@ -255,8 +273,18 @@ export function createBrowserTools(
         },
         required: ["code", "description"],
       }),
-      execute: async ({ code }: { code: string; description: string }) => {
+      execute: async ({
+        code,
+        description,
+      }: {
+        code: string;
+        description: string;
+      }) => {
         try {
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: description.length > 40 ? "Ran code" : description,
+          });
           // Auto-fix selectors with special characters
           const fixedCode = code.replace(
             /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
@@ -340,6 +368,12 @@ export function createBrowserTools(
             }) as (...args: never[]) => boolean,
             [selector],
           );
+          if (found) {
+            ctx.onStreamEvent?.({
+              kind: "tool-status",
+              content: "Highlighted element",
+            });
+          }
           return found
             ? { success: true as const, highlighted: selector }
             : {
@@ -383,6 +417,7 @@ export function createBrowserTools(
       required: ["types"],
     }),
     execute: async ({ types }: { types: string[] }) => {
+      ctx.onStreamEvent?.({ kind: "tool-status", content: "Reading page" });
       try {
         const result = await chrome.tabs.sendMessage(ctx.tabId, {
           type: "gyozai_tool_capture_context",
@@ -421,6 +456,7 @@ export function createBrowserTools(
         required: ["url"],
       }),
       execute: async ({ url, method }: { url: string; method?: string }) => {
+        ctx.onStreamEvent?.({ kind: "tool-status", content: "Fetching data" });
         try {
           const response = await fetch(url, { method: method || "GET" });
           const text = await response.text();
@@ -470,6 +506,8 @@ export function createBrowserTools(
       }) => {
         ctx.clarify = { message, options };
         ctx.messages.push(message);
+        ctx.onStreamEvent?.({ kind: "message", content: message });
+        ctx.onStreamEvent?.({ kind: "clarify", options, content: message });
         return { awaiting_user_response: true };
       },
     });
