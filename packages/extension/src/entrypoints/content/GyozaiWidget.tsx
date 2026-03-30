@@ -121,6 +121,7 @@ export function GyozaiWidget() {
   // Proximity detection — open chatbox when cursor is near avatar
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
+  const speechBubbleRef = useRef<HTMLDivElement>(null);
   const insidePanelRef = useRef(false);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
@@ -426,27 +427,31 @@ export function GyozaiWidget() {
     };
     document.addEventListener("mousemove", trackMouse, { passive: true });
 
+    const isInRect = (x: number, y: number, r: DOMRect, margin: number) =>
+      x >= r.left - margin &&
+      x <= r.right + margin &&
+      y >= r.top - margin &&
+      y <= r.bottom + margin;
+
     const interval = setInterval(() => {
       if (!hoverOpenRef.current || !expanded) return;
       const panel = panelRef.current;
       const avatar = avatarWrapperRef.current;
+      const bubble = speechBubbleRef.current;
       if (!panel || !avatar) return;
 
       const m = 40;
-      const pr = panel.getBoundingClientRect();
-      const ar = avatar.getBoundingClientRect();
-      const inPanel =
-        lastX >= pr.left - m &&
-        lastX <= pr.right + m &&
-        lastY >= pr.top - m &&
-        lastY <= pr.bottom + m;
-      const inAvatar =
-        lastX >= ar.left - m &&
-        lastX <= ar.right + m &&
-        lastY >= ar.top - m &&
-        lastY <= ar.bottom + m;
+      const inPanel = isInRect(lastX, lastY, panel.getBoundingClientRect(), m);
+      const inAvatar = isInRect(
+        lastX,
+        lastY,
+        avatar.getBoundingClientRect(),
+        m,
+      );
+      const inBubble =
+        bubble && isInRect(lastX, lastY, bubble.getBoundingClientRect(), m);
 
-      if (!inPanel && !inAvatar) {
+      if (!inPanel && !inAvatar && !inBubble) {
         insidePanelRef.current = false;
         hoverOpenRef.current = false;
         setExpanded(false);
@@ -1051,11 +1056,15 @@ export function GyozaiWidget() {
             : { right: 20, bottom: 100 };
           return (
             <div
+              ref={speechBubbleRef}
               style={{
                 position: "fixed",
                 zIndex: 2147483647,
-                pointerEvents: "none",
                 ...posStyle,
+              }}
+              onMouseEnter={() => {
+                hoverOpenRef.current = true;
+                setExpanded(true);
               }}
             >
               <SpeechBubble
