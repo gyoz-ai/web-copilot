@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import type { ExtensionSettings } from "../../lib/storage";
+import { Avatar } from "./components/Avatar";
 import {
   capturePageContext,
   formatPageContext,
@@ -87,6 +89,8 @@ export function GyozaiWidget() {
   );
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
+  const [agentSize, setAgentSize] =
+    useState<ExtensionSettings["agentSize"]>("medium");
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
@@ -239,9 +243,16 @@ export function GyozaiWidget() {
 
   // Locale is preloaded at module scope; just listen for runtime changes
   useEffect(() => {
-    // Apply preloaded locale (may have resolved after initial render)
+    // Apply preloaded settings (may have resolved after initial render)
     _preloadReady.then(() => {
       if (_preloadedLocale) setLocale(_preloadedLocale);
+      // Load initial agentSize
+      chrome.runtime
+        .sendMessage({ type: "gyozai_get_settings" })
+        .then((s: ExtensionSettings | undefined) => {
+          if (s?.agentSize) setAgentSize(s.agentSize);
+        })
+        .catch(() => {});
     });
     const handler = (changes: {
       [key: string]: chrome.storage.StorageChange;
@@ -253,6 +264,9 @@ export function GyozaiWidget() {
             ? detectBrowserLocale()
             : resolveLocale(newSettings.language),
         );
+      }
+      if (newSettings?.agentSize) {
+        setAgentSize(newSettings.agentSize);
       }
     };
     chrome.storage.onChanged.addListener(handler);
@@ -919,14 +933,14 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
-      {/* Floating bubble */}
-      <button className="gyozai-bubble" onClick={handleBubbleClick}>
-        <img
-          src={chrome.runtime.getURL("/icon-128.png")}
-          alt="gyoza"
-          style={{ width: 32, height: 32, borderRadius: "50%" }}
-        />
-      </button>
+      {/* Avatar widget */}
+      <Avatar
+        size={agentSize}
+        iconUrl={chrome.runtime.getURL("/icon-128.png")}
+        position={avatarPosition}
+        onDragEnd={(pos) => setAvatarPosition(pos)}
+        onClick={handleBubbleClick}
+      />
 
       {/* Chat panel — always mounted so scroll position + state persist */}
       <div
