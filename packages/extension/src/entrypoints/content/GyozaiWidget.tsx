@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { ExtensionSettings } from "../../lib/storage";
 import { Avatar, AVATAR_SIZES } from "./components/Avatar";
 import { SpeechBubble } from "./components/SpeechBubble";
+import { TypewriterText } from "./components/TypewriterText";
 import { useProximity } from "./hooks/useProximity";
 import {
   capturePageContext,
@@ -93,6 +94,7 @@ export function GyozaiWidget() {
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
   const [agentSize, setAgentSize] =
     useState<ExtensionSettings["agentSize"]>("medium");
+  const [typingSound, setTypingSound] = useState(true);
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
@@ -277,6 +279,8 @@ export function GyozaiWidget() {
         .sendMessage({ type: "gyozai_get_settings" })
         .then((s: ExtensionSettings | undefined) => {
           if (s?.agentSize) setAgentSize(s.agentSize);
+          if (typeof s?.typingSound === "boolean")
+            setTypingSound(s.typingSound);
         })
         .catch(() => {});
     });
@@ -293,6 +297,9 @@ export function GyozaiWidget() {
       }
       if (newSettings?.agentSize) {
         setAgentSize(newSettings.agentSize);
+      }
+      if (typeof newSettings?.typingSound === "boolean") {
+        setTypingSound(newSettings.typingSound);
       }
     };
     chrome.storage.onChanged.addListener(handler);
@@ -1020,84 +1027,6 @@ export function GyozaiWidget() {
           }
         }}
       >
-        {/* Header */}
-        <div className="gyozai-header">
-          <div className="gyozai-header-title">
-            <img
-              src={chrome.runtime.getURL("/icon-128.png")}
-              alt=""
-              style={{ width: 20, height: 20 }}
-            />
-            <span>gyoza</span>
-          </div>
-          <div className="gyozai-header-actions">
-            {/* New Chat button */}
-            <button
-              className="gyozai-icon-btn"
-              onClick={startNewChat}
-              title={tr.widget_new_chat}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </button>
-            {/* History button */}
-            <button
-              className={`gyozai-icon-btn ${viewMode === "history" ? "gyozai-icon-btn-active" : ""}`}
-              onClick={() =>
-                viewMode === "history" ? setViewMode("chat") : openHistory()
-              }
-              title={tr.widget_history}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </button>
-            {/* Settings button */}
-            <button
-              className="gyozai-icon-btn"
-              onClick={() =>
-                chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
-              }
-              title={tr.widget_settings}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
         {/* History View */}
         {viewMode === "history" && (
           <div className="gyozai-messages">
@@ -1154,23 +1083,36 @@ export function GyozaiWidget() {
         {/* Chat View */}
         {viewMode === "chat" && (
           <>
-            {/* Messages */}
+            {/* Messages — speech bubble style */}
             <div className="gyozai-messages">
               {messages.length === 0 && (
                 <div className="gyozai-empty">{tr.widget_empty}</div>
               )}
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`gyozai-msg gyozai-msg-${msg.role}`}
-                >
-                  {msg.role === "assistant" ? (
-                    <FormatMessage text={msg.content} />
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-              ))}
+              {messages.map((msg, idx) => {
+                const isLatestAssistant =
+                  msg.role === "assistant" && idx === messages.length - 1;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`gyozai-msg gyozai-msg-${msg.role}`}
+                  >
+                    {msg.role === "assistant" ? (
+                      isLatestAssistant ? (
+                        <TypewriterText
+                          text={msg.content}
+                          speed={25}
+                          enabled={true}
+                          soundEnabled={typingSound}
+                        />
+                      ) : (
+                        <FormatMessage text={msg.content} />
+                      )
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                );
+              })}
               {loading && (
                 <div className="gyozai-msg gyozai-msg-assistant">
                   <div className="gyozai-typing">
@@ -1204,7 +1146,7 @@ export function GyozaiWidget() {
             {/* Toast */}
             {toast && <div className="gyozai-toast">{toast}</div>}
 
-            {/* Input */}
+            {/* Input row with inline action buttons */}
             <div className="gyozai-input-row">
               <input
                 ref={inputRef}
@@ -1222,6 +1164,66 @@ export function GyozaiWidget() {
                 className="gyozai-input"
                 disabled={loading}
               />
+              {/* Action buttons */}
+              <button
+                className="gyozai-icon-btn"
+                onClick={startNewChat}
+                title={tr.widget_new_chat}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+              <button
+                className="gyozai-icon-btn"
+                onClick={() => openHistory()}
+                title={tr.widget_history}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </button>
+              <button
+                className="gyozai-icon-btn"
+                onClick={() =>
+                  chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
+                }
+                title={tr.widget_settings}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                </svg>
+              </button>
               <button
                 className="gyozai-send-btn"
                 onClick={handleSubmit}

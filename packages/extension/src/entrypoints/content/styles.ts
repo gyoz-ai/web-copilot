@@ -83,49 +83,18 @@ export const WIDGET_STYLES = `
     z-index: 2147483647;
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    background: var(--g-surface-0);
+    background: transparent;
     color: var(--g-text-primary);
-    border: 1px solid var(--g-surface-border);
-    box-shadow:
-      0 8px 40px rgba(0, 0, 0, 0.4),
-      0 0 0 1px oklch(0.3 0.01 50 / 0.3);
     will-change: transform, opacity;
   }
 
   .gyozai-panel-open {
-    animation: gyozai-panel-in 0.15s ease-out;
+    animation: gyozai-panel-in 0.2s ease-out;
   }
 
   @keyframes gyozai-panel-in {
-    from { opacity: 0; transform: translateY(8px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  /* ─── Header ────────────────────────────────────────────── */
-
-  .gyozai-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--g-surface-border);
-    background: var(--g-surface-1);
-  }
-  .gyozai-header-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Cabinet Grotesk', system-ui, sans-serif;
-    font-weight: 800;
-    font-size: 15px;
-    background: linear-gradient(135deg, var(--g-brand-400), var(--g-brand-600));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .gyozai-header-actions {
-    display: flex;
-    gap: 2px;
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .gyozai-icon-btn {
     display: flex;
@@ -153,16 +122,16 @@ export const WIDGET_STYLES = `
   .gyozai-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 14px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    min-height: 120px;
+    gap: 8px;
+    min-height: 80px;
   }
 
   .gyozai-empty {
     text-align: center;
-    padding: 36px 16px;
+    padding: 24px 16px;
     font-size: 13px;
     color: var(--g-text-muted);
     line-height: 1.5;
@@ -175,34 +144,48 @@ export const WIDGET_STYLES = `
     max-width: 85%;
     word-break: break-word;
     line-height: 1.5;
+    position: relative;
     animation: gyozai-msg-in 0.25s ease-out;
+    backdrop-filter: blur(8px);
   }
 
   @keyframes gyozai-msg-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .gyozai-msg-user {
     align-self: flex-end;
-    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
+    background: linear-gradient(135deg, oklch(0.66 0.18 72 / 0.85), oklch(0.58 0.16 70 / 0.85));
     color: #fff;
     border-radius: 14px 14px 4px 14px;
     box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.2);
   }
+  .gyozai-msg-user::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -6px;
+    border-width: 6px 0 0 6px;
+    border-style: solid;
+    border-color: oklch(0.58 0.16 70 / 0.85) transparent transparent transparent;
+  }
 
   .gyozai-msg-assistant {
     align-self: flex-start;
-    background: var(--g-surface-2);
+    background: oklch(0.2 0.01 46 / 0.85);
     color: var(--g-text-primary);
     border-radius: 14px 14px 14px 4px;
-    border: 1px solid var(--g-surface-border);
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
+  }
+  .gyozai-msg-assistant::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -6px;
+    border-width: 6px 6px 0 0;
+    border-style: solid;
+    border-color: oklch(0.2 0.01 46 / 0.85) transparent transparent transparent;
   }
 
   /* ─── Typing Indicator ──────────────────────────────────── */
@@ -233,10 +216,13 @@ export const WIDGET_STYLES = `
   .gyozai-input-row {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    gap: 8px;
-    border-top: 1px solid var(--g-surface-border);
-    background: var(--g-surface-1);
+    padding: 8px;
+    gap: 4px;
+    background: oklch(0.13 0.015 50 / 0.85);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
+    margin: 4px 0;
   }
 
   .gyozai-input {
