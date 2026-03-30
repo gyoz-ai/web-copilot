@@ -357,6 +357,34 @@ function GyozaiWidget() {
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
+  // Listen for recipe install events from gyoz.ai platform
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        name: string;
+        content: string;
+      };
+      if (!detail?.content) return;
+      chrome.runtime
+        .sendMessage({
+          type: "gyozai_auto_import_recipe",
+          filename: detail.name || "recipe",
+          content: detail.content,
+        })
+        .then((resp) => {
+          const label = detail.name || "recipe";
+          if (resp?.skipped) {
+            setToast(`${label} is already installed`);
+          } else {
+            setToast(`${label} installed successfully`);
+          }
+          setTimeout(() => setToast(null), 4000);
+        });
+    };
+    window.addEventListener("gyozai-install-recipe", handler);
+    return () => window.removeEventListener("gyozai-install-recipe", handler);
+  }, []);
+
   // Load language on mount and listen for changes from popup settings
   useEffect(() => {
     chrome.runtime
@@ -1050,217 +1078,125 @@ function GyozaiWidget() {
       </button>
 
       {/* Chat panel — always mounted so scroll position + state persist */}
-      <div className="gyozai-panel" style={{ display: expanded ? "flex" : "none" }}>
-          {/* Header */}
-          <div className="gyozai-header">
-            <div className="gyozai-header-title">
-              <img
-                src={chrome.runtime.getURL("/icon-128.png")}
-                alt=""
-                style={{ width: 20, height: 20 }}
-              />
-              <span>gyoza</span>
-            </div>
-            <div className="gyozai-header-actions">
-              {/* New Chat button */}
-              <button
-                className="gyozai-icon-btn"
-                onClick={startNewChat}
-                title={tr.widget_new_chat}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-                </svg>
-              </button>
-              {/* History button */}
-              <button
-                className={`gyozai-icon-btn ${viewMode === "history" ? "gyozai-icon-btn-active" : ""}`}
-                onClick={() =>
-                  viewMode === "history" ? setViewMode("chat") : openHistory()
-                }
-                title={tr.widget_history}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </button>
-              {/* Settings button */}
-              <button
-                className="gyozai-icon-btn"
-                onClick={() =>
-                  chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
-                }
-                title={tr.widget_settings}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </button>
-            </div>
+      <div
+        className="gyozai-panel"
+        style={{ display: expanded ? "flex" : "none" }}
+      >
+        {/* Header */}
+        <div className="gyozai-header">
+          <div className="gyozai-header-title">
+            <img
+              src={chrome.runtime.getURL("/icon-128.png")}
+              alt=""
+              style={{ width: 20, height: 20 }}
+            />
+            <span>gyoza</span>
           </div>
+          <div className="gyozai-header-actions">
+            {/* New Chat button */}
+            <button
+              className="gyozai-icon-btn"
+              onClick={startNewChat}
+              title={tr.widget_new_chat}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
+            {/* History button */}
+            <button
+              className={`gyozai-icon-btn ${viewMode === "history" ? "gyozai-icon-btn-active" : ""}`}
+              onClick={() =>
+                viewMode === "history" ? setViewMode("chat") : openHistory()
+              }
+              title={tr.widget_history}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+            {/* Settings button */}
+            <button
+              className="gyozai-icon-btn"
+              onClick={() =>
+                chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
+              }
+              title={tr.widget_settings}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-          {/* History View */}
-          {viewMode === "history" && (
-            <div className="gyozai-messages">
-              {historyList.length === 0 && (
-                <div className="gyozai-empty">{tr.widget_no_conversations}</div>
-              )}
-              {historyList.map((conv) => (
-                <div
-                  key={conv.id}
-                  className={`gyozai-history-item ${activeConvIdRef.current === conv.id ? "gyozai-history-item-active" : ""}`}
-                >
-                  <button
-                    className="gyozai-history-item-content"
-                    onClick={() => loadFromHistory(conv.id)}
-                  >
-                    <div className="gyozai-history-title">{conv.title}</div>
-                    <div className="gyozai-history-meta">
-                      <span>{conv.domain}</span>
-                      <span>{timeAgo(conv.updatedAt)}</span>
-                      <span>
-                        {t(tr, "widget_msg_count", {
-                          count: conv.messageCount,
-                        })}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    className="gyozai-history-delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteFromHistory(conv.id);
-                    }}
-                    title={tr.widget_delete_conversation}
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M18 6L6 18" />
-                      <path d="M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Chat View */}
-          {viewMode === "chat" && (
-            <>
-              {/* Messages */}
-              <div className="gyozai-messages">
-                {messages.length === 0 && (
-                  <div className="gyozai-empty">{tr.widget_empty}</div>
-                )}
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`gyozai-msg gyozai-msg-${msg.role}`}
-                  >
-                    {msg.role === "assistant" ? (
-                      <FormatMessage text={msg.content} />
-                    ) : (
-                      msg.content
-                    )}
-                  </div>
-                ))}
-                {loading && (
-                  <div className="gyozai-msg gyozai-msg-assistant">
-                    <div className="gyozai-typing">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Clarify options */}
-              {clarify && !loading && (
-                <div className="gyozai-clarify">
-                  {clarify.options.map((option, i) => (
-                    <button
-                      key={i}
-                      className="gyozai-clarify-btn"
-                      onClick={() => handleClarifyOption(option)}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Error */}
-              {error && <div className="gyozai-error">{error}</div>}
-
-              {/* Toast */}
-              {toast && <div className="gyozai-toast">{toast}</div>}
-
-              {/* Input */}
-              <div className="gyozai-input-row">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSubmit();
-                    if (e.key === "Escape") {
-                      startNewChat();
-                      setExpanded(false);
-                    }
-                  }}
-                  placeholder={tr.widget_placeholder}
-                  className="gyozai-input"
-                  disabled={loading}
-                />
+        {/* History View */}
+        {viewMode === "history" && (
+          <div className="gyozai-messages">
+            {historyList.length === 0 && (
+              <div className="gyozai-empty">{tr.widget_no_conversations}</div>
+            )}
+            {historyList.map((conv) => (
+              <div
+                key={conv.id}
+                className={`gyozai-history-item ${activeConvIdRef.current === conv.id ? "gyozai-history-item-active" : ""}`}
+              >
                 <button
-                  className="gyozai-send-btn"
-                  onClick={handleSubmit}
-                  disabled={loading || !input.trim()}
+                  className="gyozai-history-item-content"
+                  onClick={() => loadFromHistory(conv.id)}
+                >
+                  <div className="gyozai-history-title">{conv.title}</div>
+                  <div className="gyozai-history-meta">
+                    <span>{conv.domain}</span>
+                    <span>{timeAgo(conv.updatedAt)}</span>
+                    <span>
+                      {t(tr, "widget_msg_count", {
+                        count: conv.messageCount,
+                      })}
+                    </span>
+                  </div>
+                </button>
+                <button
+                  className="gyozai-history-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteFromHistory(conv.id);
+                  }}
+                  title={tr.widget_delete_conversation}
                 >
                   <svg
-                    width="16"
-                    height="16"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -1268,14 +1204,109 @@ function GyozaiWidget() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <path d="M22 2L11 13" />
-                    <path d="M22 2l-7 20-4-9-9-4z" />
+                    <path d="M18 6L6 18" />
+                    <path d="M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-            </>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {/* Chat View */}
+        {viewMode === "chat" && (
+          <>
+            {/* Messages */}
+            <div className="gyozai-messages">
+              {messages.length === 0 && (
+                <div className="gyozai-empty">{tr.widget_empty}</div>
+              )}
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`gyozai-msg gyozai-msg-${msg.role}`}
+                >
+                  {msg.role === "assistant" ? (
+                    <FormatMessage text={msg.content} />
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+              ))}
+              {loading && (
+                <div className="gyozai-msg gyozai-msg-assistant">
+                  <div className="gyozai-typing">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Clarify options */}
+            {clarify && !loading && (
+              <div className="gyozai-clarify">
+                {clarify.options.map((option, i) => (
+                  <button
+                    key={i}
+                    className="gyozai-clarify-btn"
+                    onClick={() => handleClarifyOption(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Error */}
+            {error && <div className="gyozai-error">{error}</div>}
+
+            {/* Toast */}
+            {toast && <div className="gyozai-toast">{toast}</div>}
+
+            {/* Input */}
+            <div className="gyozai-input-row">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                  if (e.key === "Escape") {
+                    startNewChat();
+                    setExpanded(false);
+                  }
+                }}
+                placeholder={tr.widget_placeholder}
+                className="gyozai-input"
+                disabled={loading}
+              />
+              <button
+                className="gyozai-send-btn"
+                onClick={handleSubmit}
+                disabled={loading || !input.trim()}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 2L11 13" />
+                  <path d="M22 2l-7 20-4-9-9-4z" />
+                </svg>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
