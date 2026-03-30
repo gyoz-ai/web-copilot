@@ -377,12 +377,15 @@ export function GyozaiWidget() {
   useEffect(() => {
     const handler = (msg: { type: string }) => {
       if (msg.type === "gyozai_toggle") {
+        log("Toggle shortcut received");
         setExpanded((prev) => {
           if (prev) {
-            // Closing — reset to fresh state
             startNewChat();
+            hoverOpenRef.current = false;
             return false;
           }
+          // Shortcut-opened — don't let proximity auto-close it
+          hoverOpenRef.current = false;
           return true;
         });
       }
