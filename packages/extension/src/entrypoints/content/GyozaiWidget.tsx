@@ -1129,7 +1129,7 @@ export function GyozaiWidget() {
                     const isMac =
                       navigator.platform?.includes("Mac") ??
                       navigator.userAgent.includes("Mac");
-                    const shortcut = isMac ? "⌃⌘G" : "Ctrl+Shift+G";
+                    const shortcut = isMac ? "⌘⇧G" : "Ctrl+Shift+G";
                     return `Tip: press ${shortcut} to talk to me anytime`;
                   })()}
                 </div>
