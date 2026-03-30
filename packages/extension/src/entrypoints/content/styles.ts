@@ -83,10 +83,10 @@ export const WIDGET_STYLES = `
     z-index: 2147483647;
     font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    /* rgba(0,0,0,0.01) instead of transparent — invisible but gives
-       the panel a solid hit area for mouse events so cursor doesn't
-       "fall through" gaps between message bubbles */
-    background: rgba(0, 0, 0, 0.01);
+    background: oklch(0.13 0.015 50 / 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid oklch(0.25 0.02 50 / 0.5);
     color: var(--g-text-primary);
     will-change: transform, opacity;
   }

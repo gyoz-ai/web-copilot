@@ -372,7 +372,7 @@ export function GyozaiWidget() {
         try {
           autoFollowUpUsed = false;
           const result = await sendQuery(
-            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
+            `I just navigated to ${window.location.pathname} as the user requested. Briefly confirm you arrived and ask what they'd like to do next. Keep it to 1-2 sentences. Do NOT describe the page in detail. Original request: ${pendingNav.originalQuery}`,
             pendingExtraContext || undefined,
           );
           pendingExtraContext = null;
@@ -414,18 +414,44 @@ export function GyozaiWidget() {
     }
   }, [expanded, initialized, viewMode]);
 
-  // Auto-scroll to bottom only for NEW messages (not on session restore)
-  const prevMsgCountRef = useRef(messages.length);
+  // Fallback: detect cursor outside panel on fast mouse moves
+  // (shadow DOM onMouseLeave may not fire on very fast exits)
   useEffect(() => {
-    const prevCount = prevMsgCountRef.current;
-    prevMsgCountRef.current = messages.length;
-    // Only scroll if a new message was added (not on restore or initial load)
-    if (messages.length > prevCount && prevCount > 0) {
+    if (!expanded || !hoverOpenRef.current) return;
+    const handler = (e: MouseEvent) => {
+      const panel = panelRef.current;
+      const avatar = avatarWrapperRef.current;
+      if (!panel || !avatar) return;
+      const pr = panel.getBoundingClientRect();
+      const ar = avatar.getBoundingClientRect();
+      const m = 30; // margin
+      const inPanel =
+        e.clientX >= pr.left - m &&
+        e.clientX <= pr.right + m &&
+        e.clientY >= pr.top - m &&
+        e.clientY <= pr.bottom + m;
+      const inAvatar =
+        e.clientX >= ar.left - m &&
+        e.clientX <= ar.right + m &&
+        e.clientY >= ar.top - m &&
+        e.clientY <= ar.bottom + m;
+      if (!inPanel && !inAvatar && insidePanelRef.current) {
+        insidePanelRef.current = false;
+        startLeave();
+      }
+    };
+    document.addEventListener("mousemove", handler, { passive: true });
+    return () => document.removeEventListener("mousemove", handler);
+  }, [expanded, startLeave]);
+
+  // Always scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 30);
     }
-  }, [messages.length]);
+  }, [messages, loading]);
 
   // Helper to add an assistant message
   const addAssistantMessage = useCallback((content: string) => {
