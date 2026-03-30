@@ -578,46 +578,47 @@ function GyozaiWidget() {
     ]);
   }, []);
 
-  // Save current conversation to storage
-  const saveCurrentConversation = useCallback(async (msgs: Message[]) => {
-    if (msgs.length === 0) return;
+  // Save current conversation to storage (messages + clarify state)
+  const saveCurrentConversation = useCallback(
+    async (msgs: Message[], currentClarify: ClarifyState | null) => {
+      if (msgs.length === 0) return;
 
-    let convId = activeConvIdRef.current;
-    const now = Date.now();
+      let convId = activeConvIdRef.current;
+      const now = Date.now();
 
-    if (!convId) {
-      // Create new conversation
-      convId = crypto.randomUUID();
-      activeConvIdRef.current = convId;
-    }
+      if (!convId) {
+        convId = crypto.randomUUID();
+        activeConvIdRef.current = convId;
+      }
 
-    // Title = first user message, truncated
-    const firstUserMsg = msgs.find((m) => m.role === "user");
-    const title = firstUserMsg
-      ? firstUserMsg.content.slice(0, 80)
-      : "New conversation";
+      const firstUserMsg = msgs.find((m) => m.role === "user");
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 80)
+        : "New conversation";
 
-    // Load existing to preserve llmHistory
-    const existing = await loadConversation(convId);
+      const existing = await loadConversation(convId);
 
-    const conv: Conversation = {
-      id: convId,
-      title,
-      createdAt: existing?.createdAt || now,
-      updatedAt: now,
-      domain: window.location.host,
-      messages: msgs,
-      llmHistory: existing?.llmHistory || [],
-    };
+      const conv: Conversation = {
+        id: convId,
+        title,
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
+        domain: window.location.host,
+        messages: msgs,
+        llmHistory: existing?.llmHistory || [],
+        pendingClarify: currentClarify,
+      };
 
-    await persistConversation(conv);
-  }, []);
+      await persistConversation(conv);
+    },
+    [],
+  );
 
-  // Auto-save messages whenever they change
+  // Auto-save whenever messages or clarify change
   useEffect(() => {
     if (!initialized) return;
-    saveCurrentConversation(messages);
-  }, [messages, initialized, saveCurrentConversation]);
+    saveCurrentConversation(messages, clarify);
+  }, [messages, clarify, initialized, saveCurrentConversation]);
 
   // Start a fresh chat
   const startNewChat = useCallback(() => {
@@ -636,7 +637,7 @@ function GyozaiWidget() {
     activeConvIdRef.current = conv.id;
     setMessages(conv.messages);
     setError(null);
-    setClarify(null);
+    setClarify(conv.pendingClarify || null);
     setViewMode("chat");
     log("Loaded conversation:", conv.title.slice(0, 40));
   }, []);

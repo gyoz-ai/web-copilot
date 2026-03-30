@@ -49,6 +49,7 @@ export interface Conversation {
   domain: string;
   messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
   llmHistory: Array<{ role: string; content: string }>;
+  pendingClarify?: { message: string; options: string[] } | null;
 }
 
 const CONV_INDEX_KEY = "gyozai_conv_index";
