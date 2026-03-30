@@ -5,6 +5,7 @@ export interface ExtensionSettings {
   model: string;
   managedToken?: string;
   yoloMode: boolean;
+  autoImportRecipes: boolean;
   theme: "dark" | "light";
   language: string; // locale code or "auto" for browser detection
 }
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   apiKey: "",
   model: "claude-haiku-4-5-20251001",
   yoloMode: false,
+  autoImportRecipes: true,
   theme: "dark",
   language: "auto",
 };

@@ -218,7 +218,7 @@ export default defineContentScript({
     const shadow = host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
-    style.textContent = WIDGET_STYLES_BASE + WIDGET_STYLES_DARK;
+    style.textContent = WIDGET_STYLES;
     shadow.appendChild(style);
 
     const container = document.createElement("div");
@@ -227,6 +227,11 @@ export default defineContentScript({
     ReactDOM.createRoot(container).render(<GyozaiWidget />);
 
     // Auto-detect recipe from website — check multiple locations
+    // Respect user's autoImportRecipes setting (defaults to true)
+    const stored = await chrome.storage.local.get("gyozai_settings");
+    const autoImport = stored.gyozai_settings?.autoImportRecipes ?? true;
+    if (!autoImport) return;
+
     try {
       const origin = window.location.origin;
       const pathname = window.location.pathname;
@@ -315,7 +320,7 @@ function GyozaiWidget() {
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Dark mode only — matches the main website design
   const [locale, setLocale] = useState<LocaleCode>(detectBrowserLocale());
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
@@ -342,12 +347,11 @@ function GyozaiWidget() {
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
-  // Load theme + language on mount and listen for changes from popup settings
+  // Load language on mount and listen for changes from popup settings
   useEffect(() => {
     chrome.runtime
       .sendMessage({ type: "gyozai_get_settings" })
       .then((s: Record<string, unknown> | undefined) => {
-        if (s?.theme === "light" || s?.theme === "dark") setTheme(s.theme);
         if (typeof s?.language === "string") {
           setLocale(
             s.language === "auto"
@@ -360,9 +364,6 @@ function GyozaiWidget() {
       [key: string]: chrome.storage.StorageChange;
     }) => {
       const newSettings = changes.gyozai_settings?.newValue;
-      if (newSettings?.theme === "light" || newSettings?.theme === "dark") {
-        setTheme(newSettings.theme);
-      }
       if (typeof newSettings?.language === "string") {
         setLocale(
           newSettings.language === "auto"
@@ -374,18 +375,6 @@ function GyozaiWidget() {
     chrome.storage.onChanged.addListener(handler);
     return () => chrome.storage.onChanged.removeListener(handler);
   }, []);
-
-  // Update shadow DOM styles when theme changes
-  useEffect(() => {
-    const styleEl = document
-      .querySelector("#gyozai-extension-root")
-      ?.shadowRoot?.querySelector("style");
-    if (styleEl) {
-      styleEl.textContent =
-        WIDGET_STYLES_BASE +
-        (theme === "light" ? WIDGET_STYLES_LIGHT : WIDGET_STYLES_DARK);
-    }
-  }, [theme]);
 
   // Get tab ID on mount + check for pending navigation (cross-page resume)
   useEffect(() => {
@@ -1286,11 +1275,49 @@ function GyozaiWidget() {
 // captureCleanHtml is imported from @gyoz-ai/engine
 
 // ─── Widget Styles ───────────────────────────────────────────────────────────
+// Dark-only design matching the main gyoza website (warm oklch palette)
 
-// ─── Base styles (shared between themes) ─────────────────────────────────────
+const WIDGET_STYLES = `
+  @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap');
 
-const WIDGET_STYLES_BASE = `
+  :host {
+    /* Brand */
+    --g-brand-400: oklch(0.72 0.17 74);
+    --g-brand-500: oklch(0.66 0.18 72);
+    --g-brand-600: oklch(0.58 0.16 70);
+
+    /* Surfaces */
+    --g-surface-0: oklch(0.13 0.015 50);
+    --g-surface-1: oklch(0.16 0.012 48);
+    --g-surface-2: oklch(0.2 0.01 46);
+    --g-surface-3: oklch(0.25 0.008 44);
+    --g-surface-border: oklch(0.3 0.01 50);
+
+    /* Text */
+    --g-text-primary: oklch(0.93 0.005 80);
+    --g-text-secondary: oklch(0.65 0.01 70);
+    --g-text-muted: oklch(0.5 0.008 65);
+
+    /* Semantic */
+    --g-error: oklch(0.63 0.24 25);
+    --g-error-bg: oklch(0.18 0.03 25);
+  }
+
   * { box-sizing: border-box; }
+
+  /* ─── Scrollbar ─────────────────────────────────────────── */
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--g-surface-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--g-surface-3);
+  }
+
+  /* ─── Bubble ────────────────────────────────────────────── */
 
   .gyozai-bubble {
     position: fixed;
@@ -1299,15 +1326,27 @@ const WIDGET_STYLES_BASE = `
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    border: none;
+    border: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2147483647;
-    transition: transform 0.15s ease;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 0 oklch(0.66 0.18 72 / 0);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
   }
-  .gyozai-bubble:hover { transform: scale(1.08); }
+  .gyozai-bubble:hover {
+    transform: scale(1.1);
+    box-shadow:
+      0 6px 28px rgba(0, 0, 0, 0.4),
+      0 0 0 3px oklch(0.66 0.18 72 / 0.2);
+    border-color: var(--g-brand-500);
+  }
+
+  /* ─── Panel ─────────────────────────────────────────────── */
 
   .gyozai-panel {
     position: fixed;
@@ -1315,32 +1354,59 @@ const WIDGET_STYLES_BASE = `
     right: 20px;
     width: 380px;
     max-height: 520px;
-    border-radius: 12px;
+    border-radius: 16px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
+    background: var(--g-surface-0);
+    color: var(--g-text-primary);
+    border: 1px solid var(--g-surface-border);
+    box-shadow:
+      0 8px 40px rgba(0, 0, 0, 0.4),
+      0 0 0 1px oklch(0.3 0.01 50 / 0.3);
+    backdrop-filter: blur(8px);
+    animation: gyozai-panel-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+
+  @keyframes gyozai-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* ─── Header ────────────────────────────────────────────── */
 
   .gyozai-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
   }
   .gyozai-header-title {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-weight: 700;
-    font-size: 14px;
-    color: #E8950A;
+    gap: 8px;
+    font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    background: linear-gradient(135deg, var(--g-brand-400), var(--g-brand-600));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   .gyozai-header-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
   }
   .gyozai-icon-btn {
     display: flex;
@@ -1349,137 +1415,203 @@ const WIDGET_STYLES_BASE = `
     border: none;
     background: none;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: color 0.15s ease;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--g-text-muted);
+    transition: all 0.2s ease;
   }
-  .gyozai-icon-btn:hover { color: #E8950A; }
-  .gyozai-icon-btn-active { color: #E8950A; }
+  .gyozai-icon-btn:hover {
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.08);
+  }
+  .gyozai-icon-btn-active {
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.1);
+  }
+
+  /* ─── Messages ──────────────────────────────────────────── */
 
   .gyozai-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     min-height: 120px;
   }
 
   .gyozai-empty {
     text-align: center;
-    padding: 32px 16px;
+    padding: 36px 16px;
     font-size: 13px;
+    color: var(--g-text-muted);
+    line-height: 1.5;
   }
 
   .gyozai-msg {
-    padding: 8px 12px;
-    border-radius: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
     font-size: 13px;
     max-width: 85%;
     word-break: break-word;
-    line-height: 1.45;
+    line-height: 1.5;
+    animation: gyozai-msg-in 0.25s ease-out;
+  }
+
+  @keyframes gyozai-msg-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .gyozai-msg-user {
     align-self: flex-end;
-    background: #E8950A;
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
     color: #fff;
-    border-radius: 12px 12px 4px 12px;
+    border-radius: 14px 14px 4px 14px;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.2);
   }
 
   .gyozai-msg-assistant {
     align-self: flex-start;
-    border-radius: 12px 12px 12px 4px;
+    background: var(--g-surface-2);
+    color: var(--g-text-primary);
+    border-radius: 14px 14px 14px 4px;
+    border: 1px solid var(--g-surface-border);
   }
+
+  /* ─── Typing Indicator ──────────────────────────────────── */
 
   .gyozai-typing {
     display: flex;
-    gap: 4px;
+    gap: 5px;
     padding: 4px 0;
   }
   .gyozai-typing span {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #71717a;
+    background: var(--g-brand-500);
+    opacity: 0.6;
     animation: gyozai-bounce 1.4s infinite ease-in-out both;
   }
   .gyozai-typing span:nth-child(1) { animation-delay: -0.32s; }
   .gyozai-typing span:nth-child(2) { animation-delay: -0.16s; }
 
   @keyframes gyozai-bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
+    0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
   }
+
+  /* ─── Input ─────────────────────────────────────────────── */
 
   .gyozai-input-row {
     display: flex;
     align-items: center;
     padding: 10px 12px;
     gap: 8px;
+    border-top: 1px solid var(--g-surface-border);
+    background: var(--g-surface-1);
   }
 
   .gyozai-input {
     flex: 1;
-    border-radius: 8px;
+    border-radius: 10px;
     outline: none;
     font-size: 13px;
     font-family: inherit;
-    padding: 8px 10px;
-    transition: border-color 0.15s ease;
+    padding: 9px 12px;
+    border: 1px solid var(--g-surface-border);
+    color: var(--g-text-primary);
+    background: var(--g-surface-0);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  .gyozai-input:focus { border-color: #E8950A; }
-  .gyozai-input:disabled { opacity: 0.6; }
+  .gyozai-input:focus {
+    border-color: var(--g-brand-500);
+    box-shadow: 0 0 0 3px oklch(0.66 0.18 72 / 0.1);
+  }
+  .gyozai-input:disabled { opacity: 0.5; }
+  .gyozai-input::placeholder { color: var(--g-text-muted); }
 
   .gyozai-send-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
-    background: #E8950A;
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
     color: #fff;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 8px;
-    transition: opacity 0.15s ease;
+    padding: 9px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
   }
-  .gyozai-send-btn:hover { opacity: 0.85; }
-  .gyozai-send-btn:disabled { opacity: 0.4; cursor: default; }
+  .gyozai-send-btn:hover {
+    box-shadow: 0 4px 12px oklch(0.66 0.18 72 / 0.4);
+    transform: translateY(-1px);
+  }
+  .gyozai-send-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ─── Error ─────────────────────────────────────────────── */
 
   .gyozai-error {
-    padding: 8px 12px;
+    padding: 8px 14px;
     font-size: 12px;
+    color: oklch(0.72 0.2 25);
+    background: var(--g-error-bg);
+    border-top: 1px solid oklch(0.25 0.04 25);
   }
+
+  /* ─── Clarify ───────────────────────────────────────────── */
 
   .gyozai-clarify {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 8px 12px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--g-surface-border);
+    animation: gyozai-fade-in 0.2s ease-out;
   }
 
   .gyozai-clarify-btn {
-    padding: 6px 12px;
+    padding: 6px 14px;
     font-size: 12px;
     font-family: inherit;
-    border: 1px solid #E8950A;
-    border-radius: 16px;
-    color: #E8950A;
+    border: 1px solid oklch(0.66 0.18 72 / 0.35);
+    border-radius: 20px;
+    color: var(--g-brand-400);
+    background: oklch(0.66 0.18 72 / 0.06);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
   }
   .gyozai-clarify-btn:hover {
-    background: #E8950A;
+    background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
+    border-color: var(--g-brand-500);
     color: #fff;
+    box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
   }
 
+  /* ─── Toast ─────────────────────────────────────────────── */
+
   .gyozai-toast {
-    padding: 8px 12px;
+    padding: 8px 14px;
     font-size: 12px;
-    color: #E8950A;
+    color: var(--g-brand-400);
     text-align: center;
-    animation: gyozai-fade-in 0.3s ease;
+    background: var(--g-surface-1);
+    border-top: 1px solid var(--g-surface-border);
+    animation: gyozai-fade-in 0.3s ease-out;
   }
 
   @keyframes gyozai-fade-in {
@@ -1487,28 +1619,29 @@ const WIDGET_STYLES_BASE = `
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* ─── History list styles ──────────────────────────────────────────── */
+  /* ─── History ───────────────────────────────────────────── */
 
   .gyozai-history-item {
     display: flex;
     align-items: center;
     gap: 4px;
-    border-radius: 8px;
-    transition: background 0.15s ease;
+    border-radius: 10px;
+    transition: background 0.2s ease;
   }
   .gyozai-history-item:hover {
-    background: rgba(232, 149, 10, 0.08);
+    background: oklch(0.66 0.18 72 / 0.06);
   }
   .gyozai-history-item-active {
-    background: rgba(232, 149, 10, 0.12);
+    background: oklch(0.66 0.18 72 / 0.1);
+    border: 1px solid oklch(0.66 0.18 72 / 0.15);
   }
 
   .gyozai-history-item-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
+    gap: 3px;
+    padding: 10px 12px;
     border: none;
     background: none;
     cursor: pointer;
@@ -1524,13 +1657,14 @@ const WIDGET_STYLES_BASE = `
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--g-text-primary);
   }
 
   .gyozai-history-meta {
     display: flex;
     gap: 8px;
     font-size: 11px;
-    opacity: 0.5;
+    color: var(--g-text-muted);
   }
 
   .gyozai-history-delete {
@@ -1541,10 +1675,10 @@ const WIDGET_STYLES_BASE = `
     background: none;
     cursor: pointer;
     padding: 6px;
-    border-radius: 4px;
+    border-radius: 6px;
     opacity: 0;
-    transition: opacity 0.15s ease, color 0.15s ease;
-    color: inherit;
+    transition: all 0.2s ease;
+    color: var(--g-text-muted);
     flex-shrink: 0;
   }
   .gyozai-history-item:hover .gyozai-history-delete {
@@ -1552,106 +1686,7 @@ const WIDGET_STYLES_BASE = `
   }
   .gyozai-history-delete:hover {
     opacity: 1 !important;
-    color: #ef4444;
-  }
-`;
-
-// ─── Dark theme colors ───────────────────────────────────────────────────────
-
-const WIDGET_STYLES_DARK = `
-  .gyozai-bubble {
-    background: #1a1a2e;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-    border: 1px solid #2a2a3a;
-  }
-  .gyozai-panel {
-    background: #1a1a2e;
-    color: #e4e4e7;
-    border: 1px solid #2a2a3a;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-  }
-  .gyozai-header {
-    border-bottom: 1px solid #2a2a3a;
-    background: #12121a;
-  }
-  .gyozai-icon-btn { color: #71717a; }
-  .gyozai-empty { color: #71717a; }
-  .gyozai-msg-assistant {
-    background: #2a2a3a;
-    color: #e4e4e7;
-  }
-  .gyozai-input-row {
-    border-top: 1px solid #2a2a3a;
-    background: #12121a;
-  }
-  .gyozai-input {
-    border: 1px solid #2a2a3a;
-    color: #e4e4e7;
-    background: #1a1a2e;
-  }
-  .gyozai-error {
-    color: #f87171;
-    background: #2d1b1b;
-    border-top: 1px solid #4a2020;
-  }
-  .gyozai-clarify {
-    border-top: 1px solid #2a2a3a;
-  }
-  .gyozai-clarify-btn {
-    background: #1a1a2e;
-  }
-  .gyozai-toast {
-    background: #12121a;
-    border-top: 1px solid #2a2a3a;
-  }
-`;
-
-// ─── Light theme colors ──────────────────────────────────────────────────────
-
-const WIDGET_STYLES_LIGHT = `
-  .gyozai-bubble {
-    background: #ffffff;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-    border: 1px solid #e5e5e5;
-  }
-  .gyozai-panel {
-    background: #ffffff;
-    color: #1a1a2e;
-    border: 1px solid #e5e5e5;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  }
-  .gyozai-header {
-    border-bottom: 1px solid #e5e5e5;
-    background: #fafafa;
-  }
-  .gyozai-icon-btn { color: #9ca3af; }
-  .gyozai-empty { color: #9ca3af; }
-  .gyozai-msg-assistant {
-    background: #f3f4f6;
-    color: #1a1a2e;
-  }
-  .gyozai-input-row {
-    border-top: 1px solid #e5e5e5;
-    background: #fafafa;
-  }
-  .gyozai-input {
-    border: 1px solid #e5e5e5;
-    color: #1a1a2e;
-    background: #ffffff;
-  }
-  .gyozai-error {
-    color: #dc2626;
-    background: #fef2f2;
-    border-top: 1px solid #fecaca;
-  }
-  .gyozai-clarify {
-    border-top: 1px solid #e5e5e5;
-  }
-  .gyozai-clarify-btn {
-    background: #ffffff;
-  }
-  .gyozai-toast {
-    background: #fafafa;
-    border-top: 1px solid #e5e5e5;
+    color: oklch(0.65 0.22 25);
+    background: oklch(0.63 0.24 25 / 0.1);
   }
 `;

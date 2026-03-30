@@ -6,7 +6,6 @@ import {
 } from "../../lib/storage";
 import {
   getRecipes,
-  getRecipesForDomain,
   removeRecipe,
   importRecipeFromFile,
   toggleRecipe,
@@ -48,219 +47,6 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
-function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
-  const BRAND = "#E8950A";
-
-  return {
-    container: {
-      padding: 0,
-      display: "flex",
-      flexDirection: "column",
-      background: isDark ? "#0a0a0f" : "#ffffff",
-    },
-    loading: {
-      padding: 40,
-      textAlign: "center",
-      color: isDark ? "#71717a" : "#9ca3af",
-    },
-    header: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "16px 16px 12px",
-      borderBottom: isDark ? "1px solid #2a2a3a" : "1px solid #e5e5e5",
-      background: "inherit",
-    },
-    headerTitle: { display: "flex", alignItems: "center", gap: 8 },
-    logo: { fontSize: 24 },
-    title: { fontSize: 18, fontWeight: 700, color: BRAND },
-    version: { fontSize: 11, color: isDark ? "#71717a" : "#9ca3af" },
-    section: {
-      padding: "12px 16px",
-      borderBottom: isDark ? "1px solid #1a1a2e" : "1px solid #f3f4f6",
-    },
-    modeToggle: {
-      display: "flex",
-      gap: 0,
-      borderRadius: 8,
-      overflow: "hidden",
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #e5e5e5",
-    },
-    modeBtn: {
-      flex: 1,
-      padding: "8px 0",
-      border: "none",
-      background: isDark ? "#12121a" : "#fff",
-      cursor: "pointer",
-      fontSize: 13,
-      fontWeight: 500,
-      color: isDark ? "#71717a" : "#6b7280",
-    },
-    modeActive: {
-      flex: 1,
-      padding: "8px 0",
-      border: "none",
-      background: BRAND,
-      cursor: "pointer",
-      fontSize: 13,
-      fontWeight: 600,
-      color: "#fff",
-    },
-    label: {
-      display: "block",
-      fontSize: 12,
-      fontWeight: 500,
-      color: isDark ? "#a1a1aa" : "#374151",
-      marginBottom: 4,
-      marginTop: 10,
-    },
-    select: {
-      width: "100%",
-      padding: "8px 10px",
-      borderRadius: 6,
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
-      fontSize: 13,
-      background: isDark ? "#12121a" : "#fff",
-      color: isDark ? "#e4e4e7" : "#1a1a2e",
-      outline: "none",
-    },
-    input: {
-      flex: 1,
-      padding: "8px 10px",
-      borderRadius: 6,
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
-      fontSize: 13,
-      background: isDark ? "#12121a" : "#fff",
-      color: isDark ? "#e4e4e7" : "#1a1a2e",
-      outline: "none",
-    },
-    keyRow: { display: "flex", gap: 6, alignItems: "center" },
-    eyeBtn: {
-      border: "none",
-      background: "none",
-      cursor: "pointer",
-      fontSize: 16,
-      padding: "4px",
-    },
-    saveBtn: {
-      width: "100%",
-      padding: "10px 0",
-      borderRadius: 8,
-      border: "none",
-      background: BRAND,
-      color: "#fff",
-      fontSize: 14,
-      fontWeight: 600,
-      cursor: "pointer",
-      marginTop: 14,
-    },
-    desc: {
-      fontSize: 13,
-      color: isDark ? "#71717a" : "#9ca3af",
-      marginBottom: 12,
-      lineHeight: "1.4",
-    },
-    statusRow: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      fontSize: 13,
-      marginBottom: 10,
-    },
-    statusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: "50%",
-      background: "#22c55e",
-    },
-    signOutBtn: {
-      width: "100%",
-      padding: "8px 0",
-      borderRadius: 8,
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
-      background: isDark ? "#12121a" : "#fff",
-      color: isDark ? "#71717a" : "#6b7280",
-      fontSize: 13,
-      cursor: "pointer",
-    },
-    sectionHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    sectionTitle: {
-      fontSize: 14,
-      fontWeight: 600,
-      color: isDark ? undefined : "#1a1a2e",
-    },
-    importBtn: {
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
-      borderRadius: 6,
-      padding: "4px 10px",
-      fontSize: 12,
-      cursor: "pointer",
-      background: isDark ? "#12121a" : "#fff",
-      color: isDark ? "#a1a1aa" : "#374151",
-    },
-    emptyText: {
-      fontSize: 12,
-      color: isDark ? "#71717a" : "#9ca3af",
-      lineHeight: "1.4",
-    },
-    recipeList: { display: "flex", flexDirection: "column", gap: 6 },
-    recipeItem: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "8px 10px",
-      borderRadius: 6,
-      background: isDark ? "#12121a" : "#f9fafb",
-      border: isDark ? "1px solid #1a1a2e" : "1px solid #f3f4f6",
-    },
-    recipeName: {
-      fontSize: 13,
-      fontWeight: 500,
-      color: isDark ? "#e4e4e7" : "#1a1a2e",
-    },
-    recipeDomain: { fontSize: 11, color: isDark ? "#71717a" : "#9ca3af" },
-    toggleBtn: {
-      border: isDark ? "1px solid #2a2a3a" : "1px solid #d1d5db",
-      borderRadius: 4,
-      padding: "2px 6px",
-      fontSize: 10,
-      fontWeight: 600,
-      cursor: "pointer",
-      background: isDark ? "#12121a" : "#fff",
-      color: isDark ? "#71717a" : "#6b7280",
-    },
-    deleteBtn: {
-      border: "none",
-      background: "none",
-      cursor: "pointer",
-      fontSize: 14,
-      color: isDark ? "#71717a" : "#9ca3af",
-      padding: "4px",
-    },
-    settingRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10,
-    },
-    settingLabel: {
-      fontSize: 13,
-      fontWeight: 500,
-      color: isDark ? "#e4e4e7" : "#1a1a2e",
-    },
-    settingDesc: {
-      fontSize: 11,
-      color: isDark ? "#71717a" : "#9ca3af",
-      marginTop: 2,
-    },
-  };
-}
-
 export function App() {
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
@@ -272,7 +58,6 @@ export function App() {
   useEffect(() => {
     getSettings().then(setSettings);
     getRecipes().then(setRecipes);
-    // Get current tab's domain
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
         try {
@@ -282,10 +67,6 @@ export function App() {
     });
   }, []);
 
-  const isDark = !settings || settings.theme !== "light";
-  const s = getStyles(isDark);
-
-  // Resolve locale from settings
   const locale: LocaleCode = settings
     ? settings.language === "auto"
       ? detectBrowserLocale()
@@ -293,13 +74,7 @@ export function App() {
     : "en";
   const tr = getTranslations(locale);
 
-  // Sync body background/color with theme so scrollbar and any uncovered areas match
-  useEffect(() => {
-    document.body.style.background = isDark ? "#0a0a0f" : "#ffffff";
-    document.body.style.color = isDark ? "#e4e4e7" : "#1a1a2e";
-  }, [isDark]);
-
-  if (!settings) return <div style={s.loading}>{tr.popup_loading}</div>;
+  if (!settings) return <div className="popup-loading">{tr.popup_loading}</div>;
 
   const handleSave = async () => {
     await saveSettings(settings);
@@ -337,31 +112,27 @@ export function App() {
   const models = MODELS[settings.provider] || [];
 
   return (
-    <div style={s.container}>
+    <div className="popup-container">
       {/* Header */}
-      <div style={s.header}>
-        <div style={s.headerTitle}>
-          <img
-            src="/icon-128.png"
-            alt="gyoza"
-            style={{ width: 24, height: 24 }}
-          />
-          <span style={s.title}>gyoza</span>
+      <div className="popup-header">
+        <div className="popup-header-left">
+          <img src="/icon-128.png" alt="gyoza" className="popup-logo" />
+          <span className="popup-brand">gyoza</span>
         </div>
-        <span style={s.version}>v0.0.1</span>
+        <span className="popup-version">v0.0.1</span>
       </div>
 
       {/* Mode Toggle */}
-      <div style={s.section}>
-        <div style={s.modeToggle}>
+      <div className="popup-section">
+        <div className="mode-toggle">
           <button
-            style={settings.mode === "byok" ? s.modeActive : s.modeBtn}
+            className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
             onClick={() => setSettings({ ...settings, mode: "byok" })}
           >
             BYOK
           </button>
           <button
-            style={settings.mode === "managed" ? s.modeActive : s.modeBtn}
+            className={`mode-btn ${settings.mode === "managed" ? "active" : ""}`}
             onClick={() => setSettings({ ...settings, mode: "managed" })}
           >
             Managed
@@ -371,10 +142,10 @@ export function App() {
 
       {/* BYOK Config */}
       {settings.mode === "byok" && (
-        <div style={s.section}>
-          <label style={s.label}>{tr.popup_provider}</label>
+        <div className="popup-section">
+          <label className="form-label">{tr.popup_provider}</label>
           <select
-            style={s.select}
+            className="form-select"
             value={settings.provider}
             onChange={(e) => {
               const provider = e.target.value as ExtensionSettings["provider"];
@@ -389,11 +160,11 @@ export function App() {
             ))}
           </select>
 
-          <label style={s.label}>{tr.popup_api_key}</label>
-          <div style={s.keyRow}>
+          <label className="form-label">{tr.popup_api_key}</label>
+          <div className="key-row">
             <input
               type={showKey ? "text" : "password"}
-              style={s.input}
+              className="form-input"
               value={settings.apiKey}
               onChange={(e) =>
                 setSettings({ ...settings, apiKey: e.target.value })
@@ -403,14 +174,14 @@ export function App() {
                   PROVIDERS.find((p) => p.id === settings.provider)?.name || "",
               })}
             />
-            <button style={s.eyeBtn} onClick={() => setShowKey(!showKey)}>
+            <button className="eye-btn" onClick={() => setShowKey(!showKey)}>
               {showKey ? "\u{1F648}" : "\u{1F441}\uFE0F"}
             </button>
           </div>
 
-          <label style={s.label}>{tr.popup_model}</label>
+          <label className="form-label">{tr.popup_model}</label>
           <select
-            style={s.select}
+            className="form-select"
             value={settings.model}
             onChange={(e) =>
               setSettings({ ...settings, model: e.target.value })
@@ -423,7 +194,10 @@ export function App() {
             ))}
           </select>
 
-          <button style={s.saveBtn} onClick={handleSave}>
+          <button
+            className={`btn-primary ${saved ? "saved" : ""}`}
+            onClick={handleSave}
+          >
             {saved ? `\u2713 ${tr.popup_saved}` : tr.popup_save}
           </button>
         </div>
@@ -431,18 +205,19 @@ export function App() {
 
       {/* Managed Mode */}
       {settings.mode === "managed" && (
-        <div style={s.section}>
+        <div className="popup-section">
           {settings.managedToken ? (
             <div>
-              <div style={s.statusRow}>
-                <span style={s.statusDot} />
+              <div className="status-row">
+                <span className="status-dot" />
                 <span>{tr.popup_managed_connected}</span>
               </div>
               <button
-                style={s.signOutBtn}
+                className="btn-secondary"
                 onClick={() => {
-                  setSettings({ ...settings, managedToken: undefined });
-                  handleSave();
+                  const updated = { ...settings, managedToken: undefined };
+                  setSettings(updated);
+                  saveSettings(updated);
                 }}
               >
                 {tr.popup_managed_sign_out}
@@ -450,9 +225,9 @@ export function App() {
             </div>
           ) : (
             <div>
-              <p style={s.desc}>{tr.popup_managed_subscribe_desc}</p>
+              <p className="desc-text">{tr.popup_managed_subscribe_desc}</p>
               <button
-                style={s.saveBtn}
+                className="btn-primary"
                 onClick={() =>
                   chrome.tabs.create({ url: "https://gyoz.ai/subscribe" })
                 }
@@ -465,9 +240,9 @@ export function App() {
       )}
 
       {/* Recipes */}
-      <div style={s.section}>
-        <div style={s.sectionHeader}>
-          <span style={s.sectionTitle}>
+      <div className="popup-section">
+        <div className="section-header">
+          <span className="section-title">
             {showAllRecipes
               ? tr.popup_all_recipes
               : currentDomain
@@ -476,19 +251,19 @@ export function App() {
           </span>
           <div style={{ display: "flex", gap: 4 }}>
             <button
-              style={s.importBtn}
+              className="action-btn"
               onClick={() => setShowAllRecipes(!showAllRecipes)}
               title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
             >
               {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
             </button>
-            <button style={s.importBtn} onClick={handleImportRecipe}>
+            <button className="action-btn" onClick={handleImportRecipe}>
               {tr.popup_import}
             </button>
           </div>
         </div>
         {displayRecipes.length === 0 ? (
-          <p style={s.emptyText}>
+          <p className="empty-text">
             {showAllRecipes
               ? tr.popup_no_recipes_all
               : t(tr, "popup_no_recipes_site", {
@@ -496,32 +271,31 @@ export function App() {
                 })}
           </p>
         ) : (
-          <div style={s.recipeList}>
+          <div className="recipe-list">
             {displayRecipes.map((r) => (
               <div
                 key={r.id}
-                style={{
-                  ...s.recipeItem,
-                  opacity: r.enabled === false ? 0.5 : 1,
-                }}
+                className={`recipe-item ${r.enabled === false ? "disabled" : ""}`}
               >
-                <div style={{ flex: 1 }}>
-                  <div style={s.recipeName}>{r.name}</div>
-                  <div style={s.recipeDomain}>{r.domain}</div>
+                <div className="recipe-info">
+                  <div className="recipe-name">{r.name}</div>
+                  <div className="recipe-domain">{r.domain}</div>
                 </div>
-                <button
-                  style={s.toggleBtn}
-                  title={r.enabled !== false ? "Disable" : "Enable"}
-                  onClick={() => handleToggleRecipe(r.id)}
-                >
-                  {r.enabled !== false ? "ON" : "OFF"}
-                </button>
-                <button
-                  style={s.deleteBtn}
-                  onClick={() => handleDeleteRecipe(r.id)}
-                >
-                  {"\u2715"}
-                </button>
+                <div className="recipe-actions">
+                  <button
+                    className={`toggle-btn ${r.enabled !== false ? "active" : ""}`}
+                    title={r.enabled !== false ? "Disable" : "Enable"}
+                    onClick={() => handleToggleRecipe(r.id)}
+                  >
+                    {r.enabled !== false ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteRecipe(r.id)}
+                  >
+                    {"\u2715"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -529,16 +303,16 @@ export function App() {
       </div>
 
       {/* Settings */}
-      <div style={s.section}>
-        <div style={s.sectionHeader}>
-          <span style={s.sectionTitle}>{tr.popup_settings}</span>
+      <div className="popup-section">
+        <div className="section-header">
+          <span className="section-title">{tr.popup_settings}</span>
         </div>
 
         {/* Language */}
-        <div style={s.settingRow}>
-          <div style={s.settingLabel}>{tr.popup_language}</div>
+        <div className="setting-row">
+          <div className="setting-label">{tr.popup_language}</div>
           <select
-            style={{ ...s.select, width: "auto", minWidth: 140 }}
+            className="setting-select"
             value={settings.language}
             onChange={(e) => {
               const updated = { ...settings, language: e.target.value };
@@ -556,13 +330,13 @@ export function App() {
         </div>
 
         {/* Yolo Mode */}
-        <div style={s.settingRow}>
-          <div>
-            <div style={s.settingLabel}>{tr.popup_yolo_mode}</div>
-            <div style={s.settingDesc}>{tr.popup_yolo_desc}</div>
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">{tr.popup_yolo_mode}</div>
+            <div className="setting-desc">{tr.popup_yolo_desc}</div>
           </div>
           <button
-            style={s.toggleBtn}
+            className={`toggle-btn ${settings.yoloMode ? "active" : ""}`}
             onClick={() => {
               const updated = { ...settings, yoloMode: !settings.yoloMode };
               setSettings(updated);
@@ -573,41 +347,27 @@ export function App() {
           </button>
         </div>
 
-        {/* Theme */}
-        <div style={s.settingRow}>
-          <div style={s.settingLabel}>{tr.popup_theme}</div>
-          <div style={s.modeToggle}>
-            <button
-              style={
-                settings.theme === "dark" || !settings.theme
-                  ? s.modeActive
-                  : s.modeBtn
-              }
-              onClick={() => {
-                const updated = {
-                  ...settings,
-                  theme: "dark" as const,
-                };
-                setSettings(updated);
-                saveSettings(updated);
-              }}
-            >
-              {tr.popup_dark}
-            </button>
-            <button
-              style={settings.theme === "light" ? s.modeActive : s.modeBtn}
-              onClick={() => {
-                const updated = {
-                  ...settings,
-                  theme: "light" as const,
-                };
-                setSettings(updated);
-                saveSettings(updated);
-              }}
-            >
-              {tr.popup_light}
-            </button>
+        {/* Auto-import Recipes */}
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">{tr.popup_auto_import_recipes}</div>
+            <div className="setting-desc">
+              {tr.popup_auto_import_recipes_desc}
+            </div>
           </div>
+          <button
+            className={`toggle-btn ${settings.autoImportRecipes ? "active" : ""}`}
+            onClick={() => {
+              const updated = {
+                ...settings,
+                autoImportRecipes: !settings.autoImportRecipes,
+              };
+              setSettings(updated);
+              saveSettings(updated);
+            }}
+          >
+            {settings.autoImportRecipes ? "ON" : "OFF"}
+          </button>
         </div>
       </div>
     </div>
