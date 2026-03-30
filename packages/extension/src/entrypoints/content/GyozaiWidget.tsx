@@ -346,6 +346,17 @@ export function GyozaiWidget() {
         setExpanded(true);
         setLoading(true);
 
+        // Show navigate status so user sees what happened
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Navigated to ${window.location.pathname}`,
+            type: "tool-status" as const,
+          },
+        ]);
+
         // Small delay to let the new page render fully
         await new Promise((r) => setTimeout(r, 500));
 
@@ -361,7 +372,7 @@ export function GyozaiWidget() {
         try {
           autoFollowUpUsed = false;
           const result = await sendQuery(
-            `I've already navigated to this page. Complete the remaining task without repeating what was already said. Original request: ${pendingNav.originalQuery}`,
+            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
             pendingExtraContext || undefined,
           );
           pendingExtraContext = null;
@@ -733,10 +744,10 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // Show tool action status as a separate, visually distinct message
+    // Show each tool action as its own status pill
     const statusLines = buildToolStatusLines(result.toolCalls);
-    if (statusLines.length > 0) {
-      addToolStatusMessage(statusLines.join(" · "));
+    for (const line of statusLines) {
+      addToolStatusMessage(line);
     }
 
     // Show AI messages as normal assistant bubbles
