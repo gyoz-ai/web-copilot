@@ -48,7 +48,7 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
-type Tab = "recipes" | "settings";
+type Tab = "provider" | "recipes" | "settings";
 
 export function App() {
   const [settings, setSettings] = useState<ExtensionSettings>(DEFAULT_SETTINGS);
@@ -57,7 +57,7 @@ export function App() {
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [tab, setTab] = useState<Tab>("recipes");
+  const [tab, setTab] = useState<Tab>("provider");
 
   useEffect(() => {
     getSettings().then(setSettings);
@@ -125,6 +125,12 @@ export function App() {
       {/* Tab bar */}
       <div className="popup-tabs">
         <button
+          className={`popup-tab ${tab === "provider" ? "active" : ""}`}
+          onClick={() => setTab("provider")}
+        >
+          {tr.popup_provider}
+        </button>
+        <button
           className={`popup-tab ${tab === "recipes" ? "active" : ""}`}
           onClick={() => setTab("recipes")}
         >
@@ -138,79 +144,11 @@ export function App() {
         </button>
       </div>
 
-      {/* ═══ Recipes Tab ═══ */}
-      {tab === "recipes" && (
-        <div className="popup-section">
-          <div className="section-header">
-            <span className="section-title">
-              {showAllRecipes
-                ? tr.popup_all_recipes
-                : currentDomain
-                  ? t(tr, "popup_recipes_for", { domain: currentDomain })
-                  : tr.popup_recipes}
-            </span>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button
-                className="action-btn"
-                onClick={() => setShowAllRecipes(!showAllRecipes)}
-                title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
-              >
-                {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
-              </button>
-              <button className="action-btn" onClick={handleImportRecipe}>
-                {tr.popup_import}
-              </button>
-            </div>
-          </div>
-          {displayRecipes.length === 0 ? (
-            <p className="empty-text">
-              {showAllRecipes
-                ? tr.popup_no_recipes_all
-                : t(tr, "popup_no_recipes_site", {
-                    domain: currentDomain || "this site",
-                  })}
-            </p>
-          ) : (
-            <div className="recipe-list">
-              {displayRecipes.map((r) => (
-                <div
-                  key={r.id}
-                  className={`recipe-item ${r.enabled === false ? "disabled" : ""}`}
-                >
-                  <div className="recipe-info">
-                    <div className="recipe-name">{r.name}</div>
-                    <div className="recipe-domain">{r.domain}</div>
-                  </div>
-                  <div className="recipe-actions">
-                    <button
-                      className={`toggle-btn ${r.enabled !== false ? "active" : ""}`}
-                      title={r.enabled !== false ? "Disable" : "Enable"}
-                      onClick={() => handleToggleRecipe(r.id)}
-                    >
-                      {r.enabled !== false ? "ON" : "OFF"}
-                    </button>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteRecipe(r.id)}
-                    >
-                      {"\u2715"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══ Settings Tab ═══ */}
-      {tab === "settings" && (
+      {/* ═══ Provider Tab ═══ */}
+      {tab === "provider" && (
         <>
           {/* Mode Toggle */}
           <div className="popup-section">
-            <div className="section-header">
-              <span className="section-title">{tr.popup_provider}</span>
-            </div>
             <div className="mode-toggle">
               <button
                 className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
@@ -330,13 +268,78 @@ export function App() {
               )}
             </div>
           )}
+        </>
+      )}
 
-          {/* Preferences */}
-          <div className="popup-section">
-            <div className="section-header">
-              <span className="section-title">{tr.popup_settings}</span>
+      {/* ═══ Recipes Tab ═══ */}
+      {tab === "recipes" && (
+        <div className="popup-section">
+          <div className="section-header">
+            <span className="section-title">
+              {showAllRecipes
+                ? tr.popup_all_recipes
+                : currentDomain
+                  ? t(tr, "popup_recipes_for", { domain: currentDomain })
+                  : tr.popup_recipes}
+            </span>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                className="action-btn"
+                onClick={() => setShowAllRecipes(!showAllRecipes)}
+                title={showAllRecipes ? tr.popup_back : tr.popup_all_recipes}
+              >
+                {showAllRecipes ? tr.popup_back : "\u{1F4D3}"}
+              </button>
+              <button className="action-btn" onClick={handleImportRecipe}>
+                {tr.popup_import}
+              </button>
             </div>
+          </div>
+          {displayRecipes.length === 0 ? (
+            <p className="empty-text">
+              {showAllRecipes
+                ? tr.popup_no_recipes_all
+                : t(tr, "popup_no_recipes_site", {
+                    domain: currentDomain || "this site",
+                  })}
+            </p>
+          ) : (
+            <div className="recipe-list">
+              {displayRecipes.map((r) => (
+                <div
+                  key={r.id}
+                  className={`recipe-item ${r.enabled === false ? "disabled" : ""}`}
+                >
+                  <div className="recipe-info">
+                    <div className="recipe-name">{r.name}</div>
+                    <div className="recipe-domain">{r.domain}</div>
+                  </div>
+                  <div className="recipe-actions">
+                    <button
+                      className={`toggle-btn ${r.enabled !== false ? "active" : ""}`}
+                      title={r.enabled !== false ? "Disable" : "Enable"}
+                      onClick={() => handleToggleRecipe(r.id)}
+                    >
+                      {r.enabled !== false ? "ON" : "OFF"}
+                    </button>
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDeleteRecipe(r.id)}
+                    >
+                      {"\u2715"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* ═══ Settings Tab ═══ */}
+      {tab === "settings" && (
+        <>
+          <div className="popup-section">
             {/* Language */}
             <div className="setting-row">
               <div className="setting-label">{tr.popup_language}</div>
