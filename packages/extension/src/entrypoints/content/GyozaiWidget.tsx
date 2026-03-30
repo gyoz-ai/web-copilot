@@ -87,6 +87,10 @@ export function GyozaiWidget() {
   );
   const [viewMode, setViewMode] = useState<ViewMode>("chat");
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
+  const [avatarPosition, setAvatarPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   // Tracks whether session has been restored — prevents the save effect
   // from immediately overwriting the stored session with empty defaults.
   const sessionRestoredRef = useRef(false);
@@ -113,6 +117,7 @@ export function GyozaiWidget() {
         setInput(_preloadedSession.input);
         setMessages(_preloadedSession.messages);
         setViewMode(_preloadedSession.viewMode);
+        setAvatarPosition(_preloadedSession.avatarPosition ?? null);
         activeConvIdRef.current = _preloadedSession.activeConvId;
         log("Session restored from storage");
       }
@@ -142,6 +147,7 @@ export function GyozaiWidget() {
       messages,
       input,
       viewMode,
+      avatarPosition,
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
@@ -163,7 +169,7 @@ export function GyozaiWidget() {
         }
       })
       .catch((err) => log("Session save FAILED:", err));
-  }, [expanded, messages, input, viewMode]);
+  }, [expanded, messages, input, viewMode, avatarPosition]);
 
   // ─── Flush session on page unload (cross-origin nav) ───
   // Uses both direct storage write AND background worker message

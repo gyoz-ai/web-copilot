@@ -8,6 +8,8 @@ export interface ExtensionSettings {
   autoImportRecipes: boolean;
   theme: "dark" | "light";
   language: string; // locale code or "auto" for browser detection
+  agentSize: "small" | "medium" | "big";
+  typingSound: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -19,6 +21,8 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   autoImportRecipes: true,
   theme: "dark",
   language: "auto",
+  agentSize: "medium",
+  typingSound: true,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {

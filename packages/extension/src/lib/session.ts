@@ -9,6 +9,7 @@ export interface WidgetSession {
   messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
   input: string;
   viewMode: "chat" | "history";
+  avatarPosition: { x: number; y: number } | null;
 }
 
 const SESSION_PREFIX = "gyozai_tab_";

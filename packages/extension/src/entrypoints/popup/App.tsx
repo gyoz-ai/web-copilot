@@ -406,6 +406,55 @@ export function App() {
                 {settings.autoImportRecipes ? "ON" : "OFF"}
               </button>
             </div>
+
+            {/* Avatar Size */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">Avatar Size</div>
+                <div className="setting-desc">
+                  Size of the gyoza avatar widget on pages
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {(["small", "medium", "big"] as const).map((size) => (
+                  <button
+                    key={size}
+                    className={`toggle-btn ${settings.agentSize === size ? "active" : ""}`}
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                    onClick={() => {
+                      const updated = { ...settings, agentSize: size };
+                      setSettings(updated);
+                      saveSettings(updated);
+                    }}
+                  >
+                    {size.charAt(0).toUpperCase() + size.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Typing Sound */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">Typing Sound</div>
+                <div className="setting-desc">
+                  Play a subtle click sound during message typing animation
+                </div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.typingSound ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    typingSound: !settings.typingSound,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.typingSound ? "ON" : "OFF"}
+              </button>
+            </div>
           </div>
         </>
       )}
