@@ -12,7 +12,11 @@ import {
 } from "../lib/recipes";
 import { createProvider } from "../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../lib/prompts";
-import { clearWidgetSession, saveWidgetSession } from "../lib/session";
+import {
+  clearWidgetSession,
+  loadWidgetSession,
+  saveWidgetSession,
+} from "../lib/session";
 
 // Pre-compute JSON schema for structured output
 const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
@@ -58,6 +62,16 @@ export default defineBackground(() => {
         })
         .then(() => sendResponse({ ok: true }))
         .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
+    if (message.type === "gyozai_load_session") {
+      const tabId = message.tabId ?? sender.tab?.id;
+      if (tabId != null) {
+        loadWidgetSession(tabId).then(sendResponse);
+      } else {
+        sendResponse(null);
+      }
       return true;
     }
 

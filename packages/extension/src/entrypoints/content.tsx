@@ -8,11 +8,7 @@ import {
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../lib/storage";
 import { waitForBody, injectWidget, watchForRemoval } from "../lib/injection";
-import {
-  loadWidgetSession,
-  saveWidgetSession,
-  type WidgetSession,
-} from "../lib/session";
+import type { WidgetSession } from "../lib/session";
 import {
   type LocaleCode,
   type Translations,
@@ -40,8 +36,12 @@ const _preloadReady = chrome.runtime
     // Tab ID available — load session + settings in parallel
     await Promise.all([
       _preloadedTabId != null
-        ? loadWidgetSession(_preloadedTabId)
-            .then((s) => {
+        ? chrome.runtime
+            .sendMessage({
+              type: "gyozai_load_session",
+              tabId: _preloadedTabId,
+            })
+            .then((s: WidgetSession | null) => {
               _preloadedSession = s;
             })
             .catch(() => {})
@@ -455,19 +455,24 @@ function GyozaiWidget() {
       viewMode,
     };
     latestSessionRef.current = { tabId, session };
-    // Write immediately — no debounce. chrome.storage.session.set() is
-    // fast (~1-3ms) and we need it committed before any navigation.
-    saveWidgetSession(tabId, session)
-      .then(() =>
-        log(
-          "Session saved ✓ — expanded:",
-          expanded,
-          "msgs:",
-          messages.length,
-          "convId:",
-          activeConvIdRef.current,
-        ),
-      )
+    // Write immediately via background worker (content scripts can't
+    // access chrome.storage.session directly).
+    chrome.runtime
+      .sendMessage({ type: "gyozai_save_session", tabId, session })
+      .then((r) => {
+        if (r?.ok) {
+          log(
+            "Session saved ✓ — expanded:",
+            expanded,
+            "msgs:",
+            messages.length,
+            "convId:",
+            activeConvIdRef.current,
+          );
+        } else {
+          log("Session save returned not-ok");
+        }
+      })
       .catch((err) => log("Session save FAILED:", err));
   }, [expanded, messages, input, viewMode]);
 
@@ -479,8 +484,6 @@ function GyozaiWidget() {
       const latest = latestSessionRef.current;
       if (!latest || !sessionRestoredRef.current) return;
       log("Flushing session on page unload/hide");
-      // Direct write — may complete if browser gives us time
-      saveWidgetSession(latest.tabId, latest.session).catch(() => {});
       // Background worker write — survives page destruction
       saveSessionViaBackground(latest.tabId, latest.session);
     };
