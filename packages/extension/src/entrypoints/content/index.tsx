@@ -68,15 +68,30 @@ const _preloadReady = chrome.runtime
       chrome.runtime
         .sendMessage({ type: "gyozai_load_expression" })
         .then((expr: string | null) => {
+          console.log("[gyoza:preload] load_expression response:", expr);
           if (expr) _preloadedExpression = expr;
         })
-        .catch(() => {}),
+        .catch((err) =>
+          console.error("[gyoza:preload] load_expression FAILED:", err),
+        ),
     ]);
+    console.log(
+      "[gyoza:preload] session expression:",
+      _preloadedSession?.expression ?? "NONE",
+    );
+    console.log(
+      "[gyoza:preload] local storage expression:",
+      _preloadedExpression ?? "NONE",
+    );
     // Session avatar position takes precedence over local storage
     const avatarPos =
       _preloadedSession?.avatarPosition ?? _preloadedAvatarPosition;
     // Session expression takes precedence over local storage
     const expr = _preloadedSession?.expression ?? _preloadedExpression ?? null;
+    console.log(
+      "[gyoza:preload] final expression to use:",
+      expr ?? "NONE (will default to neutral)",
+    );
     // Share preloaded state with GyozaiWidget module
     setPreloadState({
       tabId: _preloadedTabId,
