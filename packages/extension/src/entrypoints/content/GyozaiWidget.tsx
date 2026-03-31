@@ -423,6 +423,17 @@ export function GyozaiWidget() {
         setExpanded(true);
         setLoading(true);
 
+        // Show navigate status so user sees what happened
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Navigated to ${window.location.pathname}`,
+            type: "tool-status" as const,
+          },
+        ]);
+
         // Small delay to let the new page render fully
         await new Promise((r) => setTimeout(r, 500));
 
