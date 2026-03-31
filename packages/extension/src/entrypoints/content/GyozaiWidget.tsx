@@ -403,32 +403,25 @@ export function GyozaiWidget() {
       const pendingNav = await loadAndClearPendingNav(tid);
       if (pendingNav) {
         log(
-          "Resuming after navigation — capturing",
-          pendingNav.snapshotTypes.join(", "),
-          "for query:",
-          pendingNav.originalQuery.slice(0, 60),
+          "Resuming after navigation — pending-nav state:",
+          JSON.stringify(pendingNav),
         );
 
         // Restore the conversation that was in progress
         activeConvIdRef.current = pendingNav.conversationId;
         const conv = await loadConversation(pendingNav.conversationId);
         if (conv) {
+          log(
+            "Restored conversation:",
+            conv.id,
+            "messages:",
+            conv.messages.length,
+          );
           setMessages(conv.messages);
         }
 
         setExpanded(true);
         setLoading(true);
-
-        // Show navigate status so user sees what happened
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: `Navigated to ${window.location.pathname}`,
-            type: "tool-status" as const,
-          },
-        ]);
 
         // Small delay to let the new page render fully
         await new Promise((r) => setTimeout(r, 500));
@@ -442,10 +435,21 @@ export function GyozaiWidget() {
           log("Captured", ctxText.length, "chars from new page");
         }
 
+        // The model already showed a message before navigating.
+        // Tell it to only provide NEW information about this page,
+        // not repeat what it already said.
+        const followUpQuery =
+          `Navigation complete — now on ${window.location.pathname}. ` +
+          `You already told the user you were navigating. ` +
+          `Do NOT repeat that. If the original request ("${pendingNav.originalQuery}") ` +
+          `needs info from THIS page, briefly provide it. ` +
+          `Otherwise just confirm arrival in one short sentence.`;
+        log("Follow-up query:", followUpQuery);
+
         try {
           autoFollowUpUsed = false;
           const result = await sendQuery(
-            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
+            followUpQuery,
             pendingExtraContext || undefined,
           );
           pendingExtraContext = null;

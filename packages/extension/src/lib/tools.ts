@@ -154,11 +154,20 @@ export function createBrowserTools(
             content: `Navigating to ${resolved}`,
           });
 
-          // No pending-nav save needed for BYOK tool-calling mode:
-          // the model already showed a message before navigating and
-          // the conversation is preserved via session storage. The
-          // legacy managed-mode path in the content script handles
-          // its own pending-nav for structured-output responses.
+          // Save pending-nav state so the widget auto-resumes on the new page
+          const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+          await chrome.storage.local.set({
+            [pendingNavKey]: {
+              snapshotTypes: ["all"],
+              originalQuery: ctx.originalQuery,
+              conversationId: ctx.conversationId || "",
+              tabId: ctx.tabId,
+              timestamp: Date.now(),
+              // Store messages shown before navigation so the follow-up
+              // can avoid repeating them
+              preNavMessageCount: ctx.messages.length,
+            },
+          });
 
           await execIsolated(
             ctx.tabId,

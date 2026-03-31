@@ -28,6 +28,8 @@ export interface PendingNavState {
   conversationId: string;
   tabId: number;
   timestamp: number;
+  /** Number of messages the model showed before navigating */
+  preNavMessageCount?: number;
 }
 
 function pendingNavKey(tabId: number) {
