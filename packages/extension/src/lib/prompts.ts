@@ -74,14 +74,13 @@ export function buildSystemPrompt(
     mode === "manifest"
       ? `You are an AI website navigation assistant. You help users find what they need on a website by interpreting their questions and using your tools to take actions.
 
-You have access to the website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. You also receive the page's live HTML snapshot and structured page elements. Use all of this information to determine the best action.`
+You have access to the website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. Use this plus the get_page_context tool to understand the page and determine the best action.`
       : `You are an AI website navigation assistant operating without a recipe. You help users navigate by analyzing the page content.
 
-You receive the page's live HTML snapshot and structured page elements. Analyze them to understand:
-- Navigation links and their destinations
-- Buttons and interactive elements
-- Page structure and content
-- Forms and their purposes`;
+Use the get_page_context tool to read the page. It returns:
+- Structured elements (buttons, links, forms, inputs, headings)
+- Full page HTML snapshot (with hidden elements removed, form values included)
+Analyze these to understand navigation, interactive elements, page structure, and forms.`;
 
   const capabilitySection = `Available tools and when to use them:
 - show_message: communicate information to the user. MUST be called in every response.
@@ -89,11 +88,13 @@ You receive the page's live HTML snapshot and structured page elements. Analyze 
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
 ${buildCapabilityNotes(caps)}`;
 
-  const contextSection = `Page context:
-- You already receive the page's HTML snapshot and structured elements with every request. Use them to understand the page without additional tool calls.
-- Call get_page_context ONLY when you need a FRESH snapshot after the page has changed (e.g. after clicking or executing JS). NEVER ask the user to describe page content — read it yourself.
-- For TRANSLATION or EDITING: use get_page_context with ["fullPage"] to get the latest DOM with selectors.
-- When navigating to a page where you'll need to interact, first navigate, then on the next turn use get_page_context for the new page.`;
+  const contextSection = `Using get_page_context:
+- You MUST call get_page_context at the START of every response to read the current page before taking any action. The ONLY exception: if you have a recipe and it already fully covers the user's request (e.g. a simple navigation to a known route), you can act directly without calling get_page_context.
+- NEVER ask the user to describe page content — read it yourself.
+- Use ["fullPage"] to get both structured elements AND the full HTML snapshot (hidden elements removed, current form values included).
+- Use specific types (["buttons"], ["forms", "inputs"], ["links"]) when you only need a subset.
+- For TRANSLATION or EDITING: always use ["fullPage"] — you need the full DOM structure with selectors.
+- Call it again after clicking, executing JS, or navigating to get the updated page state.`;
 
   const yoloSection = yoloMode
     ? `\n\nYOLO MODE IS ON: Act immediately without asking for confirmation. Do NOT use clarify. Do NOT ask "should I submit?" or "are you sure?". Just DO IT — fill forms and submit them, click buttons, navigate pages. Complete the entire task in one go.`

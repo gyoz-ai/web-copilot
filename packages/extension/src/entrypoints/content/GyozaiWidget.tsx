@@ -79,35 +79,6 @@ let pendingExtraContext: string | null = null;
 let autoFollowUpUsed = false;
 let queryCounter = 0;
 
-// ─── Eager page snapshot cache ──────────────────────────────────────────────
-// Pre-captured on page load and SPA navigations so it's instantly available
-// when the user queries — no capture delay.
-let _eagerHtmlSnapshot: string | null = null;
-let _eagerPageContext: string | null = null;
-
-function captureEagerSnapshot() {
-  try {
-    _eagerHtmlSnapshot = captureCleanHtml();
-    const ctx = capturePageContext(["all"]);
-    _eagerPageContext = formatPageContext(ctx);
-  } catch {
-    // Capture can fail on restricted pages — not critical
-  }
-}
-
-/** Schedule an eager capture during idle time. */
-function scheduleEagerCapture(delayMs = 0) {
-  const doCapture = () => {
-    if (typeof requestIdleCallback === "function") {
-      requestIdleCallback(() => captureEagerSnapshot());
-    } else {
-      setTimeout(() => captureEagerSnapshot(), 50);
-    }
-  };
-  if (delayMs > 0) setTimeout(doCapture, delayMs);
-  else doCapture();
-}
-
 const S = {
   brand: "color: #E8950A; font-weight: bold",
   req: "color: #3b82f6; font-weight: bold",
@@ -244,23 +215,6 @@ export function GyozaiWidget() {
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
     });
-  }, []);
-
-  // ─── Eager page snapshot capture ───
-  // Pre-capture on mount and re-capture on SPA navigation events so the
-  // snapshot is instantly available when the user queries.
-  useEffect(() => {
-    // Capture once DOM has settled after mount
-    scheduleEagerCapture(300);
-
-    // Re-capture on SPA navigations (popstate = back/forward, gyozai:navchange = pushState/replaceState)
-    const onNav = () => scheduleEagerCapture(500);
-    window.addEventListener("popstate", onNav);
-    window.addEventListener("gyozai:navchange", onNav);
-    return () => {
-      window.removeEventListener("popstate", onNav);
-      window.removeEventListener("gyozai:navchange", onNav);
-    };
   }, []);
 
   // ─── Persist widget session on every state change ───
@@ -744,15 +698,6 @@ export function GyozaiWidget() {
 
     const manifestMode = !!recipe?.content;
 
-    // Always capture a fresh page snapshot at query time so it reflects the
-    // latest DOM state. The eager cache is only a fallback if capture fails.
-    let pageSnapshot: string;
-    try {
-      pageSnapshot = captureCleanHtml();
-    } catch {
-      pageSnapshot = _eagerHtmlSnapshot || "";
-    }
-
     // Generate a queryId for streaming event correlation
     const queryId = crypto.randomUUID();
     currentQueryIdRef.current = queryId;
@@ -763,7 +708,6 @@ export function GyozaiWidget() {
       query,
       manifestMode,
       recipe: recipe?.content,
-      htmlSnapshot: pageSnapshot,
       currentRoute,
       conversationId: activeConvIdRef.current,
       context: {
@@ -805,9 +749,6 @@ export function GyozaiWidget() {
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
     if (manifestMode && recipe?.content) {
       console.log(`%cRecipe:%c ${recipe.content.length} chars`, S.req, "");
-    }
-    if (!manifestMode && pageSnapshot) {
-      console.log(`%cClean HTML:%c ${pageSnapshot.length} chars`, S.req, "");
     }
     console.groupEnd();
 

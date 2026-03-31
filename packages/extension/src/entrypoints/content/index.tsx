@@ -160,9 +160,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const types: SnapshotType[] = (msg.snapshotTypes || []).map(
         (t: string) => SNAPSHOT_MAP[t] || "all",
       );
+      // For fullPage requests, use the rich html-screen-capture-js snapshot
+      // which includes visibility filtering and form values.
+      const wantsFullPage = types.includes("all");
       const pageCtx = capturePageContext(types);
       const ctxText = formatPageContext(pageCtx);
-      sendResponse({ context: ctxText || captureCleanHtml() });
+      const fullHtml = wantsFullPage ? captureCleanHtml() : "";
+      // Combine structured elements + full HTML when both available
+      const combined = [ctxText, fullHtml].filter(Boolean).join("\n\n");
+      sendResponse({ context: combined || captureCleanHtml() });
     } catch (e) {
       sendResponse({
         context:
