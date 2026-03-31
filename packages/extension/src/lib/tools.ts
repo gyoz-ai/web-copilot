@@ -250,6 +250,9 @@ export function createBrowserTools(
               htmlTag: string | null,
               nearTxt: string | null,
             ) => {
+              const LOG = "%c[gyoza:click]";
+              const S = "color: #E8950A; font-weight: bold";
+
               let el: HTMLElement | null = null;
               if (txt) {
                 const searchTag = htmlTag || "*";
@@ -257,24 +260,69 @@ export function createBrowserTools(
                   document.querySelectorAll(searchTag),
                 ) as HTMLElement[];
 
+                // Log all candidates with matching text
+                const textMatches = candidates.filter(
+                  (e) => e.textContent?.trim() === txt,
+                );
+                console.log(
+                  LOG,
+                  S,
+                  `Searching for text="${txt}" tag="${searchTag}" near_text="${nearTxt || "none"}"`,
+                );
+                console.log(
+                  LOG,
+                  S,
+                  `Total <${searchTag}> elements: ${candidates.length}, exact text matches: ${textMatches.length}`,
+                );
+                textMatches.forEach((e, i) => {
+                  let parentCtx = "";
+                  let node: HTMLElement | null = e.parentElement;
+                  for (let d = 0; node && d < 5; d++) {
+                    if (node.tagName === "BODY") break;
+                    const t = (node.textContent || "").trim();
+                    if (t.length > 20 && t.length < 500) {
+                      parentCtx = t.slice(0, 120);
+                      break;
+                    }
+                    node = node.parentElement;
+                  }
+                  console.log(
+                    LOG,
+                    S,
+                    `  Match[${i}]: <${e.tagName.toLowerCase()}> "${e.textContent?.trim().slice(0, 50)}" | parent context: "${parentCtx.slice(0, 80)}..."`,
+                  );
+                });
+
                 if (nearTxt) {
                   // Find element whose ancestor contains near_text
                   el =
                     candidates.find((e) => {
                       if (e.textContent?.trim() !== txt) return false;
-                      // Walk up to find ancestor containing near_text
                       let node: HTMLElement | null = e.parentElement;
                       for (let d = 0; node && d < 8; d++) {
                         if (
                           node.textContent
                             ?.toLowerCase()
                             .includes(nearTxt.toLowerCase())
-                        )
+                        ) {
+                          console.log(
+                            LOG,
+                            S,
+                            `  ✓ near_text match found at depth ${d}: ancestor contains "${nearTxt}"`,
+                          );
                           return true;
+                        }
                         node = node.parentElement;
                       }
                       return false;
                     }) || null;
+                  if (!el) {
+                    console.log(
+                      LOG,
+                      S,
+                      `  ✗ No near_text match — none of the "${txt}" elements have ancestor containing "${nearTxt}"`,
+                    );
+                  }
                 }
 
                 if (!el) {
@@ -284,12 +332,28 @@ export function createBrowserTools(
                       e.textContent?.trim().includes(txt),
                     ) ||
                     null;
+                  if (el) {
+                    console.log(
+                      LOG,
+                      S,
+                      `  Fell back to first text match (no near_text or near_text failed)`,
+                    );
+                  }
                 }
               } else if (sel) {
                 el = document.querySelector(sel) as HTMLElement | null;
+                console.log(
+                  LOG,
+                  S,
+                  `Selector "${sel}" → ${el ? "found" : "NOT FOUND"}`,
+                );
               }
-              if (!el) return { found: false };
-              el.click();
+
+              if (!el) {
+                console.log(LOG, S, `✗ No element found — click aborted`);
+                return { found: false };
+              }
+
               // Gather ancestor context so the AI knows what it clicked
               let ancestorCtx = "";
               let node: HTMLElement | null = el.parentElement;
@@ -302,6 +366,14 @@ export function createBrowserTools(
                 }
                 node = node.parentElement;
               }
+
+              console.log(
+                LOG,
+                S,
+                `✓ Clicking <${el.tagName.toLowerCase()}> "${(el.textContent || "").trim().slice(0, 60)}" | context: "${ancestorCtx.slice(0, 80)}..."`,
+              );
+              el.click();
+
               return {
                 found: true,
                 tagName: el.tagName.toLowerCase(),
