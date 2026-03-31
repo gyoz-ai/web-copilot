@@ -145,6 +145,7 @@ export function GyozaiWidget() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number | null>(null);
   const scrollRestoredRef = useRef(false);
+  const lastKnownScrollTopRef = useRef(0);
   const avatarWrapperRef = useRef<HTMLDivElement>(null);
 
   // Restore scroll position after session restore + messages render
@@ -167,6 +168,26 @@ export function GyozaiWidget() {
       });
     }
   }, [messages, scrollReady]);
+
+  // Restore scroll position after SPA reattachment (host detach/reattach)
+  useEffect(() => {
+    const onReattach = () => {
+      const container = messagesContainerRef.current;
+      const saved = lastKnownScrollTopRef.current;
+      if (container && saved > 0) {
+        log("Restoring scroll after reattach to", saved);
+        requestAnimationFrame(() => {
+          container.scrollTop = saved;
+          requestAnimationFrame(() => {
+            container.scrollTop = saved;
+          });
+        });
+      }
+    };
+    window.addEventListener("gyozai:reattached", onReattach);
+    return () => window.removeEventListener("gyozai:reattached", onReattach);
+  }, []);
+
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
@@ -211,6 +232,7 @@ export function GyozaiWidget() {
         setAvatarPosition(_preloadedSession.avatarPosition ?? null);
         activeConvIdRef.current = _preloadedSession.activeConvId;
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
+        lastKnownScrollTopRef.current = _preloadedSession.scrollTop ?? 0;
         log("Session restored from storage");
       }
       // Mark restored so the save effect can start persisting
@@ -240,7 +262,7 @@ export function GyozaiWidget() {
       input,
       viewMode,
       avatarPosition,
-      scrollTop: messagesContainerRef.current?.scrollTop ?? 0,
+      scrollTop: lastKnownScrollTopRef.current,
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
@@ -292,6 +314,8 @@ export function GyozaiWidget() {
     if (!container) return;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const onScroll = () => {
+      // Track last known good scroll position (survives host detach/reattach)
+      lastKnownScrollTopRef.current = container.scrollTop;
       // Update ref immediately for beforeunload
       if (latestSessionRef.current) {
         latestSessionRef.current.session.scrollTop = container.scrollTop;

@@ -185,6 +185,48 @@ describe("watchForRemoval", () => {
     expect(host.isConnected).toBe(true);
   });
 
+  test("dispatches gyozai:reattached event when host is re-appended", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
+
+    let reattachedFired = false;
+    window.addEventListener(
+      "gyozai:reattached",
+      () => {
+        reattachedFired = true;
+      },
+      { once: true },
+    );
+
+    host.remove();
+    window.dispatchEvent(new Event("gyozai:navchange"));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(host.isConnected).toBe(true);
+    expect(reattachedFired).toBe(true);
+  });
+
+  test("does not dispatch gyozai:reattached when host is still connected", async () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    cleanup = watchForRemoval(host);
+
+    let reattachedFired = false;
+    window.addEventListener(
+      "gyozai:reattached",
+      () => {
+        reattachedFired = true;
+      },
+      { once: true },
+    );
+
+    // Fire nav event without removing host
+    window.dispatchEvent(new Event("gyozai:navchange"));
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(reattachedFired).toBe(false);
+  });
+
   test("does not re-attach if host is still connected", async () => {
     const host = injectWidget(document.body, MOCK_STYLES, noopRender);
     cleanup = watchForRemoval(host);

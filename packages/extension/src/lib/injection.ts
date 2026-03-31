@@ -128,6 +128,8 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
     // Re-inject the MAIN-world patch too (SPA may have wiped the <script>)
     _historyPatchRequested = false;
     patchMainWorldHistory();
+    // Notify widget so it can restore scroll position after reattachment
+    window.dispatchEvent(new Event("gyozai:reattached"));
   }
 
   function reobserve() {
