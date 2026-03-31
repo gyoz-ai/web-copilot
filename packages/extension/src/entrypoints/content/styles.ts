@@ -361,7 +361,7 @@ export const WIDGET_STYLES = `
 
   .gyozai-floating-toast {
     position: fixed;
-    bottom: 80px;
+    top: 20px;
     right: 20px;
     padding: 10px 16px;
     font-size: 12px;
