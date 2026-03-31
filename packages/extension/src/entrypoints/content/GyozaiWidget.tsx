@@ -1198,24 +1198,21 @@ export function GyozaiWidget() {
           const lastStatus = [...messages]
             .reverse()
             .find((m) => m.type === "tool-status");
-          const lastMsg =
-            messages.length > 0 ? messages[messages.length - 1] : null;
+          // Always use the last ASSISTANT message for the speech bubble,
+          // even if the user sent a message after it.
+          const lastAssistantMsg = [...messages]
+            .reverse()
+            .find((m) => m.role === "assistant" && m.type !== "tool-status");
           const isThinking = loading;
 
           // Determine what to show: status pill, speech bubble, or idle pill
           const showPill =
-            (isThinking && lastStatus) ||
-            isThinking ||
-            !lastMsg ||
-            lastMsg.role !== "assistant";
+            (isThinking && lastStatus) || isThinking || !lastAssistantMsg;
           const pillText = isThinking
             ? lastStatus?.content || "Thinking..."
             : "Idling...";
 
-          if (
-            showPill &&
-            !(lastMsg && lastMsg.role === "assistant" && !isThinking)
-          ) {
+          if (showPill && !(lastAssistantMsg && !isThinking)) {
             return (
               <div
                 style={{
@@ -1256,14 +1253,16 @@ export function GyozaiWidget() {
               }}
             >
               <SpeechBubble
-                text={lastMsg!.content}
+                text={lastAssistantMsg!.content}
                 isThinking={false}
                 autoDismissMs={0}
                 soundEnabled={typingSound}
-                typewriterEnabled={animatedMsgIdRef.current !== lastMsg!.id}
+                typewriterEnabled={
+                  animatedMsgIdRef.current !== lastAssistantMsg!.id
+                }
                 onTypingChange={(typing) => {
                   setIsTypewriting(typing);
-                  if (!typing) animatedMsgIdRef.current = lastMsg!.id;
+                  if (!typing) animatedMsgIdRef.current = lastAssistantMsg!.id;
                 }}
               />
             </div>
