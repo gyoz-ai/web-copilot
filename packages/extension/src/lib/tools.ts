@@ -191,27 +191,73 @@ export function createBrowserTools(
   // ── click ───────────────────────────────────────────────────────────────
   if (caps.click) {
     tools.click = tool<
-      { selector: string },
+      { selector?: string; text?: string; tag?: string },
       { success: true; element: string } | { success: false; error: string }
     >({
       description:
-        "Click an element on the current page by CSS selector. Returns whether the element was found and clicked.",
-      inputSchema: jsonSchema<{ selector: string }>({
+        "Click an element on the current page. PREFERRED: use 'text' (+ optional 'tag') to find by visible text — this is more reliable than CSS selectors. Use 'selector' only when you have a unique #id or [name] attribute. NEVER use nth-child, nth-of-type, or Playwright pseudo-selectors.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        text?: string;
+        tag?: string;
+      }>({
         type: "object" as const,
         properties: {
           selector: {
             type: "string",
-            description: "CSS selector of the element to click",
+            description:
+              "CSS selector (use only for #id or [name] selectors — avoid complex selectors)",
+          },
+          text: {
+            type: "string",
+            description:
+              "Visible text content of the element to click (preferred over selector)",
+          },
+          tag: {
+            type: "string",
+            description:
+              "HTML tag to narrow text search, e.g. 'button', 'a', 'div' (optional, used with 'text')",
           },
         },
-        required: ["selector"],
       }),
-      execute: async ({ selector }: { selector: string }) => {
+      execute: async ({
+        selector,
+        text,
+        tag,
+      }: {
+        selector?: string;
+        text?: string;
+        tag?: string;
+      }) => {
+        if (!selector && !text) {
+          return {
+            success: false as const,
+            error:
+              "Provide either 'selector' or 'text' to identify the element",
+          };
+        }
         try {
           const result = await execIsolated(
             ctx.tabId,
-            ((sel: string) => {
-              const el = document.querySelector(sel) as HTMLElement | null;
+            ((
+              sel: string | null,
+              txt: string | null,
+              htmlTag: string | null,
+            ) => {
+              let el: HTMLElement | null = null;
+              if (txt) {
+                // Find by visible text content
+                const searchTag = htmlTag || "*";
+                const candidates = Array.from(
+                  document.querySelectorAll(searchTag),
+                ) as HTMLElement[];
+                el =
+                  candidates.find((e) => e.textContent?.trim() === txt) ||
+                  candidates.find((e) => e.textContent?.trim().includes(txt)) ||
+                  null;
+              } else if (sel) {
+                el = document.querySelector(sel) as HTMLElement | null;
+              }
               if (!el) return { found: false };
               el.click();
               return {
@@ -224,12 +270,15 @@ export function createBrowserTools(
               tagName?: string;
               text?: string;
             },
-            [selector],
+            [selector || null, text || null, tag || null],
           );
           if (!result?.found) {
+            const target = text
+              ? `element with text "${text}"${tag ? ` (tag: ${tag})` : ""}`
+              : `selector: ${selector}`;
             return {
               success: false as const,
-              error: `No element found for selector: ${selector}`,
+              error: `No element found: ${target}`,
             };
           }
           ctx.onStreamEvent?.({

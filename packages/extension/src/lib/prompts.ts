@@ -33,7 +33,7 @@ function buildCapabilityNotes(caps: Capabilities): string {
   }
   if (caps.click) {
     notes.push(
-      "- click: click a specific element on the current page by CSS selector.",
+      "- click: click an element on the page. PREFER using 'text' param (e.g. text='Install', tag='button') over CSS selectors. Only use 'selector' for #id or [name] attributes.",
     );
   }
   if (caps.executeJs) {
