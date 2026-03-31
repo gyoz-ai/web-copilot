@@ -681,7 +681,7 @@ export function GyozaiWidget() {
         title,
         createdAt: existing?.createdAt || now,
         updatedAt: now,
-        domain: window.location.host,
+        domain: existing?.domain || window.location.host,
         messages: msgs,
         llmHistory: existing?.llmHistory || [],
         pendingClarify: currentClarify,

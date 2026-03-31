@@ -399,8 +399,8 @@ export const WIDGET_STYLES = `
     border-color: oklch(0.35 0.01 50 / 0.6);
   }
   .gyozai-history-item-active {
-    background: oklch(0.66 0.18 72 / 0.1);
-    border: 1px solid oklch(0.66 0.18 72 / 0.15);
+    background: oklch(0.22 0.03 72 / 0.95);
+    border: 1px solid oklch(0.66 0.18 72 / 0.3);
   }
 
   .gyozai-history-item-content {
