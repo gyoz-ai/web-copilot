@@ -320,7 +320,7 @@ export const WIDGET_STYLES = `
     border: 1px solid oklch(0.66 0.18 72 / 0.35);
     border-radius: 20px;
     color: var(--g-brand-400);
-    background: oklch(0.66 0.18 72 / 0.06);
+    background: oklch(0.2 0.03 72 / 0.95);
     cursor: pointer;
     transition: all 0.2s ease;
   }
