@@ -1,46 +1,69 @@
 # Gyozai Web Copilot — Improvement Plan
 
-> Inspired by patterns from the [Claude Code reverse-engineering analysis](./claude-code-reverse-engineering.md).
-> Excludes permission system (not needed for this project).
+> Synthesized from the [Claude Code reverse-engineering analysis](./claude-code-reverse-engineering.md) and the [extension improvement report](../CLAUDE_CODE_EXTENSION_IMPROVEMENT_REPORT.md).
+> Covers architecture, engineering, and product improvements.
+> Organized into phases with dependency tracking.
 
 ---
 
 ## Table of Contents
 
-1. [Background Worker Decomposition: Extract a Query Engine](#1-background-worker-decomposition-extract-a-query-engine)
-2. [Query Engine & Error Recovery](#2-query-engine--error-recovery)
-3. [Context Management & Token Optimization](#3-context-management--token-optimization)
-4. [Tool System Improvements](#4-tool-system-improvements)
-5. [State Management Overhaul](#5-state-management-overhaul)
-6. [Streaming & Concurrency](#6-streaming--concurrency)
-7. [Session Persistence & History](#7-session-persistence--history)
-8. [Performance Optimizations](#8-performance-optimizations)
-9. [Extensibility: Recipe/Manifest System](#9-extensibility-recipemanifest-system)
-10. [Resilient Provider Abstraction](#10-resilient-provider-abstraction)
-11. [Cost & Usage Tracking](#11-cost--usage-tracking)
-12. [Testing & Observability](#12-testing--observability)
+### Phase 1: Architectural Foundation
+
+1. [Extract Query Engine from Background Worker](#1-extract-query-engine-from-background-worker)
+2. [Tool System: Registry, Risk Metadata, and Policy](#2-tool-system-registry-risk-metadata-and-policy)
+3. [Move Prompt Rules into Runtime Code](#3-move-prompt-rules-into-runtime-code)
+
+### Phase 2: Context, Memory, and Recovery
+
+4. [Context Management & Token Optimization](#4-context-management--token-optimization)
+5. [Query Engine Resilience & Error Recovery](#5-query-engine-resilience--error-recovery)
+6. [Structured Task Memory](#6-structured-task-memory)
+
+### Phase 3: Better Browser Action Model
+
+7. [Narrow Interaction Tools](#7-narrow-interaction-tools)
+8. [Self-Healing Interaction Strategies](#8-self-healing-interaction-strategies)
+
+### Phase 4: Streaming, State, and UX
+
+9. [Streaming Event Model](#9-streaming-event-model)
+10. [State Management Overhaul](#10-state-management-overhaul)
+11. [Structured Decision Cards](#11-structured-decision-cards)
+
+### Phase 5: Session, History, and Performance
+
+12. [Session Persistence & History](#12-session-persistence--history)
+13. [Performance Optimizations](#13-performance-optimizations)
+
+### Phase 6: Extensibility and Provider Layer
+
+14. [Recipe & Playbook System](#14-recipe--playbook-system)
+15. [Resilient Provider Abstraction](#15-resilient-provider-abstraction)
+16. [Cost & Usage Tracking](#16-cost--usage-tracking)
+
+### Phase 7: New Product Capabilities
+
+17. [Plan Mode for Browser Tasks](#17-plan-mode-for-browser-tasks)
+18. [Task Checklists & Progress Tracking](#18-task-checklists--progress-tracking)
+19. [Browser Memory](#19-browser-memory)
+20. [Risk-Aware Domain Modes](#20-risk-aware-domain-modes)
+21. [Evidence-Backed Answers](#21-evidence-backed-answers)
+22. [Page Watchers](#22-page-watchers)
+
+### Phase 8: Testing & Observability
+
+23. [Testing & Observability](#23-testing--observability)
 
 ---
 
-## 1. Background Worker Decomposition: Extract a Query Engine
+# Phase 1: Architectural Foundation
+
+## 1. Extract Query Engine from Background Worker
 
 ### Problem
 
-The background worker (`packages/extension/src/entrypoints/background.ts`, 600 lines) is a monolith that mixes **six unrelated responsibilities** into a single file:
-
-1. **Message routing** — 15 `if (message.type === ...)` branches dispatching Chrome runtime messages (session load/save, settings, recipes, expression persistence, history patching, tab commands)
-2. **Query orchestration** — The `handleQuery()` function (lines 304-558) that builds prompts, selects providers, manages conversation history, and returns results
-3. **Streaming consumption** — Stream loop consuming Vercel AI SDK events, forwarding to content script
-4. **Tool execution tracking** — Accumulating tool calls from `onStepFinish`, logging
-5. **History management** — Loading/saving LLM conversation history, building tool summaries for context
-6. **Legacy conversion** — `convertLegacyToAgentResult()` translating managed-mode responses
-
-Meanwhile, `packages/engine/src/engine.ts` (561 lines) is a **separate query engine** that only works for the legacy managed mode (direct HTTP to proxy). It has its own conversation history, its own HTML capture, and its own action dispatch — completely disconnected from the BYOK streaming path. This means:
-
-- The two query paths (legacy vs. BYOK) share no code for history, context building, or error handling
-- Any improvement (retry logic, compaction, context budgeting) must be implemented **twice**
-- The background worker's `handleQuery()` function is untestable without mocking the entire Chrome extension API
-- Claude Code solves this with a clean split: `QueryEngine.ts` (session coordination) + `query.ts` (per-turn state machine), both independent of the rendering layer
+The background worker (`background.ts`, 600 lines) is a monolith mixing six unrelated responsibilities: message routing, query orchestration, streaming consumption, tool execution tracking, history management, and legacy conversion. Meanwhile `engine.ts` (561 lines) is a separate legacy-only query engine sharing zero code with the BYOK streaming path. Any improvement must be implemented twice.
 
 ### Improvements
 
@@ -48,106 +71,45 @@ Meanwhile, `packages/engine/src/engine.ts` (561 lines) is a **separate query eng
 
 **Where:** New file `packages/engine/src/query-engine.ts`
 
-**Implementation:**
-
-Create a unified `QueryEngine` that handles both legacy and BYOK paths, inspired by Claude Code's `QueryEngine.ts`:
+Create a unified `QueryEngine` that handles both legacy and BYOK paths:
 
 ```typescript
 interface QueryEngineConfig {
-  // Provider abstraction — works for both legacy and BYOK
   provider: LLMProvider;
-
-  // Context building
-  systemPromptBuilder: (mode: PromptMode, caps: Capabilities, yolo: boolean) => string;
+  systemPromptBuilder: (mode: PromptMode, caps: Capabilities, policy: PolicyMode) => string;
   userPromptBuilder: (params: UserPromptParams) => string;
-
-  // Tool execution — injected by the extension layer
   toolExecutor?: ToolExecutor;
-
-  // Callbacks for streaming events
+  toolPolicy?: ToolPolicyEvaluator;        // NEW: runtime policy checks (section 2)
+  contextManager?: ContextManager;          // NEW: freshness-aware context (section 4)
   onStreamEvent?: (event: StreamEvent) => void;
   onError?: (error: QueryError) => void;
-
-  // History config
-  maxHistoryMessages: number;  // default: 20
-  maxToolSteps: number;        // default: 10
+  maxHistoryMessages: number;
+  maxToolSteps: number;
 }
 
 class QueryEngine {
   private history: ConversationHistory;
-  private config: QueryEngineConfig;
+  private taskMemory: TaskMemory;           // NEW: structured task state (section 6)
 
-  constructor(config: QueryEngineConfig) { ... }
-
-  /**
-   * Submit a query and get a result. Handles:
-   * - Prompt construction (system + user + history)
-   * - Provider dispatch (legacy HTTP or BYOK streaming)
-   * - Tool execution loop (up to maxToolSteps)
-   * - History updates
-   * - Streaming event forwarding
-   * - Error classification and retry (see section 2)
-   */
   async query(input: QueryInput): Promise<QueryResult> { ... }
-
-  /**
-   * Load/restore history from external storage.
-   * The engine doesn't know about chrome.storage — the caller provides it.
-   */
   loadHistory(history: HistoryEntry[]): void { ... }
   getHistory(): HistoryEntry[] { ... }
-
-  /** Reset conversation state */
   reset(): void { ... }
-}
-```
-
-**Key types:**
-
-```typescript
-interface QueryInput {
-  query: string;
-  manifestMode: boolean;
-  recipe?: string;
-  htmlSnapshot?: string;
-  pageContext?: string;
-  currentRoute?: string;
-  context?: Record<string, unknown>;
-  capabilities?: Capabilities;
-}
-
-interface QueryResult {
-  messages: string[];
-  clarify?: { message: string; options: string[] } | null;
-  expression?: string | null;
-  navigated?: boolean;
-  toolCalls: Array<{ tool: string; args: Record<string, unknown> }>;
-  streamed?: boolean;
-  usage?: { inputTokens: number; outputTokens: number };
-}
-
-// Unified provider interface — both legacy and BYOK implement this
-interface LLMProvider {
-  type: "legacy" | "byok";
-  query(
-    params: LLMQueryParams,
-  ): Promise<LLMResponse> | AsyncIterable<LLMStreamChunk>;
 }
 ```
 
 **What moves into QueryEngine:**
 
-| Current Location              | Code                                            | New Location                                          |
-| ----------------------------- | ----------------------------------------------- | ----------------------------------------------------- |
-| `background.ts` lines 318-340 | Settings fetch, provider creation, history load | `QueryEngine.constructor` / `query()` preamble        |
-| `background.ts` lines 328-340 | System/user prompt building                     | `QueryEngine.query()` — calls injected builders       |
-| `background.ts` lines 342-375 | Request logging                                 | `QueryEngine` with injected logger                    |
-| `background.ts` lines 379-411 | Legacy mode query path                          | `QueryEngine.queryLegacy()` private method            |
-| `background.ts` lines 468-508 | BYOK streaming + tool tracking                  | `QueryEngine.queryBYOK()` private method              |
-| `background.ts` lines 520-535 | History update + tool summary                   | `ConversationHistory.append()`                        |
-| `background.ts` lines 537-541 | Expression persistence                          | Stays in background (side effect) via `onStreamEvent` |
-| `background.ts` lines 562-599 | `convertLegacyToAgentResult`                    | `QueryEngine.normalizeLegacyResult()` private         |
-| `engine.ts` lines 92-422      | `createEngine()` + query + dispatch             | **Deprecated** — replaced by QueryEngine              |
+| Current Location                                | New Location                                    |
+| ----------------------------------------------- | ----------------------------------------------- |
+| `background.ts` provider creation, history load | `QueryEngine.constructor` / `query()` preamble  |
+| `background.ts` system/user prompt building     | `QueryEngine.query()` — calls injected builders |
+| `background.ts` request logging                 | `QueryEngine` with injected logger              |
+| `background.ts` legacy mode query path          | `QueryEngine.queryLegacy()` private method      |
+| `background.ts` BYOK streaming + tool tracking  | `QueryEngine.queryBYOK()` private method        |
+| `background.ts` history update + tool summary   | `ConversationHistory.append()`                  |
+| `background.ts` `convertLegacyToAgentResult`    | `QueryEngine.normalizeLegacyResult()` private   |
+| `engine.ts` `createEngine()` + query + dispatch | **Deprecated** — replaced by QueryEngine        |
 
 **Files to create:**
 
@@ -157,63 +119,17 @@ interface LLMProvider {
 **Files to modify:**
 
 - `packages/engine/src/index.ts` — Export QueryEngine
-- `packages/engine/src/engine.ts` — Mark as deprecated, thin wrapper around QueryEngine for backward compat
+- `packages/engine/src/engine.ts` — Mark as deprecated, thin wrapper for backward compat
 
 #### 1.2 Slim Down Background Worker to Pure Message Router
 
-**Where:** `packages/extension/src/entrypoints/background.ts`
-
-**Implementation:**
-
-After extracting QueryEngine, the background worker becomes a thin **message router** — its only job is to:
-
-1. Listen for Chrome runtime messages
-2. Route each message type to the appropriate handler
-3. Manage Chrome-specific side effects (notifications, storage, scripting)
-
-```typescript
-// background.ts — AFTER refactor (~150 lines, down from 600)
-
-export default defineBackground(() => {
-  // One QueryEngine instance per tab conversation
-  const engines = new Map<string, QueryEngine>();
-
-  const router: Record<string, MessageHandler> = {
-    gyozai_query: handleQuery,
-    gyozai_load_session: handleLoadSession,
-    gyozai_save_session: handleSaveSession,
-    gyozai_save_expression: handleSaveExpression,
-    gyozai_load_expression: handleLoadExpression,
-    gyozai_patch_history: handlePatchHistory,
-    gyozai_get_settings: handleGetSettings,
-    gyozai_get_recipe: handleGetRecipe,
-    gyozai_auto_import_recipe: handleAutoImportRecipe,
-    // ... etc
-  };
-
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const handler = router[message.type];
-    if (handler) {
-      handler(message, sender, sendResponse, engines);
-      return true; // async response
-    }
-    return false;
-  });
-
-  // ... keyboard command listener, tab removal cleanup
-});
-
-// Each handler is a small, focused function in its own file or grouped by concern:
-// handlers/query.ts, handlers/session.ts, handlers/recipes.ts, handlers/settings.ts
-```
-
-**Handler file structure:**
+After extracting QueryEngine, `background.ts` becomes ~80 lines:
 
 ```
 packages/extension/src/entrypoints/
 ├── background.ts              # ~80 lines: router + lifecycle only
 ├── handlers/
-│   ├── query.ts               # handleQuery — creates/reuses QueryEngine, maps result
+│   ├── query.ts               # creates/reuses QueryEngine, maps result
 │   ├── session.ts             # load/save/clear widget session
 │   ├── recipes.ts             # get/import/list recipes
 │   ├── settings.ts            # get settings, get tab ID
@@ -221,548 +137,505 @@ packages/extension/src/entrypoints/
 │   └── navigation.ts          # patch history, legacy exec
 ```
 
-**The `handleQuery` handler** becomes simple glue:
+The `handleQuery` handler becomes simple glue — create engine, call `engine.query()`, persist side effects (expression, history, notifications).
+
+#### 1.3 Deprecate Legacy `createEngine()`
+
+Keep `createEngine()` as a thin wrapper with `@deprecated` annotation. Remove duplicated HTML capture (`captureHtml()`) and action dispatch (`dispatchAction()`) — the SDK should handle dispatch via callbacks.
+
+### Why This Is Priority #1
+
+Every subsequent improvement plugs into QueryEngine: retry logic (5), context management (4), tool policy (2), streaming events (9), cost tracking (16), task memory (6), plan mode (17), and testability (23).
+
+---
+
+## 2. Tool System: Registry, Risk Metadata, and Policy
+
+### Problem
+
+Tools are flat objects in `tools.ts` (~750 lines) with no shared interface, no risk classification, no runtime policy enforcement, and no concurrency awareness. Safety rules like "don't run tools after navigate" and "confirm before destructive submit" live only in the prompt — the model can ignore them.
+
+### Improvements
+
+#### 2.1 Tool Registry with Risk Metadata
+
+**Where:** New file `packages/engine/src/tool.ts`
 
 ```typescript
-// handlers/query.ts
-async function handleQuery(message, sender, sendResponse, engines) {
-  const settings = await getSettings();
-  const provider = createProvider(settings);
-  const tabId = sender.tab?.id;
+interface BrowserTool<Input extends z.ZodType, Output> {
+  name: string;
+  description: string;
+  inputSchema: Input;
 
-  // Get or create engine for this conversation
-  const convId = message.conversationId || "default";
-  let engine = engines.get(convId);
-  if (!engine) {
-    engine = new QueryEngine({
-      provider,
-      systemPromptBuilder: buildSystemPrompt,
-      userPromptBuilder: buildUserPrompt,
-      toolExecutor: createToolExecutor(tabId, settings),
-      onStreamEvent: (event) =>
-        forwardToContentScript(tabId, message.queryId, event),
-      maxHistoryMessages: 20,
-      maxToolSteps: 10,
-    });
-    // Restore history if conversation exists
-    const history = await getConversationLlmHistory(convId);
-    if (history.length) engine.loadHistory(history);
-    engines.set(convId, engine);
-  }
+  // Risk and policy metadata
+  risk: "safe" | "confirm" | "dangerous";
+  pageChange: boolean; // true = may cause navigation/reload
+  mutatesPage: boolean; // true = modifies DOM
+  requiresFreshContext: boolean; // true = stale context may cause failure
 
-  const result = await engine.query(message);
+  // Concurrency
+  isConcurrencySafe: boolean; // true = read-only, can run in parallel
 
-  // Chrome-specific side effects
-  await saveConversationLlmHistory(convId, engine.getHistory());
-  if (result.expression) {
-    chrome.storage.local
-      .set({ gyozai_expression: result.expression })
-      .catch(() => {});
-  }
-  showNotificationIfTabInactive(sender.tab, result);
+  // Result budgeting
+  maxResultChars: number;
+  compactResult(result: Output): string;
 
-  sendResponse(result);
+  // Execution
+  execute(
+    input: z.infer<Input>,
+    ctx: ToolContext,
+  ): Promise<ToolOutcome<Output>>;
+  validate?(input: z.infer<Input>): ValidationResult;
 }
+```
+
+**Tool classification:**
+
+| Tool                          | Risk      | Page Change | Mutates        | Concurrency Safe |
+| ----------------------------- | --------- | ----------- | -------------- | ---------------- |
+| `get_page_context`            | safe      | no          | no             | yes              |
+| `show_message`                | safe      | no          | no             | yes              |
+| `set_expression`              | safe      | no          | no             | yes              |
+| `highlight_ui`                | safe      | no          | no (temporary) | yes              |
+| `fetch_url`                   | safe      | no          | no             | yes              |
+| `clarify`                     | safe      | no          | no             | yes              |
+| `click`                       | confirm\* | maybe       | yes            | no               |
+| `navigate`                    | safe      | yes         | no             | no               |
+| `execute_js`                  | confirm   | maybe       | yes            | no               |
+| `fill_input` (new, section 7) | safe      | no          | yes            | no               |
+| `select_option` (new)         | safe      | no          | yes            | no               |
+| `submit_form` (new)           | confirm   | maybe       | yes            | no               |
+| `scroll_to` (new)             | safe      | no          | no             | yes              |
+
+\*`click` upgrades to `dangerous` when target text matches checkout/submit/delete patterns.
+
+#### 2.2 Runtime Tool Policy Evaluator
+
+**Where:** New file `packages/engine/src/tool-policy.ts`
+
+```typescript
+type PolicyMode = "ask" | "auto-safe" | "yolo" | "locked-down";
+
+interface ToolPolicyEvaluator {
+  evaluate(tool: BrowserTool, input: unknown, mode: PolicyMode): PolicyDecision;
+}
+
+type PolicyDecision =
+  | { action: "allow" }
+  | { action: "confirm"; reason: string } // UI shows confirmation card
+  | { action: "deny"; reason: string }; // blocked, error returned to model
+```
+
+**Behavior by mode:**
+
+| Mode          | safe tools      | confirm tools  | dangerous tools |
+| ------------- | --------------- | -------------- | --------------- |
+| `ask`         | allow           | confirm dialog | confirm dialog  |
+| `auto-safe`   | allow           | confirm dialog | deny            |
+| `yolo`        | allow           | allow          | confirm dialog  |
+| `locked-down` | allow read-only | deny           | deny            |
+
+Replaces the current boolean `yoloMode` with graduated control. The `locked-down` mode is explanation-only — no page mutations at all.
+
+#### 2.3 Structured Tool Outcomes
+
+Replace raw success/error strings with typed outcomes:
+
+```typescript
+type ToolOutcome<T> =
+  | { status: "success"; data: T }
+  | { status: "soft_failure"; error: string; retryable: true }
+  | { status: "hard_failure"; error: string; retryable: false }
+  | { status: "navigation_started"; target: string }
+  | { status: "needs_user_input"; prompt: string; options?: string[] }
+  | { status: "stale_context"; message: string };
+```
+
+The query engine uses these to decide: retry? request fresh context? halt tool loop? ask user?
+
+#### 2.4 Concurrent Tool Execution
+
+Partition tool calls into batches based on `isConcurrencySafe`:
+
+```
+[get_page_context, show_message] → Batch 1 (parallel via Promise.all)
+[click]                          → Batch 2 (serial)
+[get_page_context, highlight_ui] → Batch 3 (parallel)
 ```
 
 **Files to create:**
 
-- `packages/extension/src/entrypoints/handlers/query.ts`
-- `packages/extension/src/entrypoints/handlers/session.ts`
-- `packages/extension/src/entrypoints/handlers/recipes.ts`
-- `packages/extension/src/entrypoints/handlers/settings.ts`
-- `packages/extension/src/entrypoints/handlers/expression.ts`
-- `packages/extension/src/entrypoints/handlers/navigation.ts`
+- `packages/engine/src/tool.ts` — BrowserTool interface
+- `packages/engine/src/tool-policy.ts` — PolicyEvaluator + PolicyMode
 
 **Files to modify:**
 
-- `packages/extension/src/entrypoints/background.ts` — Gut to ~80 lines, import handlers
-
-#### 1.3 Deprecate Legacy `createEngine()`
-
-**Where:** `packages/engine/src/engine.ts`
-
-**Implementation:**
-
-The current `createEngine()` in `packages/engine/src/engine.ts` is only used by `packages/sdk/` for the React hook. After QueryEngine exists:
-
-- Keep `createEngine()` as a thin wrapper that instantiates a `QueryEngine` with a legacy HTTP provider internally
-- Mark it as deprecated: `@deprecated Use QueryEngine directly`
-- The SDK's `useEngine` hook can either continue using `createEngine()` or migrate to `QueryEngine` when ready
-- Remove the duplicated HTML capture logic (`captureHtml()` at line 530) — use the shared page-context module
-- Remove the duplicated action dispatch logic (`dispatchAction()` at line 427) — the SDK should handle dispatch via callbacks
-
-**Files to modify:**
-
-- `packages/engine/src/engine.ts` — Slim to wrapper + deprecation notice
-
-### Benefits
-
-This decomposition is the **prerequisite for almost every other improvement in this plan**:
-
-| Improvement                 | Why it needs QueryEngine extraction                              |
-| --------------------------- | ---------------------------------------------------------------- |
-| 2.1 Retry state machine     | Retry logic lives in QueryEngine, not scattered in background.ts |
-| 2.2 Conversation compaction | Compaction triggers in QueryEngine before API call               |
-| 3.1 Context budgeting       | Budget allocation happens in QueryEngine.query()                 |
-| 5.1 Centralized store       | Store dispatches to QueryEngine, not raw background messages     |
-| 6.1 Granular streaming      | QueryEngine emits typed events, background just forwards         |
-| 11.1 Cost tracking          | QueryEngine exposes `usage` in result, caller tracks cost        |
-| 12.1-12.2 Testing           | QueryEngine is testable without Chrome APIs                      |
-
-Without this split, every improvement requires modifying the 600-line `handleQuery()` function and testing it requires the full Chrome extension environment.
+- `packages/extension/src/lib/tools.ts` — Refactor each tool to implement BrowserTool
+- `packages/extension/src/lib/storage.ts` — Replace `yoloMode: boolean` with `policyMode: PolicyMode`
 
 ---
 
-## 2. Query Engine & Error Recovery
+## 3. Move Prompt Rules into Runtime Code
 
 ### Problem
 
-The current engine (`packages/engine/src/engine.ts`) has basic error handling: it catches errors and returns `{ type: 'network' | 'proxy' | 'validation' | 'unknown' }`. There's no retry logic, no fallback, and no recovery from mid-stream failures. If the LLM API returns a 429 or 529, the user sees a raw error.
-
-In the extension background worker (`packages/extension/src/entrypoints/background.ts`), streaming failures crash the query with no recovery path.
+The system prompt (`prompts.ts`) enforces operational rules that belong in code: tool ordering, selector safety, clarification triggers, translation workflows. This is brittle — the model can ignore prompt rules, and any change requires prompt engineering rather than code changes.
 
 ### Improvements
 
-#### 1.1 Resilient Query Loop with Retry State Machine
+#### 3.1 Extract Invariants from Prompt to Engine
 
-**Where:** `packages/engine/src/engine.ts` — new `queryWithRetry()` wrapper around `query()`
+**Rules to move to runtime:**
+
+| Current Prompt Rule                      | New Runtime Enforcement                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| "Always call show_message"               | QueryEngine appends show_message if response has none          |
+| "Stop tool execution after navigate"     | ToolOutcome `navigation_started` halts tool loop               |
+| "Use clarify before destructive actions" | Tool policy evaluator checks `risk: 'dangerous'`               |
+| "Never use nth-child selectors"          | `click` tool validates selector input, rejects unsafe patterns |
+| "Prefer text-based selectors"            | Selector resolver in `click` tool normalizes selectors         |
+| "Call get_page_context first"            | Context manager auto-attaches appropriate level (section 4)    |
+
+#### 3.2 Task Templates for Special Modes
+
+Replace long prompt sections with focused task templates:
+
+```typescript
+type TaskTemplate = {
+  name: string;
+  description: string;
+  systemPromptAddition: string;    // Short, focused
+  defaultCapabilities: Capabilities;
+  defaultPolicyMode: PolicyMode;
+};
+
+const TEMPLATES: Record<string, TaskTemplate> = {
+  'translate-page': { ... },
+  'explain-ui': { ... },
+  'fill-form': { ... },
+  'navigate-to': { ... },
+  'compare-products': { ... },
+};
+```
+
+The system prompt shrinks significantly — it only describes the assistant's personality and available tools. Behavioral rules live in code.
+
+**Files to modify:**
+
+- `packages/extension/src/lib/prompts.ts` — Strip operational rules, keep personality + tool descriptions
+- `packages/engine/src/query-engine.ts` — Add post-processing rules (e.g., ensure show_message)
+
+**Files to create:**
+
+- `packages/extension/src/lib/task-templates.ts` — Task template definitions
+
+---
+
+# Phase 2: Context, Memory, and Recovery
+
+## 4. Context Management & Token Optimization
+
+### Problem
+
+Every query in no-manifest mode sends a full HTML snapshot (~10-50KB). The prompt forces the model to call `get_page_context` at the start of almost every response, wasting tokens. Page context is re-captured from scratch even when the page hasn't changed. History is capped at 20 messages with no intelligence about what to keep.
+
+### Improvements
+
+#### 4.1 Freshness-Aware Context Levels
+
+**Where:** New file `packages/engine/src/context-manager.ts`
+
+Move context decisions from the prompt into infrastructure:
+
+| Level         | Contents                                          | When to use                                          |
+| ------------- | ------------------------------------------------- | ---------------------------------------------------- |
+| `light`       | Route, title, key buttons/links/forms             | Simple follow-ups, chitchat                          |
+| `interactive` | + inputs, actionable selectors, form values       | Action requests                                      |
+| `full`        | + cleaned HTML, text content, structured sections | First turn, structural questions, post-failure retry |
+
+The context manager decides which level to provide based on:
+
+- Has the page changed since last capture? (URL + DOM mutation marker)
+- Is this the first turn? → `full`
+- Did the user ask a structural question? → `full`
+- Did a previous action fail? → `full` (need evidence)
+- Simple follow-up? → `light`
+
+#### 4.2 Incremental Page Context (Diff-Based)
+
+- Store content hash after each capture
+- If unchanged: send `"[Page context unchanged from previous turn]"`
+- If changed: compute structural diff (elements added/removed/modified)
+- Keep full snapshot available when AI requests via `get_page_context`
+
+#### 4.3 Conversation Compaction (Summarization)
+
+Token-aware compaction instead of hard cap at 20 messages:
+
+1. Estimate tokens: `text.length / 4` (heuristic)
+2. When history exceeds 80% of model context budget, trigger compaction
+3. Keep last 4 turns verbatim, summarize older turns into boundary message
+4. Preserve tool results from last 2 turns (contain fresh state)
+
+Store as structured layers:
+
+- Raw recent turns (verbatim)
+- Rolling summary for older turns
+- Last known page state summary
+- Unresolved clarification state
+- Navigation chain summary
+
+#### 4.4 Smart Context Budgeting
+
+Allocate tokens across categories adaptively:
+
+```typescript
+type ContextBudget = {
+  systemPrompt: number; // ~2K (fixed)
+  recipe: number; // ~1K (if manifest mode)
+  pageContext: number; // ~5K (adaptive)
+  history: number; // ~8K (adaptive)
+  userQuery: number; // ~500 (fixed)
+  toolResults: number; // ~3K (adaptive)
+  reserve: number; // ~1K for output
+};
+```
+
+If page is small → more budget to history. If history is short → more to page context.
+
+#### 4.5 Microcompaction for Tool Results
+
+After consumption, replace large tool results with summaries:
+
+- `get_page_context` → "Page context captured (147 elements, 23KB)"
+- `execute_js` → "JS executed, returned: [first 200 chars]..."
+- `fetch_url` → "Fetched URL, response: [first 500 chars]..."
+
+Keep full result only for the most recent call of each type.
+
+**Files to create:**
+
+- `packages/engine/src/context-manager.ts`
+- `packages/engine/src/context-budget.ts`
+
+**Files to modify:**
+
+- `packages/engine/src/page-context.ts` — Hash-based cache, accept `maxTokens` for truncation
+- `packages/engine/src/query-engine.ts` — Use context manager, compaction, budgeting
+
+---
+
+## 5. Query Engine Resilience & Error Recovery
+
+### Problem
+
+No retry logic, no fallback, no recovery from mid-stream failures. If the LLM returns 429/529, the user sees a raw error. Tool failures (stale context, unexpected page changes) aren't classified for recovery.
+
+### Improvements
+
+#### 5.1 Retry State Machine
 
 ```typescript
 type RetryState = {
   attempt: number;
   maxRetries: number;
   backoffMs: number;
-  lastError: EngineError | null;
+  lastError: QueryError | null;
   fallbackProvider: string | null;
 };
 ```
 
-**Implementation:**
+- Classify errors: transient (429, 529, ECONNRESET) vs. permanent (400, 401, 403)
+- Transient: exponential backoff with jitter (1s base, 30s max, 3 retries)
+- Permanent: fail immediately
+- Emit `onRetry?(attempt, error, nextBackoffMs)` for UI feedback
+- Accept `signal: AbortSignal` for user cancellation
 
-- Wrap the existing `query()` call in a retry loop
-- Classify errors as transient (429, 529, ECONNRESET) vs. permanent (400, 401, 403)
-- Transient errors: exponential backoff with jitter (base 1s, max 30s, max 3 retries)
-- Permanent errors: fail immediately with descriptive message
-- Emit `onRetry?(attempt, error, nextBackoffMs)` callback so the UI can show "Retrying in 5s..."
-- Add a `signal: AbortSignal` parameter so the user can cancel during backoff
+#### 5.2 Streaming Failure Recovery
 
-**Files to modify:**
+- Capture accumulated tool calls + partial text on stream failure
+- Re-query with recovery prompt: "Continue from where you left off"
+- Max 2 recovery attempts, then return partial result
 
-- `packages/engine/src/engine.ts` — Add retry wrapper
-- `packages/engine/src/schemas/query.ts` — Add retry config to `EngineConfig`
-- `packages/extension/src/entrypoints/handlers/query.ts` — Wire retry callbacks to content script messages
+#### 5.3 Provider Fallback Chain
 
-#### 1.2 Streaming Failure Recovery
+- Configure fallback provider in settings (e.g., primary: Claude, fallback: OpenAI)
+- On persistent 529, auto-switch with toast notification
+- Track active provider in session state
 
-**Where:** `packages/extension/src/entrypoints/background.ts` lines 304-558
+#### 5.4 Tool Failure Recovery
 
-**Implementation:**
+Leverage structured `ToolOutcome` (section 2.3):
 
-- If streaming fails mid-response (network drop, SSE parse error), capture accumulated tool calls and partial text
-- Re-query with a recovery prompt: inject accumulated context + "Continue from where you left off"
-- Track a `streamRecoveryCount` (max 2 attempts) to prevent infinite loops
-- On final failure, return whatever partial result was accumulated (better than nothing)
-
-**Files to modify:**
-
-- `packages/extension/src/entrypoints/background.ts` — Add try/catch around stream consumption loop
-- `packages/engine/src/engine.ts` — Add `recoverFromPartial(partialResult, originalQuery)` method
-
-#### 1.3 Provider Fallback Chain
-
-**Where:** `packages/extension/src/providers/index.ts`
-
-**Implementation:**
-
-- Allow users to configure a fallback provider in settings (e.g., primary: Claude, fallback: OpenAI)
-- On persistent 529/overloaded from primary, automatically switch to fallback
-- Show a toast: "Primary provider unavailable, using fallback"
-- Track which provider is active in session state
+- `soft_failure` → engine retries automatically (max 2)
+- `stale_context` → re-capture page context, retry
+- `navigation_started` → persist turn checkpoint, resume on next page load
+- `needs_user_input` → emit clarify event, pause tool loop
 
 **Files to modify:**
 
-- `packages/extension/src/providers/index.ts` — Add `createProviderWithFallback()`
-- `packages/extension/src/utils/storage.ts` — Add `fallbackProvider` to `ExtensionSettings`
-- `packages/extension/src/entrypoints/background.ts` — Wire fallback logic
+- `packages/engine/src/query-engine.ts` — Add retry loop, recovery logic
+- `packages/extension/src/lib/providers/index.ts` — Add fallback chain
+- `packages/extension/src/lib/storage.ts` — Add `fallbackProvider` to settings
 
 ---
 
-## 3. Context Management & Token Optimization
+## 6. Structured Task Memory
 
 ### Problem
 
-Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending on the page). There's no compaction, no summarization of older conversation turns, and the conversation history is capped at a hard 20 messages with no intelligence about what to keep. Page context is re-captured from scratch on every query even when the page hasn't changed.
+The current system only has conversation history (simple message pairs). There's no structured understanding of what the task is, what pages were visited, what facts were found, or what's pending. Multi-step website tasks lose coherence.
 
 ### Improvements
 
-#### 3.1 Incremental Page Context (Diff-Based)
-
-**Where:** `packages/engine/src/page-context.ts`
-
-**Implementation:**
-
-- After each capture, store a hash of the HTML snapshot and structured elements
-- On the next query, compare hashes. If unchanged, send `"[Page context unchanged from previous turn]"` instead of the full snapshot
-- If changed, compute a structural diff: which elements were added/removed/modified
-- Send only the diff + a reference to the original: `"Page updated: 2 new buttons added, form values changed (see diff below)"`
-- Keep the full snapshot available for the first turn and any turn where the AI requests it via `get_page_context` tool
-
-**Files to modify:**
-
-- `packages/engine/src/page-context.ts` — Add `PageContextCache` with hash comparison and diff generation
-- `packages/engine/src/engine.ts` — Use cache in `query()` to decide full vs. diff context
-
-#### 3.2 Conversation Compaction (Summarization)
-
-**Where:** `packages/engine/src/query-engine.ts` — conversation history management
-
-**Implementation:**
-
-- Instead of a hard cap at 20 messages, implement a token-aware compaction strategy:
-  1. Count approximate tokens in conversation history (rough: `text.length / 4`)
-  2. When history exceeds 80% of the model's effective context budget (minus system prompt + current page context), trigger compaction
-  3. Compaction strategy: keep the last 4 turns verbatim, summarize older turns into a single "conversation summary" message
-  4. The summary is generated by the LLM itself (a cheap, fast call with a small model or the same model with a summary prompt)
-  5. Insert a boundary message: `"[Previous conversation summarized: User asked about X, Y. AI performed actions A, B. Key outcomes: ...]"`
-- Preserve tool call results from the last 2 turns (they contain fresh state)
-
-**Files to modify:**
-
-- `packages/engine/src/engine.ts` — Add `compactHistory(history, tokenBudget)` method
-- `packages/engine/src/schemas/query.ts` — Add `compactionModel?: string` to config
-- `packages/engine/src/query-engine.ts` — Call compaction before query when history is large
-
-#### 3.3 Smart Context Budgeting
-
-**Where:** New file `packages/engine/src/context-budget.ts`
-
-**Implementation:**
-
-- Define a `ContextBudget` that allocates tokens across categories:
-  ```typescript
-  type ContextBudget = {
-    systemPrompt: number; // ~2K tokens (fixed)
-    recipe: number; // ~1K tokens (if manifest mode)
-    pageContext: number; // ~5K tokens (adaptive)
-    history: number; // ~8K tokens (adaptive)
-    userQuery: number; // ~500 tokens (fixed)
-    toolResults: number; // ~3K tokens (adaptive)
-    reserve: number; // ~1K tokens for output
-  };
-  ```
-- Adaptive allocation: if the page is small, give more budget to history; if history is short, give more to page context
-- HTML snapshot truncation: if page context exceeds its budget, progressively strip: scripts → styles → comments → deep nesting → non-visible elements
-- This prevents the "giant page eats the whole context" problem
-
-**Files to create:**
-
-- `packages/engine/src/context-budget.ts`
-
-**Files to modify:**
-
-- `packages/engine/src/engine.ts` — Use budget to cap each context section
-- `packages/engine/src/page-context.ts` — Accept a `maxTokens` parameter for truncation
-
-#### 3.4 Microcompaction for Tool Results
-
-**Where:** `packages/engine/src/query-engine.ts`
-
-**Implementation:**
-
-- Tool results (especially `get_page_context` and `execute_js`) can be very large
-- After each tool result is consumed by the model, replace it in conversation history with a truncated version:
-  - `get_page_context` → "Page context captured (147 elements, 23KB)"
-  - `execute_js` → "JS executed successfully, returned: [first 200 chars]..."
-  - `fetch_url` → "Fetched URL, response: [first 500 chars]..."
-- Keep the full result only for the most recent tool call of each type
-
-**Files to modify:**
-
-- `packages/extension/src/entrypoints/background.ts` — Add `microcompactToolResults(history)` after each query completes
-- `packages/extension/src/tools.ts` — Add `compactResult(result): string` method to each tool definition
-
----
-
-## 4. Tool System Improvements
-
-### Problem
-
-Tools are currently defined as flat objects in `packages/extension/src/tools.ts` (~750 lines) with no shared interface, no validation beyond Zod schemas, and no concurrency awareness. All tools execute serially in the Vercel AI SDK's `streamText` loop. There's no concept of read-only vs. write tools.
-
-### Improvements
-
-#### 4.1 Unified Tool Interface
-
-**Where:** New file `packages/engine/src/tool.ts`
-
-**Implementation:**
-
-Create a generic `Tool<Input, Output>` interface that all tools conform to:
+**Where:** New file `packages/engine/src/task-memory.ts`
 
 ```typescript
-interface Tool<Input extends z.ZodType, Output> {
-  name: string;
-  description: string;
-  inputSchema: Input;
-
-  execute(
-    input: z.infer<Input>,
-    context: ToolContext,
-  ): Promise<ToolResult<Output>>;
-
-  // Concurrency classification
-  isConcurrencySafe: boolean; // true = read-only, can run in parallel
-
-  // Result budgeting
-  maxResultChars: number; // truncate results beyond this
-  compactResult(result: Output): string; // for microcompaction
-
-  // Validation beyond schema
-  validate?(input: z.infer<Input>): ValidationResult;
-}
-
-type ToolContext = {
-  tabId: number;
-  pageUrl: string;
-  capabilities: string[];
-};
-
-type ToolResult<T> =
-  | { success: true; data: T; sideEffects?: SideEffect[] }
-  | { success: false; error: string; retryable: boolean };
-```
-
-**Classify existing tools:**
-
-| Tool               | Concurrency Safe        | Max Result |
-| ------------------ | ----------------------- | ---------- |
-| `get_page_context` | Yes (read-only)         | 30,000     |
-| `show_message`     | Yes (no DOM mutation)   | 500        |
-| `set_expression`   | Yes (cosmetic)          | 100        |
-| `click`            | No (mutates page)       | 1,000      |
-| `execute_js`       | No (arbitrary mutation) | 10,000     |
-| `navigate`         | No (destroys page)      | 500        |
-| `highlight_ui`     | Yes (temporary visual)  | 500        |
-| `fetch_url`        | Yes (no DOM mutation)   | 20,000     |
-| `clarify`          | Yes (asks user)         | 1,000      |
-
-**Files to create:**
-
-- `packages/engine/src/tool.ts` — Generic Tool interface
-
-**Files to modify:**
-
-- `packages/extension/src/tools.ts` — Refactor each tool to implement the interface
-- `packages/extension/src/entrypoints/background.ts` — Use the interface for tool dispatch
-
-#### 4.2 Concurrent Tool Execution
-
-**Where:** `packages/extension/src/entrypoints/background.ts`
-
-**Implementation:**
-
-When the model returns multiple tool calls in a single turn (Vercel AI SDK supports this via `maxSteps`):
-
-1. Partition tool calls into batches using the concurrency classification:
-   ```
-   [get_page_context, show_message] → Batch 1 (parallel)
-   [click]                          → Batch 2 (serial)
-   [get_page_context, highlight_ui] → Batch 3 (parallel)
-   ```
-2. Run each batch: parallel batches use `Promise.all()`, serial batches run one at a time
-3. Collect results and return to the model in order
-
-This is directly inspired by Claude Code's `partitionToolCalls` pattern. For the extension, the main win is overlapping `get_page_context` (DOM read) with `show_message` (UI update) and `fetch_url` (network I/O).
-
-**Files to modify:**
-
-- `packages/extension/src/entrypoints/background.ts` — Add `executeBatched(toolCalls[])`
-- `packages/extension/src/tools.ts` — Expose `isConcurrencySafe` per tool
-
-#### 4.3 Tool Result Budgeting
-
-**Where:** `packages/extension/src/tools.ts`
-
-**Implementation:**
-
-- Each tool declares `maxResultChars`
-- When a tool result exceeds its budget, truncate with a marker: `"[Result truncated: 45,231 chars → 30,000 chars. Full result available via get_page_context]"`
-- This prevents a single `execute_js` that returns a massive JSON from blowing the context budget
-- For `get_page_context`, apply progressive HTML stripping (remove data attributes → inline styles → deeply nested children) until within budget
-
-**Files to modify:**
-
-- `packages/extension/src/tools.ts` — Add truncation logic to each tool's result handler
-
----
-
-## 5. State Management Overhaul
-
-### Problem
-
-State is scattered across 4 storage layers (in-memory, React state, chrome.storage.session, chrome.storage.local) with no centralized store. The widget component (`GyozaiWidget.tsx`) has ~15 `useState` calls with complex synchronization logic. State changes trigger multiple independent storage writes that can race.
-
-### Improvements
-
-#### 5.1 Centralized Store (Zustand-like)
-
-**Where:** New file `packages/extension/src/store.ts`
-
-**Implementation:**
-
-Create a single `WidgetStore` inspired by Claude Code's AppState pattern:
-
-```typescript
-type WidgetState = {
-  // UI State
-  expanded: boolean;
-  viewMode: "chat" | "history";
-  input: string;
-
-  // Conversation State
-  activeConvId: string | null;
-  messages: Message[];
-  llmHistory: CoreMessage[];
-  loading: boolean;
-  error: string | null;
-
-  // Clarify State
-  clarifyQuestion: string | null;
-  clarifyOptions: string[];
-
-  // Avatar State
-  expression: Expression;
-  avatarPosition: AvatarPosition;
-
-  // Session State
-  locale: string;
-  agentSize: "sm" | "md" | "lg";
-  typingSoundEnabled: boolean;
-  bubbleOpacity: number;
-};
-
-type WidgetStore = {
-  getState(): WidgetState;
-  setState(updater: (prev: WidgetState) => WidgetState): void;
-  subscribe(listener: (state: WidgetState) => void): () => void;
+type TaskMemory = {
+  goal: string | null; // "Find the cheapest annual plan"
+  pagesVisited: { url: string; title: string; summary: string }[];
+  factsFound: { key: string; value: string; source: string }[];
+  formsTouched: { selector: string; field: string; value: string }[];
+  pendingConfirmation: string | null;
+  previousFailures: { action: string; error: string; strategy: string }[];
+  navigationChain: string[]; // URL breadcrumb
 };
 ```
 
-**Centralized side effects** (inspired by `onChangeAppState()`):
+- Sits beside conversation history, not inside user-visible chat
+- Updated by QueryEngine after each tool execution
+- Injected into context when relevant (e.g., after navigation, on retry)
+- Persisted to `chrome.storage.session` for resume across SPA navigations
 
-```typescript
-function onStateChange(prev: WidgetState, next: WidgetState) {
-  // Persist to chrome.storage.session (debounced, 100ms)
-  if (
-    prev.expanded !== next.expanded ||
-    prev.activeConvId !== next.activeConvId
-  ) {
-    debouncedSaveSession(next);
-  }
-
-  // Persist expression to chrome.storage.local
-  if (prev.expression !== next.expression) {
-    saveExpression(next.expression);
-  }
-
-  // Persist avatar position to chrome.storage.local
-  if (prev.avatarPosition !== next.avatarPosition) {
-    saveAvatarPosition(next.avatarPosition);
-  }
-}
-```
-
-**React integration:**
-
-```typescript
-function useWidgetStore<T>(selector: (state: WidgetState) => T): T {
-  return useSyncExternalStore(store.subscribe, () =>
-    selector(store.getState()),
-  );
-}
-```
-
-**Benefits:**
-
-- Single source of truth eliminates race conditions
-- `useSyncExternalStore` provides tearing-free reads
-- Side effects are explicit and centralized (no scattered `useEffect`)
-- State is serializable for debugging
+This is a browser-specific version of Claude Code's memory system — focused on task state rather than user preferences.
 
 **Files to create:**
 
-- `packages/extension/src/store.ts` — Store implementation + side effects
+- `packages/engine/src/task-memory.ts`
 
 **Files to modify:**
 
-- `packages/extension/src/components/GyozaiWidget.tsx` — Replace 15 `useState` calls with `useWidgetStore` selectors
-- `packages/extension/src/entrypoints/content/index.tsx` — Initialize store from preloaded data
+- `packages/engine/src/query-engine.ts` — Update task memory after tool calls
 
 ---
 
-## 6. Streaming & Concurrency
+# Phase 3: Better Browser Action Model
+
+## 7. Narrow Interaction Tools
 
 ### Problem
 
-In BYOK mode, streaming works but the UI only updates on complete tool calls. The user sees a loading spinner until the entire response is done. There's no typewriter effect for streaming text, and tool execution blocks the stream.
-
-In managed mode, there's no streaming at all — the entire response is awaited.
+`execute_js` is an escape hatch that lets the model run arbitrary JavaScript. This is powerful but risky, hard to audit, and difficult to assign policies to. The model overuses it for tasks that should have dedicated tools.
 
 ### Improvements
 
-#### 6.1 Granular Streaming Events
+Add focused tools with clear semantics and risk levels:
 
-**Where:** `packages/extension/src/entrypoints/background.ts`
+| New Tool          | What It Does                                     | Risk    | Replaces                              |
+| ----------------- | ------------------------------------------------ | ------- | ------------------------------------- |
+| `fill_input`      | Set value on input/textarea by selector or label | safe    | `execute_js` with `.value = ...`      |
+| `select_option`   | Choose option in `<select>` by value or text     | safe    | `execute_js` with `.selectedIndex`    |
+| `toggle_checkbox` | Check/uncheck a checkbox or radio                | safe    | `execute_js` with `.checked = ...`    |
+| `submit_form`     | Submit a form by selector                        | confirm | `execute_js` with `.submit()`         |
+| `scroll_to`       | Scroll element into view                         | safe    | `execute_js` with `.scrollIntoView()` |
+| `find_text`       | Search for text on page, return location         | safe    | `get_page_context` + model reasoning  |
+| `extract_table`   | Extract table data as structured JSON            | safe    | `execute_js` with DOM traversal       |
 
-**Implementation:**
+**Implementation per tool:**
 
-Expand the streaming event system beyond the current `gyozai_stream_event`:
+- Each uses `chrome.scripting.executeScript` with a focused, auditable function
+- Each has typed Zod input schemas (not arbitrary code strings)
+- Each returns structured `ToolOutcome` with clear success/failure semantics
+- `execute_js` remains available but only in `yolo` policy mode
+
+**Files to modify:**
+
+- `packages/extension/src/lib/tools.ts` — Add new tool definitions
+- `packages/extension/src/lib/prompts.ts` — Update tool descriptions
+
+---
+
+## 8. Self-Healing Interaction Strategies
+
+### Problem
+
+When a click fails (element not found, selector stale), the model gets a generic error and must reason from scratch about an alternative. This wastes tokens and often fails again.
+
+### Improvements
+
+**Where:** New file `packages/extension/src/lib/interaction-resolver.ts`
+
+Build a fallback chain into the `click` tool itself:
+
+```
+1. Click by text content match (most robust across page changes)
+2. Click by aria-label / button role
+3. Click by CSS selector
+4. Scroll into view, then retry
+5. If ambiguous (multiple matches), emit clarify with candidates
+```
+
+Each step is tried automatically before surfacing failure to the model. The tool returns the strategy that succeeded:
+
+```typescript
+// Success response includes which strategy worked
+{ status: 'success', data: { strategy: 'text_match', element: 'Submit Order' } }
+```
+
+Same approach for `fill_input`, `select_option`, etc. — try by label text first, then by selector, then by position.
+
+**Files to create:**
+
+- `packages/extension/src/lib/interaction-resolver.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/lib/tools.ts` — `click` and new tools use the resolver
+
+---
+
+# Phase 4: Streaming, State, and UX
+
+## 9. Streaming Event Model
+
+### Problem
+
+Current streaming is mostly message forwarding. The user sees a spinner until the entire response completes. There's no visibility into what the agent is doing.
+
+### Improvements
+
+#### 9.1 Granular Event Types
 
 ```typescript
 type StreamEvent =
-  | { type: "text_delta"; delta: string } // Partial text
-  | { type: "tool_call_start"; tool: string } // Tool execution beginning
-  | { type: "tool_call_progress"; tool: string; status: string } // Mid-execution
-  | { type: "tool_call_complete"; tool: string; result: string } // Done
-  | { type: "thinking"; content: string } // Model reasoning (if available)
-  | { type: "complete"; finalText: string } // All done
-  | { type: "error"; error: string; retrying: boolean }; // Error with recovery info
+  | { type: "text_delta"; delta: string }
+  | { type: "thinking"; content: string }
+  | { type: "context_capture_started" }
+  | { type: "context_capture_finished"; elements: number }
+  | { type: "tool_running"; tool: string; description: string }
+  | { type: "tool_finished"; tool: string; status: string }
+  | { type: "policy_waiting"; tool: string; reason: string } // Awaiting user confirmation
+  | { type: "recovery_retry"; attempt: number; reason: string }
+  | { type: "navigation_resume_pending" }
+  | { type: "complete"; finalText: string }
+  | { type: "error"; error: string; retrying: boolean };
 ```
 
-**UI updates in content script:**
+**UI mapping:**
 
-- `text_delta` → Append to current message with typewriter animation
-- `tool_call_start` → Show status pill: "Clicking button..."
-- `tool_call_progress` → Update status pill with progress
-- `tool_call_complete` → Flash pill green, then fade
-- `error` with `retrying: true` → Show "Retrying..." toast instead of error
+- `text_delta` → Typewriter animation
+- `tool_running` → Status pill: "Clicking button..."
+- `policy_waiting` → Confirmation card (section 11)
+- `recovery_retry` → "Retrying..." toast
+- `error` with `retrying: true` → Suppress error, show retry indicator
 
-**Files to modify:**
+#### 9.2 Overlapping Tool Execution
 
-- `packages/extension/src/entrypoints/background.ts` — Emit granular events during stream
-- `packages/extension/src/components/GyozaiWidget.tsx` — Handle each event type
-- `packages/extension/src/entrypoints/content/index.tsx` — Forward events to widget
-
-#### 6.2 Overlapping Tool Execution with Streaming
-
-**Where:** `packages/extension/src/entrypoints/background.ts`
-
-**Implementation:**
-
-Inspired by Claude Code's streaming tool executor:
-
-- As the Vercel AI SDK streams, detect tool call blocks as they complete (not waiting for the full response)
-- Begin executing the tool immediately while the model continues streaming
-- This overlaps network I/O (model streaming) with local computation (tool execution)
-- Particularly impactful for `get_page_context` which involves DOM traversal
+Execute tools as they arrive during streaming (don't wait for full response):
 
 ```typescript
-// Current: wait for all tool calls → execute all → return all
-// Proposed: execute each tool call as it arrives during streaming
 for await (const part of stream) {
   if (part.type === "tool-call" && isComplete(part)) {
-    // Don't await — fire and collect later
     pendingExecutions.push(executeTool(part));
   }
 }
@@ -771,366 +644,249 @@ const results = await Promise.all(pendingExecutions);
 
 **Files to modify:**
 
-- `packages/extension/src/entrypoints/background.ts` — Restructure stream consumption to be eager
+- `packages/extension/src/entrypoints/handlers/query.ts` — Emit granular events
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Handle each event type
 
 ---
 
-## 7. Session Persistence & History
+## 10. State Management Overhaul
 
 ### Problem
 
-Session persistence is fragile. The widget saves session state via `useEffect` on every render, but this can miss rapid state changes. Conversation history is stored entirely in `chrome.storage.local` with no pagination — loading 50 conversations with full LLM history on every history view is slow. There's no transcript recording for crash recovery.
+State scattered across 4 storage layers with ~15 `useState` calls in `GyozaiWidget.tsx`. Race conditions between independent storage writes.
 
 ### Improvements
 
-#### 7.1 Append-Only Transcript Recording
-
-**Where:** New file `packages/extension/src/utils/transcript.ts`
-
-**Implementation:**
-
-Inspired by Claude Code's transcript system:
-
-- Before every LLM query, append the user message to a transcript log in `chrome.storage.local`
-- After every LLM response, append the assistant message + tool results
-- Use a simple JSONL format per conversation: `gyozai_transcript_{convId}`
-- On crash/reload, reconstruct the conversation from the transcript (source of truth)
-- Benefits: even if the main session storage write fails or races, the transcript captures everything
+#### 10.1 Centralized Store
 
 ```typescript
-type TranscriptEntry = {
-  timestamp: number;
-  role: "user" | "assistant" | "tool";
-  content: string;
-  metadata?: { toolName?: string; error?: boolean };
+type WidgetState = {
+  // UI
+  expanded: boolean;
+  viewMode: "chat" | "history";
+  input: string;
+  // Conversation
+  activeConvId: string | null;
+  messages: Message[];
+  loading: boolean;
+  error: string | null;
+  // Clarify / Confirmation
+  pendingDecision: PendingDecision | null; // For policy confirmations too
+  // Avatar
+  expression: Expression;
+  avatarPosition: AvatarPosition;
+  // Task (new)
+  taskChecklist: TaskStep[] | null; // Section 18
+  taskProgress: "idle" | "running" | "blocked" | "done";
 };
-
-async function appendTranscript(
-  convId: string,
-  entry: TranscriptEntry,
-): Promise<void> {
-  // Atomic append via chrome.storage.local get + set
-}
-
-async function reconstructFromTranscript(convId: string): Promise<Message[]> {
-  // Read transcript entries, rebuild message array
-}
 ```
+
+Centralized side effects via `onStateChange()` — one choke point for all storage writes. React integration via `useSyncExternalStore` with selector-based subscriptions.
+
+Split `GyozaiWidget` into sub-components:
+
+- `<AvatarBubble>` — expression, expanded, avatarPosition
+- `<ChatPanel>` — messages, loading, error
+- `<InputBar>` — input, loading
+- `<HistoryView>` — viewMode
+- `<TaskProgress>` — taskChecklist, taskProgress (section 18)
+- `<DecisionCard>` — pendingDecision (section 11)
 
 **Files to create:**
 
-- `packages/extension/src/utils/transcript.ts`
+- `packages/extension/src/store.ts`
 
 **Files to modify:**
 
-- `packages/extension/src/entrypoints/background.ts` — Write transcript entries around each query
-- `packages/extension/src/entrypoints/content/index.tsx` — Use transcript for crash recovery
-
-#### 7.2 Paginated Conversation History
-
-**Where:** `packages/extension/src/utils/storage.ts`
-
-**Implementation:**
-
-- Store conversation index separately from conversation content:
-
-  ```typescript
-  // Index: small, loaded eagerly
-  type ConversationIndex = {
-    id: string;
-    title: string;
-    domain: string;
-    lastMessageAt: number;
-    messageCount: number;
-    preview: string; // First 100 chars of last message
-  }[];
-
-  // Content: large, loaded on demand
-  type ConversationContent = {
-    messages: Message[];
-    llmHistory: CoreMessage[];
-  };
-  ```
-
-- Store index at `gyozai_conv_index` (loaded on history view open)
-- Store each conversation's content at `gyozai_conv_{id}` (loaded only when selected)
-- This eliminates the current pattern of loading ALL conversation data just to show titles
-
-**Files to modify:**
-
-- `packages/extension/src/utils/storage.ts` — Split `getConversations()` into index + content
-- `packages/extension/src/components/GyozaiWidget.tsx` — Load content lazily on conversation select
-
-#### 7.3 Debounced Session Save
-
-**Where:** `packages/extension/src/utils/session.ts`
-
-**Implementation:**
-
-- Replace the current `useEffect` → immediate save pattern with a debounced writer
-- Debounce interval: 300ms (batches rapid state changes)
-- Flush on `beforeunload` / `visibilitychange` (catches tab close)
-- Use `navigator.locks.request('gyozai-session-write', ...)` to prevent concurrent writes from SPA navigations
-
-**Files to modify:**
-
-- `packages/extension/src/utils/session.ts` — Add `DebouncedSessionWriter` class
-- `packages/extension/src/components/GyozaiWidget.tsx` — Replace direct `saveWidgetSession` calls
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Replace `useState` calls
 
 ---
 
-## 8. Performance Optimizations
+## 11. Structured Decision Cards
 
 ### Problem
 
-Several performance gaps identified:
-
-- Full HTML capture on every query (~50ms DOM walk + serialization)
-- No memoization of form value baking
-- Large page context sent repeatedly
-- Widget re-renders on every state change (no selector-based subscription)
+The current `clarify` flow shows plain text bubbles with clickable options. This is functional but doesn't communicate risk, context, or trade-offs. Policy confirmations (section 2) also need a UI surface.
 
 ### Improvements
 
-#### 8.1 Cached Page Context with Hash Invalidation
-
-**Where:** `packages/engine/src/page-context.ts`
-
-**Implementation:**
-
-Expand the existing 2-second TTL cache to be smarter:
-
-- After capture, compute a content hash of the structured elements
-- On next capture request: if URL unchanged AND hash matches, return cached result
-- Use `MutationObserver` in content script to detect DOM changes and invalidate cache proactively
-- Cache invalidation events: navigation, form submission, click (delayed 500ms for re-render), explicit `get_page_context` tool call
+Replace plain clarify bubbles with structured decision cards:
 
 ```typescript
-class PageContextCache {
-  private lastHash: string = "";
-  private lastCapture: PageContext | null = null;
-  private lastUrl: string = "";
-  private dirty: boolean = true;
-
-  invalidate() {
-    this.dirty = true;
-  }
-
-  async capture(): Promise<PageContext> {
-    if (!this.dirty && this.lastUrl === location.href) {
-      return this.lastCapture!;
-    }
-    const capture = await fullCapture();
-    this.lastHash = hash(capture);
-    this.lastCapture = capture;
-    this.lastUrl = location.href;
-    this.dirty = false;
-    return capture;
-  }
-}
+type DecisionCard = {
+  type: "clarify" | "policy_confirm" | "ambiguity";
+  title: string;
+  description: string;
+  options: {
+    label: string;
+    description?: string;
+    recommended?: boolean;
+    risk?: "safe" | "caution" | "warning";
+  }[];
+  context?: {
+    element?: string; // What element triggered this
+    pageSection?: string; // Where on the page
+    evidence?: string; // What the AI found
+  };
+};
 ```
 
-**Files to modify:**
+**Examples:**
 
-- `packages/engine/src/page-context.ts` — Replace TTL cache with hash-based cache
-- `packages/extension/src/entrypoints/content/index.tsx` — Add MutationObserver for cache invalidation
+- "I found 3 matching Install buttons" → card with element previews
+- "This looks like a final checkout action" → card with caution styling
+- "I can translate only visible content or the whole page" → card with trade-off descriptions
 
-#### 8.2 Progressive HTML Stripping
+**Files to create:**
 
-**Where:** `packages/engine/src/page-context.ts`
-
-**Implementation:**
-
-When the HTML snapshot is too large, progressively strip content to fit the token budget:
-
-1. Remove `data-*` attributes (often large, rarely useful for AI)
-2. Remove inline `style` attributes
-3. Remove deeply nested elements (depth > 8)
-4. Remove hidden elements (`display: none`, `visibility: hidden`, `aria-hidden`)
-5. Remove duplicate text blocks (common in repeated list items — keep first + count)
-6. Collapse whitespace-only text nodes
-7. If still too large: extract only interactive elements (forms, buttons, links) + visible headings
-
-Track which stripping levels were applied so the AI knows: `"[HTML truncated: removed inline styles and elements deeper than 8 levels to fit context budget]"`
+- `packages/extension/src/components/DecisionCard.tsx`
 
 **Files to modify:**
 
-- `packages/engine/src/page-context.ts` — Add `stripToFit(html, maxChars)` function
-
-#### 8.3 Widget Render Optimization
-
-**Where:** `packages/extension/src/components/GyozaiWidget.tsx`
-
-**Implementation:**
-
-- With the centralized store (section 5), use selector-based subscriptions:
-
-  ```typescript
-  // Only re-render when messages change
-  const messages = useWidgetStore((s) => s.messages);
-
-  // Only re-render when expression changes
-  const expression = useWidgetStore((s) => s.expression);
-  ```
-
-- Split `GyozaiWidget` into sub-components with their own selectors:
-  - `<AvatarBubble>` — subscribes to: expression, expanded, avatarPosition
-  - `<ChatPanel>` — subscribes to: messages, loading, error, clarify
-  - `<InputBar>` — subscribes to: input, loading
-  - `<HistoryView>` — subscribes to: viewMode (only mounts when viewMode === 'history')
-- Use `React.memo` on message list items (messages are append-only, so identity comparison works)
-
-**Files to modify:**
-
-- `packages/extension/src/components/GyozaiWidget.tsx` — Split into sub-components
-- Create sub-component files as needed in `packages/extension/src/components/`
+- `packages/extension/src/lib/tools.ts` — `clarify` tool returns `DecisionCard` format
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Render decision cards
 
 ---
 
-## 9. Extensibility: Recipe/Manifest System
+# Phase 5: Session, History, and Performance
 
-### Problem
-
-The recipe system (`packages/extension/src/utils/recipes.ts`) supports auto-import from `llms.txt` and manual recipes, but recipes are static text blobs. There's no versioning, no conditional activation, and no way for recipes to define custom tools or override default behavior.
+## 12. Session Persistence & History
 
 ### Improvements
 
-#### 9.1 Recipe Frontmatter (Inspired by Skills)
+#### 12.1 Append-Only Transcript Recording
 
-**Where:** `packages/extension/src/utils/recipes.ts`
+Before every LLM query, append user message to transcript log. After every response, append assistant + tool results. On crash, reconstruct from transcript (source of truth).
 
-**Implementation:**
+#### 12.2 Paginated Conversation History
 
-Add optional YAML frontmatter to recipes, inspired by Claude Code's skill format:
+Store index separately from content:
+
+- `gyozai_conv_index` — small metadata (title, domain, date, preview), loaded eagerly
+- `gyozai_conv_{id}` — full messages + LLM history, loaded on demand
+
+Eliminates loading ALL conversation data to show titles.
+
+#### 12.3 Debounced Session Save
+
+Replace immediate `useEffect` save with debounced writer (300ms). Flush on `beforeunload`/`visibilitychange`. Use `navigator.locks.request()` to prevent concurrent writes.
+
+**Files to create:**
+
+- `packages/extension/src/lib/transcript.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/lib/storage.ts` — Split index + content
+- `packages/extension/src/lib/session.ts` — Debounced writer
+
+---
+
+## 13. Performance Optimizations
+
+### Improvements
+
+#### 13.1 Cached Page Context with Hash Invalidation
+
+Expand 2-second TTL to hash-based cache. Use `MutationObserver` for proactive invalidation. Cache invalidation on: navigation, form submit, click (delayed 500ms), explicit tool call.
+
+#### 13.2 Progressive HTML Stripping
+
+When HTML too large for token budget, progressively strip:
+
+1. `data-*` attributes → 2. inline `style` → 3. depth > 8 → 4. hidden elements → 5. duplicate text blocks → 6. whitespace nodes → 7. non-interactive elements only
+
+#### 13.3 Widget Render Optimization
+
+With centralized store (section 10), selector-based subscriptions prevent unnecessary re-renders. `React.memo` on message list items.
+
+**Files to modify:**
+
+- `packages/engine/src/page-context.ts` — Hash cache + `stripToFit()`
+- `packages/extension/src/entrypoints/content/index.tsx` — MutationObserver
+
+---
+
+# Phase 6: Extensibility and Provider Layer
+
+## 14. Recipe & Playbook System
+
+### Problem
+
+Recipes are static text blobs. No versioning, no conditional activation, no way to describe multi-step task workflows.
+
+### Improvements
+
+#### 14.1 Recipe Frontmatter
+
+Add optional YAML frontmatter (inspired by Claude Code skills):
 
 ```yaml
 ---
 name: GitHub PR Review Helper
 version: 1.0.0
 domain: github.com
-routes:
-  - /*/pull/*
+routes: ["/*/pull/*"]
 capabilities: [click, executeJs, navigate]
+policyMode: auto-safe
 model: claude-haiku-4-5-20251001
 maxSteps: 5
 ---
-You are helping the user review a GitHub pull request...
 ```
 
-**Fields:**
+Route-specific activation, capability restriction, model hints, policy mode override.
 
-| Field          | Purpose                                                        |
-| -------------- | -------------------------------------------------------------- |
-| `name`         | Display name in recipe manager                                 |
-| `version`      | Semantic version for updates                                   |
-| `domain`       | Auto-activate on this domain                                   |
-| `routes`       | Glob patterns for URL paths — only activate on matching routes |
-| `capabilities` | Override default capabilities for this recipe                  |
-| `model`        | Suggest a specific model (user can override)                   |
-| `maxSteps`     | Limit tool call rounds for this recipe                         |
+#### 14.2 Site Playbooks
 
-**Benefits:**
+Broader than recipes — reusable multi-step task scripts generated from successful sessions:
 
-- Route-specific recipes: a recipe for GitHub PRs doesn't activate on GitHub issues
-- Capability restriction: a read-only recipe can disable `click` and `executeJs`
-- Model hints: complex recipes can suggest a smarter model
+```yaml
+---
+name: Download Stripe Invoice
+domain: dashboard.stripe.com
+type: playbook
+steps:
+  - navigate to Billing > Invoices
+  - find the target invoice by date
+  - click Download PDF
+---
+```
 
-**Files to modify:**
+Difference from recipes: recipes describe a site; playbooks describe how to complete a task on a site. Playbooks can be auto-generated by recording successful task completions and distilling them.
 
-- `packages/extension/src/utils/recipes.ts` — Parse frontmatter, add `RecipeMeta` type
-- `packages/extension/src/entrypoints/background.ts` — Apply recipe metadata to query config
-- `packages/engine/src/schemas/manifest.ts` — Add recipe metadata to manifest schema
+#### 14.3 Recipe Auto-Update
 
-#### 9.2 Recipe Auto-Update Detection
-
-**Where:** `packages/extension/src/utils/recipes.ts`
-
-**Implementation:**
-
-- On recipe auto-import, store the ETag/Last-Modified from the HTTP response
-- Periodically (every 24 hours, or on page load), check if the remote recipe has changed
-- If changed, show a non-intrusive notification: "Recipe updated for github.com — view changes?"
-- User can accept or ignore the update
-- Version comparison via semantic version in frontmatter
+Store ETag/Last-Modified on auto-import. Check periodically (24h). Show notification on change.
 
 **Files to modify:**
 
-- `packages/extension/src/utils/recipes.ts` — Add update check logic
-- `packages/extension/src/utils/storage.ts` — Store recipe ETags
+- `packages/extension/src/lib/recipes.ts` — Parse frontmatter, add playbook support
+- `packages/extension/src/lib/storage.ts` — Store recipe ETags + playbooks
 
 ---
 
-## 10. Resilient Provider Abstraction
-
-### Problem
-
-The provider abstraction (`packages/extension/src/providers/index.ts`) is a thin factory that creates Vercel AI SDK model instances. There's no shared interface for capabilities, no token counting, and no way to know if a provider supports features like tool calling or streaming before making the API call.
+## 15. Resilient Provider Abstraction
 
 ### Improvements
 
-#### 10.1 Provider Capability Registry
-
-**Where:** `packages/extension/src/providers/index.ts`
-
-**Implementation:**
+#### 15.1 Provider Capability Registry
 
 ```typescript
-type ProviderCapabilities = {
+const PROVIDER_REGISTRY: Record<string, {
   streaming: boolean;
   toolCalling: boolean;
   maxContextTokens: number;
   maxOutputTokens: number;
-  supportsImages: boolean;
-  costPerInputToken: number; // USD
-  costPerOutputToken: number; // USD
-};
-
-const PROVIDER_REGISTRY: Record<string, ProviderCapabilities> = {
-  "claude-haiku-4-5-20251001": {
-    streaming: true,
-    toolCalling: true,
-    maxContextTokens: 200_000,
-    maxOutputTokens: 8_192,
-    supportsImages: true,
-    costPerInputToken: 0.8 / 1_000_000,
-    costPerOutputToken: 4.0 / 1_000_000,
-  },
-  "gpt-5.4-mini": {
-    streaming: true,
-    toolCalling: true,
-    maxContextTokens: 128_000,
-    maxOutputTokens: 16_384,
-    supportsImages: true,
-    costPerInputToken: 0.15 / 1_000_000,
-    costPerOutputToken: 0.6 / 1_000_000,
-  },
-  // ... other models
-};
+  costPerInputToken: number;
+  costPerOutputToken: number;
+}> = { ... };
 ```
 
-**Usage:**
+Used by: context budgeting (4.4), cost tracking (16), feature gating.
 
-- Context budget (section 3.3) uses `maxContextTokens` to size allocations
-- Cost tracking (section 11) uses per-token costs
-- Feature gating: if `!toolCalling`, fall back to structured JSON mode
-- If `!streaming`, use non-streaming path without showing typewriter
+#### 15.2 Token Counting Utility
 
-**Files to modify:**
-
-- `packages/extension/src/providers/index.ts` — Add capability registry
-- `packages/engine/src/context-budget.ts` — Read max tokens from registry
-
-#### 10.2 Token Counting Utility
-
-**Where:** New file `packages/engine/src/token-count.ts`
-
-**Implementation:**
-
-- Implement a fast approximate token counter: `estimateTokens(text: string): number`
-- Heuristic: `Math.ceil(text.length / 4)` for English, `Math.ceil(text.length / 2)` for CJK-heavy text
-- Detect CJK presence via regex: `/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/`
-- Use this everywhere token budgets are calculated (context budget, compaction triggers, cost estimation)
-- Optional: integrate `tiktoken-lite` for exact counts when precision matters (lazy-loaded, ~200KB)
+Fast approximate counter: `Math.ceil(text.length / 4)` for English, `/2` for CJK-heavy. Optional `tiktoken-lite` for exact counts.
 
 **Files to create:**
 
@@ -1138,232 +894,361 @@ const PROVIDER_REGISTRY: Record<string, ProviderCapabilities> = {
 
 **Files to modify:**
 
-- `packages/engine/src/engine.ts` — Use for history compaction triggers
-- `packages/engine/src/context-budget.ts` — Use for budget allocation
+- `packages/extension/src/lib/providers/index.ts` — Add registry
 
 ---
 
-## 11. Cost & Usage Tracking
-
-### Problem
-
-There's no cost tracking at all. Users on BYOK mode have no visibility into how much each query costs them. There's no way to set a budget or see cumulative session costs.
+## 16. Cost & Usage Tracking
 
 ### Improvements
 
-#### 11.1 Per-Query Cost Estimation
+#### 16.1 Per-Query Cost Estimation
 
-**Where:** New file `packages/extension/src/utils/cost-tracker.ts`
+Extract `usage.promptTokens` / `usage.completionTokens` from Vercel AI SDK. Calculate cost via provider registry. Show in widget header: "$0.03 this session".
+
+#### 16.2 Budget Alerts
+
+Add `maxSessionBudgetUsd` to settings (default $1.00). Warn at 80%, block at 100%. Show per-query cost as muted text under assistant messages.
+
+**Files to create:**
+
+- `packages/extension/src/lib/cost-tracker.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/lib/storage.ts` — Add budget setting
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Show cost display
+
+---
+
+# Phase 7: New Product Capabilities
+
+## 17. Plan Mode for Browser Tasks
+
+A "plan first" interaction mode where Gyozai inspects the site, proposes steps, and waits for approval before acting.
+
+**Why it matters:**
+
+- Better trust for checkout, banking, job applications, admin dashboards
+- Users can correct intent before actions happen
+- Makes long tasks legible
+
+**Examples:**
+
+- "Apply these filters, compare 3 plans, then recommend one"
+- "Walk me through the tax form before you fill anything"
+- "Show me the steps to cancel this subscription before clicking"
 
 **Implementation:**
 
-```typescript
-type QueryCost = {
-  inputTokens: number;
-  outputTokens: number;
-  model: string;
-  estimatedCostUsd: number;
-  timestamp: number;
-};
+- Add `planMode: boolean` to QueryEngine config
+- In plan mode, the model only proposes actions (returns a checklist), doesn't execute them
+- User reviews and approves/edits the plan
+- On approval, execute the plan step by step with the task checklist UI (section 18)
+- Activated automatically for `dangerous` policy mode sites, or manually via UI toggle
 
-type SessionCosts = {
-  queries: QueryCost[];
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalCostUsd: number;
-  sessionStartedAt: number;
+**Files to modify:**
+
+- `packages/engine/src/query-engine.ts` — Plan mode query path
+- `packages/extension/src/lib/prompts.ts` — Plan mode system prompt variant
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Plan approval UI
+
+---
+
+## 18. Task Checklists & Progress Tracking
+
+Visible checklist for multi-step browser tasks. Each item: `pending | running | blocked | done`.
+
+```typescript
+type TaskStep = {
+  id: string;
+  description: string;
+  status: "pending" | "running" | "blocked" | "done" | "failed";
+  result?: string;
 };
 ```
 
-- After each query, extract token usage from the Vercel AI SDK response (`usage.promptTokens`, `usage.completionTokens`)
-- Calculate cost using the provider capability registry (section 10.1)
-- Store cumulative session costs in `chrome.storage.session`
-- Show in the widget header: "$0.03 this session" (clickable to expand)
+**Examples:**
 
-**Files to create:**
-
-- `packages/extension/src/utils/cost-tracker.ts`
-
-**Files to modify:**
-
-- `packages/extension/src/entrypoints/background.ts` — Track usage after each query
-- `packages/extension/src/components/GyozaiWidget.tsx` — Show cost in header
-
-#### 11.2 Budget Alerts
-
-**Where:** `packages/extension/src/utils/cost-tracker.ts`
+- Find pricing page → Compare annual vs monthly → Open billing settings → Confirm cancellation
 
 **Implementation:**
 
-- Add `maxSessionBudgetUsd` to settings (default: $1.00)
-- When cumulative cost exceeds 80% of budget, show a warning toast
-- When cumulative cost exceeds 100%, block further queries with a clear message and option to increase budget
-- Show per-query cost in message metadata (small, muted text under each assistant message)
+- QueryEngine emits checklist from plan mode or generates it on the fly
+- Widget shows collapsible progress panel
+- Steps update in real-time via streaming events
+- Failed steps show retry option
 
-**Files to modify:**
+**Files to create:**
 
-- `packages/extension/src/utils/storage.ts` — Add `maxSessionBudgetUsd` to settings
-- `packages/extension/src/utils/cost-tracker.ts` — Add budget check logic
-- `packages/extension/src/entrypoints/background.ts` — Check budget before query
+- `packages/extension/src/components/TaskProgress.tsx`
 
 ---
 
-## 12. Testing & Observability
+## 19. Browser Memory
 
-### Problem
+Remember stable user/browser preferences across sites:
 
-Tests exist but coverage is limited to schema validation and basic engine tests. There are no integration tests for the extension, no tests for the streaming path, and no structured error logging.
+```typescript
+type BrowserMemory = {
+  preferences: { key: string; value: string; source: string }[];
+  // Examples:
+  // { key: 'language', value: 'en', source: 'user-stated' }
+  // { key: 'shipping_country', value: 'JP', source: 'inferred-from-usage' }
+  // { key: 'form_auto_submit', value: 'never', source: 'user-stated' }
+  // { key: 'price_comparison', value: 'always_annual_vs_monthly', source: 'pattern' }
+};
+```
+
+- Stored in `chrome.storage.local` — survives sessions
+- Injected into system prompt as lightweight context
+- User can view/edit/delete via settings popup
+- AI can propose new memories: "I noticed you always choose annual — should I remember that?"
+
+**Files to create:**
+
+- `packages/extension/src/lib/browser-memory.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/lib/prompts.ts` — Inject memory into system prompt
+- `packages/extension/src/lib/storage.ts` — Memory persistence
+
+---
+
+## 20. Risk-Aware Domain Modes
+
+Different policy presets per site/domain category:
+
+| Category        | Policy        | Behavior                           |
+| --------------- | ------------- | ---------------------------------- |
+| Banking/Finance | `locked-down` | Plan-first, never auto-submit      |
+| Ecommerce       | `auto-safe`   | Allow navigation, confirm checkout |
+| Docs/Help       | `auto-safe`   | Mostly read-only, summarize        |
+| Admin tools     | `ask`         | Require explicit confirmations     |
+| Social media    | `auto-safe`   | Allow navigation, confirm posting  |
+
+**Implementation:**
+
+- Maintain a domain → category mapping (user-editable + community defaults)
+- On page load, resolve category and set policy mode
+- Override via per-site settings in popup
+- More sophisticated than global YOLO toggle
+
+**Files to create:**
+
+- `packages/extension/src/lib/domain-modes.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/lib/storage.ts` — Domain mode settings
+
+---
+
+## 21. Evidence-Backed Answers
+
+Every significant answer cites what it relied on:
+
+```typescript
+type Evidence = {
+  pageSection?: string; // "Billing > Subscription > Plan Details"
+  element?: string; // "Button: Cancel Plan"
+  route?: string; // "/settings/billing"
+  quote?: string; // "Monthly: $29/mo, Annual: $24/mo"
+};
+```
+
+- Tool results include evidence metadata
+- Assistant messages can reference evidence
+- Widget renders evidence as expandable citations under messages
+- Dramatically improves trust: "I found the cancel button in Billing > Subscription"
+
+**Files to modify:**
+
+- `packages/extension/src/lib/tools.ts` — Tools return evidence in results
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Render citations
+
+---
+
+## 22. Page Watchers
+
+Ask Gyozai to watch for a condition and notify when it changes:
+
+**Examples:**
+
+- Ticket sales open
+- Item restocked
+- Visa appointment slot appears
+- Build status changes in dashboard
+- Error message disappears after retry
+
+**Implementation:**
+
+- User describes condition in natural language
+- Engine translates to a `MutationObserver` + polling check
+- Runs in background service worker with periodic `chrome.scripting.executeScript`
+- Notification via `chrome.notifications` when condition met
+- Stored as persistent watchers in `chrome.storage.local`
+
+**Files to create:**
+
+- `packages/extension/src/lib/page-watcher.ts`
+- `packages/extension/src/entrypoints/handlers/watchers.ts`
+
+---
+
+# Phase 8: Testing & Observability
+
+## 23. Testing & Observability
 
 ### Improvements
 
-#### 12.1 Tool Execution Tests
+#### 23.1 Tool Execution Tests
 
-**Where:** New file `packages/extension/src/tools.test.ts`
+Test each tool in isolation with mock `chrome.scripting.executeScript`. Test success/failure paths, risk classification, concurrency flags, result truncation.
 
-**Implementation:**
+#### 23.2 QueryEngine Unit Tests
 
-- Test each tool in isolation with mock `chrome.scripting.executeScript`
-- Test success and failure paths:
-  - `click` with valid selector → success
-  - `click` with non-existent element → error + retryable flag
-  - `execute_js` with syntax error → error + JS error message
-  - `navigate` → success + navigation flag
-  - `get_page_context` → returns structured elements
-- Test tool result truncation (section 4.3)
-- Test concurrency classification (section 4.2)
+With QueryEngine extracted, test without Chrome APIs:
 
-**Files to create:**
+- Mock provider returns controlled responses
+- Test retry logic, compaction triggers, tool outcome handling
+- Test plan mode, task memory updates
+- Test policy evaluation
 
-- `packages/extension/src/tools.test.ts`
+#### 23.3 Structured Error Logging
 
-#### 12.2 Streaming Integration Tests
-
-**Where:** New file `packages/extension/src/entrypoints/background.test.ts`
-
-**Implementation:**
-
-- Mock the Vercel AI SDK's `streamText` to return controlled streams
-- Test: text deltas arrive at content script in order
-- Test: tool calls execute during streaming
-- Test: stream failure triggers retry
-- Test: partial result recovery after crash
-- Test: token budget continuation (section 3.3 analog)
-
-**Files to create:**
-
-- `packages/extension/src/entrypoints/background.test.ts`
-
-#### 12.3 Structured Error Logging
-
-**Where:** New file `packages/extension/src/utils/logger.ts`
-
-**Implementation:**
-
-Replace scattered `console.log`/`console.error` with a structured logger:
+Replace scattered `console.log` with structured logger:
 
 ```typescript
-type LogEntry = {
-  level: 'debug' | 'info' | 'warn' | 'error'
-  category: 'query' | 'tool' | 'storage' | 'provider' | 'session'
-  message: string
-  data?: Record<string, unknown>
-  timestamp: number
-  sessionId: string
-}
-
 const logger = {
-  debug(category, message, data?) { ... },
-  info(category, message, data?) { ... },
-  warn(category, message, data?) { ... },
-  error(category, message, data?) { ... },
-}
+  debug(category: Category, message: string, data?: Record<string, unknown>) { ... },
+  info(...) { ... },
+  warn(...) { ... },
+  error(...) { ... },
+};
 ```
 
-- In development: pretty-print to console with color coding (keep current styling)
-- Store last 100 error entries in `chrome.storage.local` for `/doctor`-style diagnostics
-- Add a hidden debug panel (triple-tap avatar) showing recent logs
+- Categories: `query`, `tool`, `storage`, `provider`, `session`, `policy`
+- Store last 100 errors in `chrome.storage.local`
+- Hidden debug panel (triple-tap avatar) showing recent logs + tool traces + prompt snapshots
+
+#### 23.4 Outcome-Oriented Analytics
+
+Log browser-task outcomes, not just model/provider stats:
+
+| Metric                     | What it tells you          |
+| -------------------------- | -------------------------- |
+| `task_completed`           | Success rate               |
+| `task_blocked_ambiguity`   | Needs better clarify UI    |
+| `task_blocked_permissions` | Policy too strict          |
+| `recovered_after_failure`  | Self-healing effectiveness |
+| `required_clarification`   | Model confidence issues    |
+| `user_abandoned`           | UX friction                |
 
 **Files to create:**
 
-- `packages/extension/src/utils/logger.ts`
-
-**Files to modify:**
-
-- `packages/extension/src/entrypoints/background.ts` — Replace console.log with logger
-- `packages/extension/src/tools.ts` — Replace console.log with logger
-- `packages/extension/src/entrypoints/content/index.tsx` — Replace console.log with logger
+- `packages/extension/src/lib/logger.ts`
+- `packages/extension/src/lib/analytics.ts`
+- `packages/extension/src/tools.test.ts`
+- `packages/engine/src/query-engine.test.ts`
 
 ---
 
 ## Implementation Priority
 
-Ordered by impact-to-effort ratio:
-
-| Priority | Section                                           | Estimated Effort | Impact                                                  |
-| -------- | ------------------------------------------------- | ---------------- | ------------------------------------------------------- |
-| **1**    | **1.1-1.2 Extract QueryEngine + slim background** | **Medium**       | **Critical — prerequisite for most other improvements** |
-| 2        | 2.1 Retry state machine                           | Small            | High — eliminates most user-visible errors              |
-| 3        | 6.1 Granular streaming events                     | Medium           | High — dramatically better UX                           |
-| 4        | 5.1 Centralized store                             | Medium           | High — eliminates state bugs, enables everything else   |
-| 5        | 3.1 Incremental page context                      | Small            | Medium — reduces token waste significantly              |
-| 6        | 7.2 Paginated conversation history                | Small            | Medium — fixes slow history loading                     |
-| 7        | 8.1 Cached page context                           | Small            | Medium — reduces redundant DOM walks                    |
-| 8        | 3.2 Conversation compaction                       | Medium           | High — enables longer conversations                     |
-| 9        | 11.1 Cost tracking                                | Small            | Medium — critical for BYOK users                        |
-| 10       | 4.1 Unified tool interface                        | Medium           | Medium — enables 4.2 and 4.3                            |
-| 11       | 12.3 Structured logging                           | Small            | Medium — improves debuggability                         |
-| 12       | 10.1 Provider capability registry                 | Small            | Medium — enables context budgeting                      |
-| 13       | 9.1 Recipe frontmatter                            | Medium           | Medium — better extensibility                           |
-| 14       | 2.3 Provider fallback                             | Small            | Low-Medium — niche but valuable                         |
-| 15       | 6.2 Overlapping tool execution                    | Medium           | Medium — latency reduction                              |
-| 16       | 7.1 Transcript recording                          | Small            | Low — insurance against data loss                       |
-| 17       | 3.3 Smart context budgeting                       | Medium           | Medium — requires token counting                        |
-| 18       | 8.2 Progressive HTML stripping                    | Medium           | Medium — helps with large pages                         |
-| 19       | 8.3 Widget render optimization                    | Small            | Low — only matters with store                           |
-| 20       | 3.4 Microcompaction                               | Small            | Low — optimization for long conversations               |
-| 21       | 10.2 Token counting                               | Small            | Low — enables precision elsewhere                       |
-| 22       | 11.2 Budget alerts                                | Small            | Low — nice-to-have for BYOK                             |
-| 23       | 9.2 Recipe auto-update                            | Small            | Low — nice-to-have                                      |
-| 24       | 2.2 Streaming failure recovery                    | Medium           | Low — rare edge case                                    |
-| 25       | 4.2 Concurrent tool execution                     | Medium           | Low — small win for current tool set                    |
-| 26       | 12.1-12.2 Tool/streaming tests                    | Medium           | Low — quality investment                                |
-| 27       | 7.3 Debounced session save                        | Small            | Low — minor reliability improvement                     |
-| 28       | 4.3 Tool result budgeting                         | Small            | Low — edge case for large results                       |
-| 29       | 1.3 Deprecate legacy createEngine                 | Small            | Low — cleanup after QueryEngine is stable               |
-
----
-
-## Dependencies Between Sections
-
-```
-1.1 Extract QueryEngine ────────┬──→ 2.1 Retry State Machine
-(FOUNDATION — do this first)    ├──→ 2.2 Streaming Failure Recovery
-                                ├──→ 2.3 Provider Fallback
-                                ├──→ 3.2 Conversation Compaction
-                                ├──→ 3.3 Smart Context Budgeting
-                                ├──→ 6.1 Granular Streaming Events
-                                ├──→ 11.1 Cost Tracking
-                                └──→ 12.1-12.2 Testing (testable without Chrome APIs)
-
-5.1 Centralized Store ──────────┬──→ 8.3 Widget Render Optimization
-                                ├──→ 6.1 Granular Streaming Events
-                                └──→ 7.3 Debounced Session Save
-
-10.1 Provider Capability Registry ┬──→ 3.3 Smart Context Budgeting
-                                  ├──→ 11.1 Cost Tracking
-                                  └──→ 11.2 Budget Alerts
-
-10.2 Token Counting ─────────────┬──→ 3.2 Conversation Compaction
-                                 ├──→ 3.3 Smart Context Budgeting
-                                 └──→ 8.2 Progressive HTML Stripping
-
-4.1 Unified Tool Interface ──────┬──→ 4.2 Concurrent Tool Execution
-                                 ├──→ 4.3 Tool Result Budgeting
-                                 └──→ 3.4 Microcompaction
-
-2.1 Retry State Machine ────────→ 2.3 Provider Fallback
-```
+| Priority | Section                              | Effort     | Impact                                                |
+| -------- | ------------------------------------ | ---------- | ----------------------------------------------------- |
+| **1**    | **1. Extract QueryEngine**           | **Medium** | **Critical — prerequisite for everything**            |
+| **2**    | **2. Tool registry + risk metadata** | **Medium** | **High — enables policy, narrow tools, self-healing** |
+| **3**    | **3. Prompt rules → runtime code**   | **Small**  | **High — reduces prompt bloat, improves reliability** |
+| 4        | 5.1 Retry state machine              | Small      | High — eliminates user-visible errors                 |
+| 5        | 9.1 Granular streaming events        | Medium     | High — dramatically better UX                         |
+| 6        | 10.1 Centralized store               | Medium     | High — eliminates state bugs                          |
+| 7        | 4.1 Freshness-aware context levels   | Medium     | High — biggest token savings                          |
+| 8        | 7. Narrow interaction tools          | Medium     | High — safer, more reliable actions                   |
+| 9        | 8. Self-healing strategies           | Medium     | High — "it actually works on messy sites"             |
+| 10       | 4.3 Conversation compaction          | Medium     | High — enables longer tasks                           |
+| 11       | 11. Structured decision cards        | Small      | Medium — better trust UX                              |
+| 12       | 17. Plan mode                        | Medium     | Medium — high-value for risky tasks                   |
+| 13       | 18. Task checklists                  | Small      | Medium — makes multi-step tasks legible               |
+| 14       | 16.1 Cost tracking                   | Small      | Medium — critical for BYOK                            |
+| 15       | 23.3 Structured logging              | Small      | Medium — improves debuggability                       |
+| 16       | 6. Structured task memory            | Medium     | Medium — enables multi-page tasks                     |
+| 17       | 15.1 Provider capability registry    | Small      | Medium — enables budgeting + cost                     |
+| 18       | 14.1 Recipe frontmatter              | Medium     | Medium — better extensibility                         |
+| 19       | 21. Evidence-backed answers          | Small      | Medium — improves trust                               |
+| 20       | 12.2 Paginated history               | Small      | Medium — fixes slow history                           |
+| 21       | 20. Risk-aware domain modes          | Medium     | Medium — graduated safety                             |
+| 22       | 19. Browser memory                   | Medium     | Medium — personalization                              |
+| 23       | 13.1 Cached page context             | Small      | Medium — performance                                  |
+| 24       | 5.3 Provider fallback                | Small      | Low-Medium                                            |
+| 25       | 14.2 Site playbooks                  | Medium     | Medium — product differentiator                       |
+| 26       | 22. Page watchers                    | Large      | Medium — product differentiator                       |
+| 27       | 13.2 Progressive HTML stripping      | Medium     | Low-Medium                                            |
+| 28       | 12.1 Transcript recording            | Small      | Low                                                   |
+| 29       | 4.4 Smart context budgeting          | Medium     | Low-Medium                                            |
+| 30       | 9.2 Overlapping tool execution       | Medium     | Low-Medium                                            |
+| 31       | 15.2 Token counting                  | Small      | Low                                                   |
+| 32       | 16.2 Budget alerts                   | Small      | Low                                                   |
+| 33       | 14.3 Recipe auto-update              | Small      | Low                                                   |
+| 34       | 5.2 Streaming failure recovery       | Medium     | Low                                                   |
+| 35       | 2.4 Concurrent tool execution        | Medium     | Low                                                   |
+| 36       | 23.1-23.2 Tests                      | Medium     | Low (quality investment)                              |
+| 37       | 12.3 Debounced session save          | Small      | Low                                                   |
+| 38       | 4.5 Microcompaction                  | Small      | Low                                                   |
+| 39       | 13.3 Widget render optimization      | Small      | Low                                                   |
+| 40       | 23.4 Outcome analytics               | Small      | Low                                                   |
+| 41       | 1.3 Deprecate legacy createEngine    | Small      | Low (cleanup)                                         |
 
 ---
 
-_This plan is based on patterns observed in the Claude Code architecture. Each section is self-contained and can be implemented incrementally. Start with the high-priority items — they deliver the most user-visible improvements with manageable effort._
+## Dependencies
+
+```
+1. QueryEngine ─────────────────┬──→ 2. Tool Registry (policy evaluator)
+(FOUNDATION)                    ├──→ 3. Prompt-to-Code (engine post-processing)
+                                ├──→ 4. Context Management (context manager)
+                                ├──→ 5. Error Recovery (retry in engine)
+                                ├──→ 6. Task Memory (engine updates it)
+                                ├──→ 9. Streaming Events (engine emits them)
+                                ├──→ 16. Cost Tracking (engine exposes usage)
+                                ├──→ 17. Plan Mode (engine query path)
+                                └──→ 23. Testing (engine is testable)
+
+2. Tool Registry ───────────────┬──→ 7. Narrow Tools (implement BrowserTool)
+                                ├──→ 8. Self-Healing (tool-level fallback chains)
+                                ├──→ 11. Decision Cards (policy_confirm UI)
+                                ├──→ 20. Domain Modes (sets PolicyMode)
+                                └──→ 2.4 Concurrent Execution
+
+10. Centralized Store ──────────┬──→ 13.3 Widget Render Optimization
+                                ├──→ 18. Task Checklists (store tracks steps)
+                                └──→ 12.3 Debounced Session Save
+
+15. Provider Registry ──────────┬──→ 4.4 Context Budgeting
+                                ├──→ 16. Cost Tracking
+                                └──→ 5.3 Provider Fallback
+
+6. Task Memory ─────────────────┬──→ 17. Plan Mode (plan stored as task)
+                                └──→ 18. Task Checklists (checklist from memory)
+```
+
+---
+
+## What NOT to Build
+
+These are powerful in Claude Code, but wrong or premature for a browser copilot:
+
+- **MCP as an integration surface** — stay browser-native
+- **Multi-agent swarms** — one agent per tab is correct
+- **LSP/git/project-aware context** — not a dev tool
+- **Giant command systems** — natural language is the interface
+- **Bun feature-flag dead-code elimination** — over-engineering at this scale
+- **Full memory consolidation/dreaming** — browser memory (section 19) is sufficient
+
+The product risk is becoming an over-general agent framework instead of a precise website copilot.
+
+---
+
+_Synthesized from Claude Code architecture patterns and browser-specific product analysis. Each section is self-contained. Start with Phase 1 — it unlocks everything else._
