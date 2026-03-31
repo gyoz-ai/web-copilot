@@ -50,17 +50,21 @@ import {
 export let _preloadedTabId: number | null = null;
 export let _preloadedLocale: LocaleCode | null = null;
 export let _preloadedSession: WidgetSession | null = null;
+export let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 export let _preloadReady: Promise<void> = Promise.resolve();
 
 export function setPreloadState(state: {
   tabId: number | null;
   locale: LocaleCode | null;
   session: WidgetSession | null;
+  avatarPosition?: { x: number; y: number } | null;
   ready: Promise<void>;
 }) {
   _preloadedTabId = state.tabId;
   _preloadedLocale = state.locale;
   _preloadedSession = state.session;
+  if (state.avatarPosition !== undefined)
+    _preloadedAvatarPosition = state.avatarPosition;
   _preloadReady = state.ready;
 }
 
@@ -116,10 +120,7 @@ export function GyozaiWidget() {
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
-  } | null>(null);
-  // True once the saved position (or lack thereof) has been loaded.
-  // Prevents the avatar from briefly rendering at the default corner.
-  const [avatarPosReady, setAvatarPosReady] = useState(false);
+  } | null>(_preloadedAvatarPosition);
   // Bumped when the avatar's rendered position changes so the status
   // pill / speech bubble re-reads the avatar bounding rect.
   const [, bumpAvatarPosTick] = useReducer((c: number) => c + 1, 0);
@@ -204,20 +205,6 @@ export function GyozaiWidget() {
         activeConvIdRef.current = _preloadedSession.activeConvId;
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         log("Session restored from storage");
-      }
-      // If no avatar position from session, try local storage (persists across browser restart)
-      if (_preloadedSession?.avatarPosition) {
-        setAvatarPosReady(true);
-      } else {
-        chrome.storage.local
-          .get("gyozai_avatar_position")
-          .then((r) => {
-            if (r.gyozai_avatar_position) {
-              setAvatarPosition(r.gyozai_avatar_position);
-            }
-          })
-          .catch(() => {})
-          .finally(() => setAvatarPosReady(true));
       }
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
@@ -1198,8 +1185,7 @@ export function GyozaiWidget() {
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
       {/* Status pill / speech bubble — centered above avatar */}
-      {avatarPosReady &&
-        !expanded &&
+      {!expanded &&
         !isDraggingAvatar &&
         (() => {
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
@@ -1285,27 +1271,25 @@ export function GyozaiWidget() {
           );
         })()}
 
-      {/* Avatar widget — hidden until saved position is loaded to avoid flicker */}
-      {avatarPosReady && (
-        <Avatar
-          size={agentSize}
-          iconUrl={chrome.runtime.getURL("/icon-128.png")}
-          talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
-          isTalking={isTypewriting}
-          position={avatarPosition}
-          onDragEnd={(pos) => {
-            setAvatarPosition(pos);
-            // Persist to local storage (survives browser close)
-            chrome.storage.local
-              .set({ gyozai_avatar_position: pos })
-              .catch(() => {});
-          }}
-          onClick={() => {}}
-          wrapperRef={avatarWrapperRef}
-          onDragStateChange={setIsDraggingAvatar}
-          onPositionChange={bumpAvatarPosTick}
-        />
-      )}
+      {/* Avatar widget */}
+      <Avatar
+        size={agentSize}
+        iconUrl={chrome.runtime.getURL("/icon-128.png")}
+        talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
+        isTalking={isTypewriting}
+        position={avatarPosition}
+        onDragEnd={(pos) => {
+          setAvatarPosition(pos);
+          // Persist to local storage (survives browser close)
+          chrome.storage.local
+            .set({ gyozai_avatar_position: pos })
+            .catch(() => {});
+        }}
+        onClick={() => {}}
+        wrapperRef={avatarWrapperRef}
+        onDragStateChange={setIsDraggingAvatar}
+        onPositionChange={bumpAvatarPosTick}
+      />
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div

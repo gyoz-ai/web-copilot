@@ -21,6 +21,7 @@ export interface ToolExecContext {
   onStreamEvent?: (event: {
     kind: "message" | "tool-status" | "expression" | "clarify";
     content?: string;
+    message?: string;
     face?: string;
     options?: string[];
   }) => void;
@@ -584,7 +585,7 @@ export function createBrowserTools(
         ctx.clarify = { message, options };
         ctx.messages.push(message);
         ctx.onStreamEvent?.({ kind: "message", content: message });
-        ctx.onStreamEvent?.({ kind: "clarify", options, content: message });
+        ctx.onStreamEvent?.({ kind: "clarify", message, options });
         return { awaiting_user_response: true };
       },
     });

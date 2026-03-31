@@ -410,6 +410,7 @@ async function handleQuery(
   const sendStreamEvent = (event: {
     kind: string;
     content?: string;
+    message?: string;
     face?: string;
     options?: string[];
   }) => {

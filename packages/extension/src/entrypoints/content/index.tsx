@@ -25,6 +25,7 @@ import type { SnapshotType } from "@gyoz-ai/engine";
 let _preloadedTabId: number | null = null;
 let _preloadedLocale: LocaleCode | null = null;
 let _preloadedSession: WidgetSession | null = null;
+let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 
 const _preloadReady = chrome.runtime
   .sendMessage({ type: "gyozai_get_tab_id" })
@@ -53,12 +54,25 @@ const _preloadReady = chrome.runtime
           }
         })
         .catch(() => {}),
+      // Load persisted avatar position from local storage (survives browser restart)
+      chrome.storage.local
+        .get("gyozai_avatar_position")
+        .then((r) => {
+          if (r.gyozai_avatar_position) {
+            _preloadedAvatarPosition = r.gyozai_avatar_position;
+          }
+        })
+        .catch(() => {}),
     ]);
+    // Session avatar position takes precedence over local storage
+    const avatarPos =
+      _preloadedSession?.avatarPosition ?? _preloadedAvatarPosition;
     // Share preloaded state with GyozaiWidget module
     setPreloadState({
       tabId: _preloadedTabId,
       locale: _preloadedLocale,
       session: _preloadedSession,
+      avatarPosition: avatarPos,
       ready: Promise.resolve(),
     });
   })
@@ -183,6 +197,10 @@ export default defineContentScript({
     } catch {
       // Font loading is non-critical
     }
+
+    // Wait for preload (avatar position, session, settings) before injecting
+    // so the widget renders at the correct position on first paint.
+    await _preloadReady;
 
     // Wait for body, then inject with retry
     const MAX_RETRIES = 3;
