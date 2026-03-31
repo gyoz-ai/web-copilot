@@ -64,13 +64,11 @@ const _preloadReady = chrome.runtime
           }
         })
         .catch(() => {}),
-      // Load persisted expression from local storage (survives browser restart)
-      chrome.storage.local
-        .get("gyozai_expression")
-        .then((r) => {
-          if (r.gyozai_expression) {
-            _preloadedExpression = r.gyozai_expression;
-          }
+      // Load persisted expression via background worker (survives browser restart)
+      chrome.runtime
+        .sendMessage({ type: "gyozai_load_expression" })
+        .then((expr: string | null) => {
+          if (expr) _preloadedExpression = expr;
         })
         .catch(() => {}),
     ]);

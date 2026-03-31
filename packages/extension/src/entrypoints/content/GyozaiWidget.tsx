@@ -969,9 +969,12 @@ export function GyozaiWidget() {
         case "expression":
           if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
             setExpression(evt.face as Expression);
-            // Persist to local storage (survives browser close)
-            chrome.storage.local
-              .set({ gyozai_expression: evt.face })
+            // Persist via background worker (reliable local storage write)
+            chrome.runtime
+              .sendMessage({
+                type: "gyozai_save_expression",
+                expression: evt.face,
+              })
               .catch(() => {});
           }
           break;

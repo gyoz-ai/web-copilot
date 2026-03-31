@@ -108,6 +108,22 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === "gyozai_save_expression") {
+      chrome.storage.local
+        .set({ gyozai_expression: message.expression })
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    }
+
+    if (message.type === "gyozai_load_expression") {
+      chrome.storage.local
+        .get("gyozai_expression")
+        .then((r) => sendResponse(r.gyozai_expression ?? null))
+        .catch(() => sendResponse(null));
+      return true;
+    }
+
     if (message.type === "gyozai_query") {
       const senderTabId = sender.tab?.id ?? null;
       handleQuery(message, senderTabId)
@@ -516,6 +532,13 @@ async function handleQuery(
     }
     if (conversationId) {
       await saveConversationLlmHistory(conversationId, history);
+    }
+
+    // Persist expression to local storage so it survives page refresh
+    if (ctx.expression) {
+      chrome.storage.local
+        .set({ gyozai_expression: ctx.expression })
+        .catch(() => {});
     }
 
     return {
