@@ -194,11 +194,8 @@ export default defineBackground(() => {
       }
       getRecipes()
         .then((recipes) => {
-          const data = recipes.map((r) => ({
-            domain: r.domain,
-            name: r.name,
-            enabled: r.enabled,
-          }));
+          // Expose only content hashes (IDs) — no names or domains
+          const data = recipes.filter((r) => r.enabled).map((r) => r.id);
           return chrome.scripting.executeScript({
             target: { tabId },
             world: "MAIN",
