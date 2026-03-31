@@ -31,6 +31,9 @@ export default defineConfig({
       "AI that navigates any website for you. Ask questions, get answers, let AI click and navigate.",
     version: "0.0.1",
     icons: {
+      16: "/icon-16.png",
+      32: "/icon-32.png",
+      48: "/icon-48.png",
       128: "/icon-128.png",
     },
     permissions: ["activeTab", "tabs", "storage", "scripting", "notifications"],

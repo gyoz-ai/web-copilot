@@ -24,6 +24,9 @@ declare module "wxt/browser" {
     | "/background.js"
     | "/content-scripts/content.js"
     | "/icon-128.png"
+    | "/icon-16.png"
+    | "/icon-32.png"
+    | "/icon-48.png"
     | "/icon-talking.gif"
     | "/popup.html"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>
