@@ -187,15 +187,17 @@ export function createBrowserTools(
   // ── click ───────────────────────────────────────────────────────────────
   if (caps.click) {
     tools.click = tool<
-      { selector?: string; text?: string; tag?: string },
-      { success: true; element: string } | { success: false; error: string }
+      { selector?: string; text?: string; tag?: string; near_text?: string },
+      | { success: true; element: string; context: string }
+      | { success: false; error: string }
     >({
       description:
-        "Click an element on the current page. PREFERRED: use 'text' (+ optional 'tag') to find by visible text — this is more reliable than CSS selectors. Use 'selector' only when you have a unique #id or [name] attribute. NEVER use nth-child, nth-of-type, or Playwright pseudo-selectors.",
+        "Click an element on the current page. PREFERRED: use 'text' (+ optional 'tag') to find by visible text — this is more reliable than CSS selectors. When there are MULTIPLE elements with the same text (e.g. several 'Install' buttons), you MUST use 'near_text' to disambiguate by specifying text from the surrounding card/section (e.g. near_text='gyoza Platform'). Use 'selector' only when you have a unique #id or [name] attribute. NEVER use nth-child, nth-of-type, or Playwright pseudo-selectors.",
       inputSchema: jsonSchema<{
         selector?: string;
         text?: string;
         tag?: string;
+        near_text?: string;
       }>({
         type: "object" as const,
         properties: {
@@ -214,16 +216,23 @@ export function createBrowserTools(
             description:
               "HTML tag to narrow text search, e.g. 'button', 'a', 'div' (optional, used with 'text')",
           },
+          near_text: {
+            type: "string",
+            description:
+              "Text from a parent/ancestor element to disambiguate when multiple elements have the same text, e.g. near_text='gyoza Platform' to click the Install button inside the gyoza Platform card",
+          },
         },
       }),
       execute: async ({
         selector,
         text,
         tag,
+        near_text,
       }: {
         selector?: string;
         text?: string;
         tag?: string;
+        near_text?: string;
       }) => {
         if (!selector && !text) {
           return {
@@ -239,38 +248,77 @@ export function createBrowserTools(
               sel: string | null,
               txt: string | null,
               htmlTag: string | null,
+              nearTxt: string | null,
             ) => {
               let el: HTMLElement | null = null;
               if (txt) {
-                // Find by visible text content
                 const searchTag = htmlTag || "*";
                 const candidates = Array.from(
                   document.querySelectorAll(searchTag),
                 ) as HTMLElement[];
-                el =
-                  candidates.find((e) => e.textContent?.trim() === txt) ||
-                  candidates.find((e) => e.textContent?.trim().includes(txt)) ||
-                  null;
+
+                if (nearTxt) {
+                  // Find element whose ancestor contains near_text
+                  el =
+                    candidates.find((e) => {
+                      if (e.textContent?.trim() !== txt) return false;
+                      // Walk up to find ancestor containing near_text
+                      let node: HTMLElement | null = e.parentElement;
+                      for (let d = 0; node && d < 8; d++) {
+                        if (
+                          node.textContent
+                            ?.toLowerCase()
+                            .includes(nearTxt.toLowerCase())
+                        )
+                          return true;
+                        node = node.parentElement;
+                      }
+                      return false;
+                    }) || null;
+                }
+
+                if (!el) {
+                  el =
+                    candidates.find((e) => e.textContent?.trim() === txt) ||
+                    candidates.find((e) =>
+                      e.textContent?.trim().includes(txt),
+                    ) ||
+                    null;
+                }
               } else if (sel) {
                 el = document.querySelector(sel) as HTMLElement | null;
               }
               if (!el) return { found: false };
               el.click();
+              // Gather ancestor context so the AI knows what it clicked
+              let ancestorCtx = "";
+              let node: HTMLElement | null = el.parentElement;
+              for (let d = 0; node && d < 5; d++) {
+                if (node.tagName === "BODY") break;
+                const t = (node.textContent || "").trim();
+                if (t.length > 20 && t.length < 1000) {
+                  ancestorCtx = t.slice(0, 150);
+                  break;
+                }
+                node = node.parentElement;
+              }
               return {
                 found: true,
                 tagName: el.tagName.toLowerCase(),
                 text: (el.textContent || "").trim().slice(0, 100),
+                context: ancestorCtx,
               };
             }) as (...args: never[]) => {
               found: boolean;
               tagName?: string;
               text?: string;
+              context?: string;
             },
-            [selector || null, text || null, tag || null],
+            [selector || null, text || null, tag || null, near_text || null],
           );
           if (!result?.found) {
             const target = text
-              ? `element with text "${text}"${tag ? ` (tag: ${tag})` : ""}`
+              ? `element with text "${text}"${tag ? ` (tag: ${tag})` : ""}${near_text ? ` near "${near_text}"` : ""}`
               : `selector: ${selector}`;
             return {
               success: false as const,
@@ -284,6 +332,7 @@ export function createBrowserTools(
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
+            context: result.context || "",
           };
         } catch (e) {
           return {
