@@ -13,6 +13,7 @@ import {
   DEFAULT_EXPRESSION,
   EXPRESSIONS,
 } from "../../lib/expressions";
+
 import { TypewriterText } from "./components/TypewriterText";
 import { useProximity } from "./hooks/useProximity";
 import {
@@ -477,7 +478,6 @@ export function GyozaiWidget() {
           setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
           setLoading(false);
-          setExpression(DEFAULT_EXPRESSION);
         }
       }
     });
@@ -1132,7 +1132,6 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
-      setExpression(DEFAULT_EXPRESSION);
       // Re-focus input so user can immediately type the next message
       setTimeout(() => inputRef.current?.focus(), 50);
     }
@@ -1158,7 +1157,6 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
-      setExpression(DEFAULT_EXPRESSION);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
