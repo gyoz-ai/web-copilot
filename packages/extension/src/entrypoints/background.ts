@@ -389,7 +389,11 @@ async function handleQuery(
 
   const queryId = message.queryId;
 
-  // Helper to forward streaming events to content script
+  // Helper to forward streaming events to content script.
+  // We track pending sends so we can await them all before returning the
+  // final result — this prevents a race where sendResponse arrives at the
+  // content script before late streaming events.
+  const pendingSends: Promise<unknown>[] = [];
   const sendStreamEvent = (event: {
     kind: string;
     content?: string;
@@ -397,15 +401,17 @@ async function handleQuery(
     options?: string[];
   }) => {
     if (!queryId) return; // No streaming without queryId
-    chrome.tabs
-      .sendMessage(senderTabId, {
-        type: "gyozai_stream_event",
-        queryId,
-        event,
-      })
-      .catch(() => {
-        // Content script may have disconnected (e.g. navigation)
-      });
+    pendingSends.push(
+      chrome.tabs
+        .sendMessage(senderTabId, {
+          type: "gyozai_stream_event",
+          queryId,
+          event,
+        })
+        .catch(() => {
+          // Content script may have disconnected (e.g. navigation)
+        }),
+    );
   };
 
   const ctx: ToolExecContext = {
@@ -474,7 +480,12 @@ async function handleQuery(
     // If the model also produced text (outside of tool calls), include it as a message
     if (finalText && finalText.trim()) {
       ctx.messages.push(finalText.trim());
+      sendStreamEvent({ kind: "message", content: finalText.trim() });
     }
+
+    // Ensure all streaming events have been delivered before returning the
+    // final result — prevents the race where sendResponse arrives first.
+    await Promise.all(pendingSends);
 
     // Update conversation history — include tool summary so AI has context
     history.push({ role: "user", content: message.query });
