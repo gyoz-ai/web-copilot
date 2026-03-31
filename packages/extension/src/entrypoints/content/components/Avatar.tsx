@@ -79,7 +79,7 @@ export function Avatar({
           border: isTalking
             ? "2px solid var(--g-brand-500)"
             : "1px solid var(--g-surface-border)",
-          background: "var(--g-surface-1)",
+          background: "#252321",
           cursor: isDragging ? "grabbing" : "pointer",
           display: "flex",
           alignItems: "center",

@@ -1169,25 +1169,13 @@ export function GyozaiWidget() {
         !isDraggingAvatar &&
         (() => {
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
-          const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
-          const bubbleWidth = 280;
-          const pad = 8;
-          const posStyle: React.CSSProperties = rect
-            ? {
-                left: Math.max(
-                  pad,
-                  Math.min(
-                    rect.left + rect.width / 2 - bubbleWidth / 2,
-                    window.innerWidth - bubbleWidth - pad,
-                  ),
-                ),
-                ...(showAbove
-                  ? { bottom: window.innerHeight - rect.top + 8 }
-                  : { top: rect.bottom + 8 }),
-              }
-            : { right: 20, bottom: 100 };
+          if (!rect) return null;
+          const showAbove = rect.top > window.innerHeight / 2;
+          const avatarCenterX = rect.left + rect.width / 2;
+          const verticalPos = showAbove
+            ? { bottom: window.innerHeight - rect.top + 8 }
+            : { top: rect.bottom + 8 };
 
-          // Find the last tool-status message (for status pill display)
           const lastStatus = [...messages]
             .reverse()
             .find((m) => m.type === "tool-status");
@@ -1195,56 +1183,70 @@ export function GyozaiWidget() {
             messages.length > 0 ? messages[messages.length - 1] : null;
           const isThinking = loading;
 
-          // Show status pill if loading with a tool-status message
-          if (isThinking && lastStatus) {
+          // Determine what to show: status pill, speech bubble, or idle pill
+          const showPill =
+            (isThinking && lastStatus) ||
+            isThinking ||
+            !lastMsg ||
+            lastMsg.role !== "assistant";
+          const pillText = isThinking
+            ? lastStatus?.content || "Thinking..."
+            : "Idling...";
+
+          if (
+            showPill &&
+            !(lastMsg && lastMsg.role === "assistant" && !isThinking)
+          ) {
             return (
               <div
                 style={{
                   position: "fixed",
                   zIndex: 2147483647,
                   pointerEvents: "none",
-                  display: "flex",
-                  justifyContent: "center",
-                  width: bubbleWidth,
-                  ...posStyle,
+                  left: avatarCenterX,
+                  transform: "translateX(-50%)",
+                  ...verticalPos,
                 }}
               >
-                <div className="gyozai-status-pill">{lastStatus.content}</div>
+                <div className="gyozai-status-pill">{pillText}</div>
               </div>
             );
           }
 
-          // Show speech bubble with last assistant message, or "Idling..." if none
+          // Speech bubble with last assistant message
+          const bubbleWidth = 280;
+          const pad = 8;
           return (
             <div
               ref={speechBubbleRef}
               style={{
                 position: "fixed",
                 zIndex: 2147483647,
-                ...posStyle,
+                left: Math.max(
+                  pad,
+                  Math.min(
+                    avatarCenterX - bubbleWidth / 2,
+                    window.innerWidth - bubbleWidth - pad,
+                  ),
+                ),
+                ...verticalPos,
               }}
               onMouseEnter={() => {
                 hoverOpenRef.current = true;
                 setExpanded(true);
               }}
             >
-              {lastMsg && lastMsg.role === "assistant" ? (
-                <SpeechBubble
-                  text={lastMsg.content}
-                  isThinking={false}
-                  autoDismissMs={0}
-                  soundEnabled={typingSound}
-                  typewriterEnabled={animatedMsgIdRef.current !== lastMsg.id}
-                  onTypingChange={(typing) => {
-                    setIsTypewriting(typing);
-                    if (!typing) animatedMsgIdRef.current = lastMsg.id;
-                  }}
-                />
-              ) : isThinking ? (
-                <div className="gyozai-status-pill">Thinking...</div>
-              ) : (
-                <div className="gyozai-status-pill">Idling...</div>
-              )}
+              <SpeechBubble
+                text={lastMsg!.content}
+                isThinking={false}
+                autoDismissMs={0}
+                soundEnabled={typingSound}
+                typewriterEnabled={animatedMsgIdRef.current !== lastMsg!.id}
+                onTypingChange={(typing) => {
+                  setIsTypewriting(typing);
+                  if (!typing) animatedMsgIdRef.current = lastMsg!.id;
+                }}
+              />
             </div>
           );
         })()}
