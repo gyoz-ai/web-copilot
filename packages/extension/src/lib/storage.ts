@@ -125,13 +125,36 @@ export async function getConversationLlmHistory(
   return conv?.llmHistory || [];
 }
 
+/** Rough token estimate (same heuristic as Claude Code's fallback). */
+function estimateTokens(text: string): number {
+  return Math.round(text.length / 4);
+}
+
+/**
+ * Max estimated tokens for the entire LLM history.
+ * Keeps plenty of headroom for the system prompt + current turn.
+ */
+const MAX_HISTORY_TOKENS = 30_000;
+
 export async function saveConversationLlmHistory(
   conversationId: string,
   history: Array<{ role: string; content: string }>,
 ): Promise<void> {
   const conv = await getConversation(conversationId);
   if (!conv) return;
-  conv.llmHistory = history.slice(-20);
+
+  // Keep at most 50 messages
+  let trimmed = history.slice(-50);
+
+  // If total estimated tokens exceed budget, drop oldest pairs until under limit
+  while (
+    trimmed.length > 2 &&
+    estimateTokens(trimmed.map((m) => m.content).join("")) > MAX_HISTORY_TOKENS
+  ) {
+    trimmed = trimmed.slice(2); // drop oldest user+assistant pair
+  }
+
+  conv.llmHistory = trimmed;
   conv.updatedAt = Date.now();
   await chrome.storage.local.set({ [convKey(conversationId)]: conv });
 }

@@ -20,7 +20,13 @@ import {
   t,
 } from "../../lib/i18n";
 import { FormatMessage } from "./components/FormatMessage";
-import type { Message, ClarifyState, AgentResult, ViewMode } from "./types";
+import type {
+  Message,
+  ClarifyState,
+  AgentResult,
+  ViewMode,
+  StreamEventMessage,
+} from "./types";
 import {
   mapExtraRequests,
   sanitizeError,
@@ -96,6 +102,7 @@ export function GyozaiWidget() {
     useState<ExtensionSettings["agentSize"]>("medium");
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
@@ -110,6 +117,8 @@ export function GyozaiWidget() {
 
   // Active conversation tracking — null means fresh/new conversation
   const activeConvIdRef = useRef<string | null>(null);
+  // Streaming: tracks the current query's ID to correlate streaming events
+  const currentQueryIdRef = useRef<string | null>(null);
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -183,6 +192,17 @@ export function GyozaiWidget() {
         activeConvIdRef.current = _preloadedSession.activeConvId;
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         log("Session restored from storage");
+      }
+      // If no avatar position from session, try local storage (persists across browser restart)
+      if (!_preloadedSession?.avatarPosition) {
+        chrome.storage.local
+          .get("gyozai_avatar_position")
+          .then((r) => {
+            if (r.gyozai_avatar_position) {
+              setAvatarPosition(r.gyozai_avatar_position);
+            }
+          })
+          .catch(() => {});
       }
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
@@ -383,16 +403,20 @@ export function GyozaiWidget() {
       const pendingNav = await loadAndClearPendingNav(tid);
       if (pendingNav) {
         log(
-          "Resuming after navigation — capturing",
-          pendingNav.snapshotTypes.join(", "),
-          "for query:",
-          pendingNav.originalQuery.slice(0, 60),
+          "Resuming after navigation — pending-nav state:",
+          JSON.stringify(pendingNav),
         );
 
         // Restore the conversation that was in progress
         activeConvIdRef.current = pendingNav.conversationId;
         const conv = await loadConversation(pendingNav.conversationId);
         if (conv) {
+          log(
+            "Restored conversation:",
+            conv.id,
+            "messages:",
+            conv.messages.length,
+          );
           setMessages(conv.messages);
         }
 
@@ -422,10 +446,21 @@ export function GyozaiWidget() {
           log("Captured", ctxText.length, "chars from new page");
         }
 
+        // The model already showed a message before navigating.
+        // Tell it to only provide NEW information about this page,
+        // not repeat what it already said.
+        const followUpQuery =
+          `Navigation complete — now on ${window.location.pathname}. ` +
+          `You already told the user you were navigating. ` +
+          `Do NOT repeat that. If the original request ("${pendingNav.originalQuery}") ` +
+          `needs info from THIS page, briefly provide it. ` +
+          `Otherwise just confirm arrival in one short sentence.`;
+        log("Follow-up query:", followUpQuery);
+
         try {
           autoFollowUpUsed = false;
           const result = await sendQuery(
-            `I just navigated to ${window.location.pathname} as requested. Now look at this page and respond to the user. Original request: ${pendingNav.originalQuery}`,
+            followUpQuery,
             pendingExtraContext || undefined,
           );
           pendingExtraContext = null;
@@ -660,8 +695,13 @@ export function GyozaiWidget() {
       pageSnapshot = captureCleanHtml();
     }
 
+    // Generate a queryId for streaming event correlation
+    const queryId = crypto.randomUUID();
+    currentQueryIdRef.current = queryId;
+
     const payload: Record<string, unknown> = {
       type: "gyozai_query",
+      queryId,
       query,
       manifestMode,
       recipe: recipe?.content,
@@ -853,8 +893,40 @@ export function GyozaiWidget() {
     ]);
   }, []);
 
+  // ─── Listen for streaming events from background worker ───
+  useEffect(() => {
+    const handler = (msg: StreamEventMessage) => {
+      if (
+        msg.type !== "gyozai_stream_event" ||
+        msg.queryId !== currentQueryIdRef.current
+      )
+        return;
+
+      const evt = msg.event;
+      switch (evt.kind) {
+        case "message":
+          addAssistantMessage(evt.content);
+          break;
+        case "tool-status":
+          addToolStatusMessage(evt.content);
+          break;
+        case "expression":
+          // Expression received via streaming — can be used for avatar mood later
+          break;
+        case "clarify":
+          setClarify({ message: evt.message, options: evt.options });
+          break;
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
+  }, [addAssistantMessage, addToolStatusMessage]);
+
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
+    // Clear the streaming queryId — no more events expected
+    currentQueryIdRef.current = null;
+
     if (result.error) {
       setError(result.error);
       return;
@@ -868,19 +940,35 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // Show each tool action as its own status pill
+    // If events were already streamed to the UI, skip duplicate rendering.
+    // Only handle clarify (already set via streaming) and edge-case fallbacks.
+    if (result.streamed) {
+      // Fallback: if streaming sent nothing, show a generic message
+      const aiMessages = result.messages?.filter((m) => m.trim()) || [];
+      const statusLines = buildToolStatusLines(result.toolCalls);
+      if (statusLines.length === 0 && aiMessages.length === 0) {
+        if (result.navigated) {
+          addToolStatusMessage("Navigating...");
+        } else if (result.toolCalls?.length) {
+          addAssistantMessage("Done.");
+        } else {
+          addAssistantMessage("I processed your request.");
+        }
+      }
+      return;
+    }
+
+    // Non-streamed fallback (e.g. no queryId was set)
     const statusLines = buildToolStatusLines(result.toolCalls);
     for (const line of statusLines) {
       addToolStatusMessage(line);
     }
 
-    // Show each AI message as its own bubble (not concatenated)
     const aiMessages = result.messages?.filter((m) => m.trim()) || [];
     for (const msg of aiMessages) {
       addAssistantMessage(msg);
     }
 
-    // Fallback: if AI didn't send any message, generate one
     if (statusLines.length === 0 && aiMessages.length === 0) {
       if (result.navigated) {
         addToolStatusMessage("Navigating...");
@@ -891,7 +979,6 @@ export function GyozaiWidget() {
       }
     }
 
-    // Clarify state (from clarify tool)
     if (result.clarify) {
       setClarify({
         message: result.clarify.message,
@@ -1044,6 +1131,8 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      // Re-focus input so user can immediately type the next message
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -1067,6 +1156,7 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -1092,40 +1182,72 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
-      {/* Speech bubble — always shows last message (hidden when chatbox is open) */}
+      {/* Status pill / speech bubble — centered above avatar */}
       {!expanded &&
-        messages.length > 0 &&
+        !isDraggingAvatar &&
         (() => {
-          const lastMsg = messages[messages.length - 1];
-          // Only show thinking when actively loading — don't infer from
-          // lastMsg.role because after session restore the last msg may be
-          // "user" even though no query is in flight.
-          const isThinking = loading;
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
-          const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
+          if (!rect) return null;
+          const showAbove = rect.top > window.innerHeight / 2;
+          const avatarCenterX = rect.left + rect.width / 2;
+          const verticalPos = showAbove
+            ? { bottom: window.innerHeight - rect.top + 8 }
+            : { top: rect.bottom + 8 };
+
+          const lastStatus = [...messages]
+            .reverse()
+            .find((m) => m.type === "tool-status");
+          const lastMsg =
+            messages.length > 0 ? messages[messages.length - 1] : null;
+          const isThinking = loading;
+
+          // Determine what to show: status pill, speech bubble, or idle pill
+          const showPill =
+            (isThinking && lastStatus) ||
+            isThinking ||
+            !lastMsg ||
+            lastMsg.role !== "assistant";
+          const pillText = isThinking
+            ? lastStatus?.content || "Thinking..."
+            : "Idling...";
+
+          if (
+            showPill &&
+            !(lastMsg && lastMsg.role === "assistant" && !isThinking)
+          ) {
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  zIndex: 2147483647,
+                  pointerEvents: "none",
+                  left: avatarCenterX,
+                  transform: "translateX(-50%)",
+                  ...verticalPos,
+                }}
+              >
+                <div className="gyozai-status-pill">{pillText}</div>
+              </div>
+            );
+          }
+
+          // Speech bubble with last assistant message
           const bubbleWidth = 280;
           const pad = 8;
-          const posStyle: React.CSSProperties = rect
-            ? {
-                left: Math.max(
-                  pad,
-                  Math.min(
-                    rect.left + rect.width / 2 - bubbleWidth / 2,
-                    window.innerWidth - bubbleWidth - pad,
-                  ),
-                ),
-                ...(showAbove
-                  ? { bottom: window.innerHeight - rect.top + 8 }
-                  : { top: rect.bottom + 8 }),
-              }
-            : { right: 20, bottom: 100 };
           return (
             <div
               ref={speechBubbleRef}
               style={{
                 position: "fixed",
                 zIndex: 2147483647,
-                ...posStyle,
+                left: Math.max(
+                  pad,
+                  Math.min(
+                    avatarCenterX - bubbleWidth / 2,
+                    window.innerWidth - bubbleWidth - pad,
+                  ),
+                ),
+                ...verticalPos,
               }}
               onMouseEnter={() => {
                 hoverOpenRef.current = true;
@@ -1133,14 +1255,14 @@ export function GyozaiWidget() {
               }}
             >
               <SpeechBubble
-                text={isThinking ? "" : lastMsg.content}
-                isThinking={isThinking}
+                text={lastMsg!.content}
+                isThinking={false}
                 autoDismissMs={0}
                 soundEnabled={typingSound}
-                typewriterEnabled={animatedMsgIdRef.current !== lastMsg.id}
+                typewriterEnabled={animatedMsgIdRef.current !== lastMsg!.id}
                 onTypingChange={(typing) => {
                   setIsTypewriting(typing);
-                  if (!typing) animatedMsgIdRef.current = lastMsg.id;
+                  if (!typing) animatedMsgIdRef.current = lastMsg!.id;
                 }}
               />
             </div>
@@ -1154,16 +1276,23 @@ export function GyozaiWidget() {
         talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
         isTalking={isTypewriting}
         position={avatarPosition}
-        onDragEnd={(pos) => setAvatarPosition(pos)}
+        onDragEnd={(pos) => {
+          setAvatarPosition(pos);
+          // Persist to local storage (survives browser close)
+          chrome.storage.local
+            .set({ gyozai_avatar_position: pos })
+            .catch(() => {});
+        }}
         onClick={() => {}}
         wrapperRef={avatarWrapperRef}
+        onDragStateChange={setIsDraggingAvatar}
       />
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{
-          display: expanded ? "flex" : "none",
+          display: expanded && !isDraggingAvatar ? "flex" : "none",
           ...(avatarWrapperRef.current
             ? (() => {
                 const rect = avatarWrapperRef.current.getBoundingClientRect();

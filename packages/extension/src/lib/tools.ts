@@ -17,6 +17,13 @@ export interface ToolExecContext {
   conversationId: string | null;
   /** Original user query for pending-nav resume */
   originalQuery: string;
+  /** Streaming callback — fires as each tool produces user-visible output */
+  onStreamEvent?: (event: {
+    kind: "message" | "tool-status" | "expression" | "clarify";
+    content?: string;
+    face?: string;
+    options?: string[];
+  }) => void;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -77,6 +84,7 @@ export function createBrowserTools(
     }),
     execute: async ({ message }) => {
       ctx.messages.push(message);
+      ctx.onStreamEvent?.({ kind: "message", content: message });
       return { displayed: true };
     },
   });
@@ -107,6 +115,7 @@ export function createBrowserTools(
     }),
     execute: async ({ face }) => {
       ctx.expression = face;
+      ctx.onStreamEvent?.({ kind: "expression", face });
       return { applied: true };
     },
   });
@@ -140,6 +149,11 @@ export function createBrowserTools(
           });
           const resolved = tab?.url ? new URL(url, tab.url).href : url;
 
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: `Navigating to ${resolved}`,
+          });
+
           // Save pending-nav state so the widget auto-resumes on the new page
           const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
           await chrome.storage.local.set({
@@ -149,6 +163,9 @@ export function createBrowserTools(
               conversationId: ctx.conversationId || "",
               tabId: ctx.tabId,
               timestamp: Date.now(),
+              // Store messages shown before navigation so the follow-up
+              // can avoid repeating them
+              preNavMessageCount: ctx.messages.length,
             },
           });
 
@@ -177,27 +194,73 @@ export function createBrowserTools(
   // ── click ───────────────────────────────────────────────────────────────
   if (caps.click) {
     tools.click = tool<
-      { selector: string },
+      { selector?: string; text?: string; tag?: string },
       { success: true; element: string } | { success: false; error: string }
     >({
       description:
-        "Click an element on the current page by CSS selector. Returns whether the element was found and clicked.",
-      inputSchema: jsonSchema<{ selector: string }>({
+        "Click an element on the current page. PREFERRED: use 'text' (+ optional 'tag') to find by visible text — this is more reliable than CSS selectors. Use 'selector' only when you have a unique #id or [name] attribute. NEVER use nth-child, nth-of-type, or Playwright pseudo-selectors.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        text?: string;
+        tag?: string;
+      }>({
         type: "object" as const,
         properties: {
           selector: {
             type: "string",
-            description: "CSS selector of the element to click",
+            description:
+              "CSS selector (use only for #id or [name] selectors — avoid complex selectors)",
+          },
+          text: {
+            type: "string",
+            description:
+              "Visible text content of the element to click (preferred over selector)",
+          },
+          tag: {
+            type: "string",
+            description:
+              "HTML tag to narrow text search, e.g. 'button', 'a', 'div' (optional, used with 'text')",
           },
         },
-        required: ["selector"],
       }),
-      execute: async ({ selector }: { selector: string }) => {
+      execute: async ({
+        selector,
+        text,
+        tag,
+      }: {
+        selector?: string;
+        text?: string;
+        tag?: string;
+      }) => {
+        if (!selector && !text) {
+          return {
+            success: false as const,
+            error:
+              "Provide either 'selector' or 'text' to identify the element",
+          };
+        }
         try {
           const result = await execIsolated(
             ctx.tabId,
-            ((sel: string) => {
-              const el = document.querySelector(sel) as HTMLElement | null;
+            ((
+              sel: string | null,
+              txt: string | null,
+              htmlTag: string | null,
+            ) => {
+              let el: HTMLElement | null = null;
+              if (txt) {
+                // Find by visible text content
+                const searchTag = htmlTag || "*";
+                const candidates = Array.from(
+                  document.querySelectorAll(searchTag),
+                ) as HTMLElement[];
+                el =
+                  candidates.find((e) => e.textContent?.trim() === txt) ||
+                  candidates.find((e) => e.textContent?.trim().includes(txt)) ||
+                  null;
+              } else if (sel) {
+                el = document.querySelector(sel) as HTMLElement | null;
+              }
               if (!el) return { found: false };
               el.click();
               return {
@@ -210,14 +273,21 @@ export function createBrowserTools(
               tagName?: string;
               text?: string;
             },
-            [selector],
+            [selector || null, text || null, tag || null],
           );
           if (!result?.found) {
+            const target = text
+              ? `element with text "${text}"${tag ? ` (tag: ${tag})` : ""}`
+              : `selector: ${selector}`;
             return {
               success: false as const,
-              error: `No element found for selector: ${selector}`,
+              error: `No element found: ${target}`,
             };
           }
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: "Clicked element",
+          });
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
@@ -255,8 +325,18 @@ export function createBrowserTools(
         },
         required: ["code", "description"],
       }),
-      execute: async ({ code }: { code: string; description: string }) => {
+      execute: async ({
+        code,
+        description,
+      }: {
+        code: string;
+        description: string;
+      }) => {
         try {
+          ctx.onStreamEvent?.({
+            kind: "tool-status",
+            content: description.length > 40 ? "Ran code" : description,
+          });
           // Auto-fix selectors with special characters
           const fixedCode = code.replace(
             /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
@@ -277,23 +357,36 @@ export function createBrowserTools(
             },
           );
 
-          const error = await execInPage(
+          const result = await execInPage(
             ctx.tabId,
             ((jsCode: string) => {
               try {
-                new Function(jsCode)();
-                return null;
+                const ret = new Function(jsCode)();
+                // Return stringified result so the model can see what happened
+                return {
+                  error: null,
+                  result: ret === undefined ? null : String(ret).slice(0, 500),
+                };
               } catch (e) {
-                return e instanceof Error ? e.message : String(e);
+                return {
+                  error: e instanceof Error ? e.message : String(e),
+                  result: null,
+                };
               }
-            }) as (...args: never[]) => string | null,
+            }) as (...args: never[]) => {
+              error: string | null;
+              result: string | null;
+            },
             [fixedCode],
           );
 
-          if (error) {
-            return { success: false, error };
+          if (result?.error) {
+            return { success: false, error: result.error };
           }
-          return { success: true };
+          return {
+            success: true,
+            ...(result?.result != null ? { result: result.result } : {}),
+          };
         } catch (e) {
           return {
             success: false,
@@ -340,6 +433,12 @@ export function createBrowserTools(
             }) as (...args: never[]) => boolean,
             [selector],
           );
+          if (found) {
+            ctx.onStreamEvent?.({
+              kind: "tool-status",
+              content: "Highlighted element",
+            });
+          }
           return found
             ? { success: true as const, highlighted: selector }
             : {
@@ -383,13 +482,26 @@ export function createBrowserTools(
       required: ["types"],
     }),
     execute: async ({ types }: { types: string[] }) => {
+      ctx.onStreamEvent?.({ kind: "tool-status", content: "Reading page" });
       try {
         const result = await chrome.tabs.sendMessage(ctx.tabId, {
           type: "gyozai_tool_capture_context",
           snapshotTypes: types,
         });
         if (result?.context) {
-          return { context: result.context as string };
+          const ctx_text = result.context as string;
+          console.log(
+            `%c  [gyoza] get_page_context(${types.join(",")})%c ${ctx_text.length} chars`,
+            "color: #a855f7; font-weight: bold",
+            "color: #9ca3af",
+          );
+          console.groupCollapsed(
+            "%c  [gyoza] page context preview",
+            "color: #9ca3af",
+          );
+          console.log(ctx_text.slice(0, 2000));
+          console.groupEnd();
+          return { context: ctx_text };
         }
         return { context: "No page context captured (page may be loading)." };
       } catch {
@@ -421,6 +533,7 @@ export function createBrowserTools(
         required: ["url"],
       }),
       execute: async ({ url, method }: { url: string; method?: string }) => {
+        ctx.onStreamEvent?.({ kind: "tool-status", content: "Fetching data" });
         try {
           const response = await fetch(url, { method: method || "GET" });
           const text = await response.text();
@@ -470,6 +583,8 @@ export function createBrowserTools(
       }) => {
         ctx.clarify = { message, options };
         ctx.messages.push(message);
+        ctx.onStreamEvent?.({ kind: "message", content: message });
+        ctx.onStreamEvent?.({ kind: "clarify", options, content: message });
         return { awaiting_user_response: true };
       },
     });

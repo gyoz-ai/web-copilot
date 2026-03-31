@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useDraggable } from "../hooks/useDraggable";
 
 export const AVATAR_SIZES = { small: 48, medium: 72, big: 96 } as const;
@@ -15,6 +15,8 @@ interface AvatarProps {
   onClick: () => void;
   /** Ref to the wrapper element (used for proximity detection). */
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
+  /** Called when drag state changes. */
+  onDragStateChange?: (isDragging: boolean) => void;
 }
 
 export function Avatar({
@@ -26,6 +28,7 @@ export function Avatar({
   onDragEnd,
   onClick,
   wrapperRef,
+  onDragStateChange,
 }: AvatarProps) {
   const px = AVATAR_SIZES[size];
   const {
@@ -38,6 +41,10 @@ export function Avatar({
     size: px,
     onDragEnd,
   });
+
+  useEffect(() => {
+    onDragStateChange?.(isDragging);
+  }, [isDragging, onDragStateChange]);
 
   const handleClick = useCallback(() => {
     // Only fire click if the pointer wasn't dragged
@@ -72,7 +79,7 @@ export function Avatar({
           border: isTalking
             ? "2px solid var(--g-brand-500)"
             : "1px solid var(--g-surface-border)",
-          background: "var(--g-surface-1)",
+          background: "#252321",
           cursor: isDragging ? "grabbing" : "pointer",
           display: "flex",
           alignItems: "center",
