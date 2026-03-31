@@ -585,19 +585,41 @@ export function createBrowserTools(
                 S,
                 `✓ Clicking <${el.tagName.toLowerCase()}> "${(el.textContent || "").trim().slice(0, 60)}" | context: "${ancestorCtx.slice(0, 80)}..."`,
               );
+
+              // Capture pre-click state for verification
+              const preClickUrl = window.location.href;
+              const isLink = el.tagName === "A" || el.closest("a") !== null;
+              const linkHref =
+                el.tagName === "A"
+                  ? (el as HTMLAnchorElement).href
+                  : el.closest("a")
+                    ? (el.closest("a") as HTMLAnchorElement).href
+                    : null;
+
               el.click();
+
+              // Post-click: check if element is still visible
+              const stillVisible = el.isConnected && el.offsetParent !== null;
 
               return {
                 found: true,
                 tagName: el.tagName.toLowerCase(),
                 text: (el.textContent || "").trim().slice(0, 100),
                 context: ancestorCtx,
+                preClickUrl,
+                isLink,
+                linkHref,
+                stillVisible,
               };
             }) as (...args: never[]) => {
               found: boolean;
               tagName?: string;
               text?: string;
               context?: string;
+              preClickUrl?: string;
+              isLink?: boolean;
+              linkHref?: string | null;
+              stillVisible?: boolean;
             },
             [selector || null, text || null, tag || null, near_text || null],
           );
@@ -614,10 +636,36 @@ export function createBrowserTools(
             kind: "tool-status",
             content: "Clicked element",
           });
+
+          // Post-click verification: check if URL changed (SPA navigation)
+          const notes: string[] = [];
+          if (result.preClickUrl) {
+            await new Promise((r) => setTimeout(r, 150));
+            const postUrl = await execInPage(
+              ctx.tabId,
+              (() => window.location.href) as (...args: never[]) => string,
+            );
+            const urlChanged = postUrl !== result.preClickUrl;
+            if (urlChanged) {
+              notes.push(`Page navigated to ${postUrl} after click.`);
+              ctx.navigated = true;
+            } else if (result.isLink && result.linkHref) {
+              notes.push(
+                `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
+              );
+            }
+          }
+          if (result.stillVisible === false) {
+            notes.push(
+              "Element disappeared after click (likely a modal closed or content updated).",
+            );
+          }
+
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
             context: result.context || "",
+            ...(notes.length > 0 ? { verification: notes.join(" ") } : {}),
           };
         } catch (e) {
           return {
@@ -998,27 +1046,45 @@ export function createBrowserTools(
               }
               if (!el) return { found: false };
 
-              // Set value and dispatch events
+              // Set value using native setter (works with React controlled inputs)
               const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
                 window.HTMLInputElement.prototype,
                 "value",
               )?.set;
-              if (nativeInputValueSetter) {
-                nativeInputValueSetter.call(el, val);
+              const nativeTextareaValueSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLTextAreaElement.prototype,
+                "value",
+              )?.set;
+              const setter =
+                el.tagName === "TEXTAREA"
+                  ? nativeTextareaValueSetter
+                  : nativeInputValueSetter;
+              if (setter) {
+                setter.call(el, val);
               } else {
                 el.value = val;
               }
               el.dispatchEvent(new Event("input", { bubbles: true }));
               el.dispatchEvent(new Event("change", { bubbles: true }));
+
+              // Build a selector for re-finding this element during verification
+              const verifySelector = el.id
+                ? `#${el.id}`
+                : el.name
+                  ? `[name="${el.name}"]`
+                  : null;
+
               return {
                 found: true,
                 element: el.tagName.toLowerCase(),
                 name: el.name || el.id || "",
+                verifySelector,
               };
             }) as (...args: never[]) => {
               found: boolean;
               element?: string;
               name?: string;
+              verifySelector?: string | null;
             },
             [selector || null, label || null, value],
           );
@@ -1027,6 +1093,34 @@ export function createBrowserTools(
               success: false,
               error: `No input found${label ? ` with label "${label}"` : ""}${selector ? ` matching "${selector}"` : ""}`,
             };
+          }
+
+          // Verification: read value back after a short delay
+          if (result.verifySelector) {
+            await new Promise((r) => setTimeout(r, 50));
+            const verify = await execInPage(
+              ctx.tabId,
+              ((sel: string, expectedValue: string) => {
+                const el = document.querySelector(
+                  sel,
+                ) as HTMLInputElement | null;
+                if (!el) return { verified: true };
+                return {
+                  verified: el.value === expectedValue,
+                  actualValue: el.value.slice(0, 100),
+                };
+              }) as (...args: never[]) => {
+                verified: boolean;
+                actualValue?: string;
+              },
+              [result.verifySelector, value],
+            );
+            if (verify && !verify.verified) {
+              return {
+                success: false,
+                error: `Value was set but the input reverted to "${verify.actualValue || "(empty)"}". This is likely a React controlled input — try using execute_js with native value setter and React's synthetic events.`,
+              };
+            }
           }
           return { success: true, filled: result.element, name: result.name };
         } catch (e) {
@@ -1139,6 +1233,7 @@ export function createBrowserTools(
 
               el.value = targetOpt.value;
               el.dispatchEvent(new Event("change", { bubbles: true }));
+
               return {
                 found: true,
                 selected: true,
@@ -1166,6 +1261,34 @@ export function createBrowserTools(
               success: false,
               error: result.error || "Option not found",
             };
+
+          // Verification: read value back after a short delay
+          await new Promise((r) => setTimeout(r, 50));
+          const verify = await execInPage(
+            ctx.tabId,
+            ((sel: string | null, expectedValue: string) => {
+              const el = sel
+                ? (document.querySelector(sel) as HTMLSelectElement | null)
+                : (document.querySelector(
+                    "select",
+                  ) as HTMLSelectElement | null);
+              if (!el) return { verified: true };
+              return {
+                verified: el.value === expectedValue,
+                actualValue: el.value,
+              };
+            }) as (...args: never[]) => {
+              verified: boolean;
+              actualValue?: string;
+            },
+            [selector || null, result.value || ""],
+          );
+          if (verify && !verify.verified) {
+            return {
+              success: false,
+              error: `Selected "${result.text}" but the value reverted to "${verify.actualValue || "(empty)"}". The select may be controlled by JavaScript.`,
+            };
+          }
           return { success: true, selected: result.text, value: result.value };
         } catch (e) {
           return {
