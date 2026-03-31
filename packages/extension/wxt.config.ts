@@ -39,7 +39,7 @@ export default defineConfig({
         resources: [
           "/icon-128.png",
           "/icon-talking.gif",
-          "/avatars/*/*.png",
+          "/avatars/*/*.jpeg",
           "/avatars/*/*.gif",
         ],
         matches: ["<all_urls>"],

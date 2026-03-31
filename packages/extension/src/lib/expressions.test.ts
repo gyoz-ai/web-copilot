@@ -33,7 +33,9 @@ describe("expressions", () => {
 
   describe("getAvatarUrl", () => {
     it("returns static PNG path when not talking", () => {
-      expect(getAvatarUrl("neutral", false)).toBe("/avatars/gyoza/neutral.png");
+      expect(getAvatarUrl("neutral", false)).toBe(
+        "/avatars/gyoza/neutral.jpeg",
+      );
     });
 
     it("returns talking GIF path when talking", () => {
@@ -44,7 +46,7 @@ describe("expressions", () => {
 
     it("resolves all expressions correctly when idle", () => {
       for (const expr of EXPRESSIONS) {
-        expect(getAvatarUrl(expr, false)).toBe(`/avatars/gyoza/${expr}.png`);
+        expect(getAvatarUrl(expr, false)).toBe(`/avatars/gyoza/${expr}.jpeg`);
       }
     });
 
@@ -58,7 +60,7 @@ describe("expressions", () => {
 
     it("uses custom avatar folder when specified", () => {
       expect(getAvatarUrl("happy", false, "mochi")).toBe(
-        "/avatars/mochi/happy.png",
+        "/avatars/mochi/happy.jpeg",
       );
       expect(getAvatarUrl("happy", true, "mochi")).toBe(
         "/avatars/mochi/happy-talking.gif",

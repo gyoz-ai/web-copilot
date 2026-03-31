@@ -26,6 +26,6 @@ export function getAvatarUrl(
   isTalking: boolean,
   avatar: string = DEFAULT_AVATAR,
 ): string {
-  const file = isTalking ? `${expression}-talking.gif` : `${expression}.png`;
+  const file = isTalking ? `${expression}-talking.gif` : `${expression}.jpeg`;
   return `/avatars/${avatar}/${file}`;
 }
