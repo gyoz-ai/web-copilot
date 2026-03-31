@@ -340,16 +340,39 @@ function resolveLiveSelector(capturedEl: Element, fallback: string): string {
   const name = capturedEl.getAttribute("name");
   if (name) return `[name="${name}"]`;
 
-  // Match back to live DOM by text content + tag
+  if (typeof document === "undefined") return `[data-gyozai="${fallback}"]`;
+
+  // Match back to live DOM by text content + tag.
+  // Use ancestor text as context to disambiguate identical buttons
+  // (e.g. multiple "Install" buttons in different recipe cards).
   const tag = capturedEl.tagName.toLowerCase();
   const text = (capturedEl.textContent || "").trim();
-  if (text && typeof document !== "undefined") {
+  const ancestorText = getAncestorContext(capturedEl);
+
+  if (text) {
     const candidates = document.querySelectorAll(tag);
+    let bestMatch: Element | null = null;
+
     for (const liveEl of Array.from(candidates)) {
-      if ((liveEl.textContent || "").trim() === text) {
-        liveEl.setAttribute("data-gyozai", fallback);
-        return `[data-gyozai="${fallback}"]`;
+      // Skip elements already matched to a different fallback
+      if (liveEl.hasAttribute("data-gyozai")) continue;
+      if ((liveEl.textContent || "").trim() !== text) continue;
+
+      // If we have ancestor context, prefer the candidate whose ancestor matches
+      if (ancestorText) {
+        const liveAncestor = getAncestorContext(liveEl);
+        if (liveAncestor === ancestorText) {
+          bestMatch = liveEl;
+          break; // exact ancestor match — use it
+        }
       }
+      // Otherwise take the first unmatched candidate
+      if (!bestMatch) bestMatch = liveEl;
+    }
+
+    if (bestMatch) {
+      bestMatch.setAttribute("data-gyozai", fallback);
+      return `[data-gyozai="${fallback}"]`;
     }
   }
 
@@ -369,6 +392,20 @@ function resolveLiveSelector(capturedEl: Element, fallback: string): string {
   }
 
   return `[data-gyozai="${fallback}"]`;
+}
+
+/** Get a short text fingerprint from the nearest meaningful ancestor
+ *  (card, list-item, section, etc.) for disambiguating identical buttons. */
+function getAncestorContext(el: Element): string {
+  let node = el.parentElement;
+  // Walk up a few levels to find an ancestor with enough unique text
+  for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
+    if (node.tagName === "BODY") break;
+    const t = (node.textContent || "").trim();
+    // Need enough text to be meaningful, but not the whole page
+    if (t.length > 20 && t.length < 2000) return t.slice(0, 200);
+  }
+  return "";
 }
 
 function buildParentSelector(el: Element): string | null {
