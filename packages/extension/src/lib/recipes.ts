@@ -1,3 +1,63 @@
+// ─── Recipe Frontmatter ─────────────────────────────────────────────────────
+
+export interface RecipeMeta {
+  name?: string;
+  version?: string;
+  domain?: string;
+  routes?: string[];
+  capabilities?: string[];
+  model?: string;
+  maxSteps?: number;
+}
+
+export function parseFrontmatter(content: string): {
+  meta: RecipeMeta;
+  body: string;
+} {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return { meta: {}, body: content };
+
+  const yamlBlock = match[1];
+  const body = match[2];
+  const meta: RecipeMeta = {};
+
+  for (const line of yamlBlock.split("\n")) {
+    const [key, ...rest] = line.split(":");
+    const value = rest.join(":").trim();
+    const k = key.trim();
+    if (k === "name") meta.name = value;
+    if (k === "version") meta.version = value;
+    if (k === "domain") meta.domain = value;
+    if (k === "model") meta.model = value;
+    if (k === "maxSteps") meta.maxSteps = parseInt(value, 10);
+    if (k === "routes") {
+      try {
+        meta.routes = JSON.parse(value);
+      } catch {
+        /* skip malformed */
+      }
+    }
+    if (k === "capabilities") {
+      try {
+        meta.capabilities = JSON.parse(value);
+      } catch {
+        /* skip malformed */
+      }
+    }
+  }
+
+  return { meta, body };
+}
+
+export function extractPlaybooks(recipeBody: string): string | null {
+  const match = recipeBody.match(
+    /## Playbooks\n([\s\S]*?)(?=\n## [^P]|\n---|$)/,
+  );
+  return match ? match[1].trim() : null;
+}
+
+// ─── Content hashing ────────────────────────────────────────────────────────
+
 async function hashContent(content: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(content);

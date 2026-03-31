@@ -48,6 +48,77 @@ export type SnapshotType =
   | "textContent"
   | "all";
 
+// ─── Content hash ─────────────────────────────────────────────────────────────
+
+function quickHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+let _cachedContextResult: {
+  hash: string;
+  url: string;
+  result: PageContext;
+} | null = null;
+
+export function getContextHash(): string | null {
+  return _cachedContextResult?.hash ?? null;
+}
+
+// ─── Progressive HTML stripping ───────────────────────────────────────────────
+
+export function stripToFit(
+  html: string,
+  maxChars: number,
+): { html: string; strippedLevels: string[] } {
+  const levels: Array<{ name: string; strip: (h: string) => string }> = [
+    {
+      name: "data-attributes",
+      strip: (h) => h.replace(/ data-[a-z-]+="[^"]*"/g, ""),
+    },
+    {
+      name: "inline-styles",
+      strip: (h) => h.replace(/ style="[^"]*"/g, ""),
+    },
+    {
+      name: "hidden-elements",
+      strip: (h) =>
+        h.replace(
+          /<[^>]+(?:display:\s*none|aria-hidden="true")[^>]*>[\s\S]*?<\/[^>]+>/gi,
+          "",
+        ),
+    },
+    {
+      name: "whitespace",
+      strip: (h) => h.replace(/\s{2,}/g, " "),
+    },
+    {
+      name: "svg-content",
+      strip: (h) => h.replace(/<svg[\s\S]*?<\/svg>/gi, "<svg/>"),
+    },
+  ];
+
+  let result = html;
+  const applied: string[] = [];
+
+  for (const level of levels) {
+    if (result.length <= maxChars) break;
+    result = level.strip(result);
+    applied.push(level.name);
+  }
+
+  if (result.length > maxChars) {
+    result = result.slice(0, maxChars) + "\n<!-- truncated -->";
+  }
+
+  return { html: result, strippedLevels: applied };
+}
+
 // ─── Shared capture cache ───────────────────────────────────────────────────────
 // Both captureCleanHtml and capturePageContext feed from the same capture.
 // The cache lives for 2 seconds to avoid redundant captures in the same turn.

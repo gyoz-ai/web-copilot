@@ -41,8 +41,16 @@ function buildCapabilityNotes(caps: Capabilities): string {
   }
   if (caps.executeJs) {
     notes.push(
-      "- execute_js: run JavaScript on the page. For filling forms, clicking buttons, editing text, changing styles. NEVER modify body/html/framework wrappers.",
+      "- execute_js: run JavaScript on the page. Only use as a LAST RESORT when specific tools (fill_input, select_option, toggle_checkbox, submit_form) cannot accomplish the task. NEVER modify body/html/framework wrappers.",
     );
+    notes.push(
+      "- fill_input: fill an input field by label or selector. Prefer over execute_js for form filling.",
+    );
+    notes.push(
+      "- select_option: select an option in a dropdown by text or value.",
+    );
+    notes.push("- toggle_checkbox: check or uncheck a checkbox/radio button.");
+    notes.push("- submit_form: submit a form by selector or button text.");
   } else {
     notes.push(
       "- execute_js: DISABLED. Do NOT use. If the user asks to interact with a form or edit page content, use show_message to explain instead.",
@@ -88,7 +96,11 @@ Analyze these to understand navigation, interactive elements, page structure, an
 - show_message: communicate information to the user. MUST be called in every response.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
-${buildCapabilityNotes(caps)}`;
+- scroll_to: scroll an element into view or scroll up/down.
+- find_text: search for text on the page.
+- extract_table: extract table data as structured JSON.
+${buildCapabilityNotes(caps)}
+When interacting with forms, prefer the specific tools (fill_input, select_option, toggle_checkbox, submit_form, scroll_to) over execute_js. Only use execute_js as a last resort when none of the specific tools can accomplish the task.`;
 
   const contextSection = `Using get_page_context:
 - You MUST call get_page_context at the START of every response to read the current page before taking any action. The ONLY exception: if you have a recipe and it already fully covers the user's request (e.g. a simple navigation to a known route), you can act directly without calling get_page_context.

@@ -1,0 +1,30 @@
+import { loadWidgetSession, saveWidgetSession } from "../../lib/session";
+
+export function handleLoadSession(
+  message: { tabId?: number },
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (result: unknown) => void,
+): void {
+  const tabId = message.tabId ?? sender.tab?.id;
+  if (tabId != null) {
+    loadWidgetSession(tabId).then(sendResponse);
+  } else {
+    sendResponse(null);
+  }
+}
+
+export function handleSaveSession(
+  message: { tabId?: number; session: unknown },
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (result: unknown) => void,
+): void {
+  const tabId = sender.tab?.id ?? message.tabId;
+  if (tabId != null) {
+    saveWidgetSession(
+      tabId,
+      message.session as Parameters<typeof saveWidgetSession>[1],
+    ).then(() => sendResponse({ ok: true }));
+  } else {
+    sendResponse({ ok: false });
+  }
+}

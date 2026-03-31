@@ -1,6 +1,159 @@
 import { tool, jsonSchema } from "ai";
-import type { Capabilities } from "@gyoz-ai/engine";
+import type {
+  Capabilities,
+  BrowserToolDescriptor,
+  ToolRegistry,
+} from "@gyoz-ai/engine";
 import { EXPRESSIONS } from "./expressions";
+
+// ─── Tool Descriptors ─────────────────────────────────────────────────────────
+
+export const TOOL_DESCRIPTORS: ToolRegistry = {
+  show_message: {
+    name: "show_message",
+    description: "Display message to user",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 500,
+  },
+  set_expression: {
+    name: "set_expression",
+    description: "Change avatar expression",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 100,
+  },
+  navigate: {
+    name: "navigate",
+    description: "Navigate to URL",
+    pageChange: true,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: false,
+    maxResultChars: 500,
+  },
+  click: {
+    name: "click",
+    description: "Click an element",
+    pageChange: true,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 1_000,
+  },
+  execute_js: {
+    name: "execute_js",
+    description: "Execute JavaScript",
+    pageChange: true,
+    mutatesPage: true,
+    requiresFreshContext: false,
+    isConcurrencySafe: false,
+    maxResultChars: 10_000,
+  },
+  highlight_ui: {
+    name: "highlight_ui",
+    description: "Highlight an element",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 500,
+  },
+  get_page_context: {
+    name: "get_page_context",
+    description: "Capture page context",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 30_000,
+  },
+  fetch_url: {
+    name: "fetch_url",
+    description: "Fetch URL",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 5_000,
+  },
+  clarify: {
+    name: "clarify",
+    description: "Ask user for clarification",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 1_000,
+  },
+  fill_input: {
+    name: "fill_input",
+    description: "Fill input field",
+    pageChange: false,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 500,
+  },
+  select_option: {
+    name: "select_option",
+    description: "Select dropdown option",
+    pageChange: false,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 500,
+  },
+  toggle_checkbox: {
+    name: "toggle_checkbox",
+    description: "Toggle checkbox/radio",
+    pageChange: false,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 500,
+  },
+  submit_form: {
+    name: "submit_form",
+    description: "Submit a form",
+    pageChange: true,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 500,
+  },
+  scroll_to: {
+    name: "scroll_to",
+    description: "Scroll to element",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 500,
+  },
+  find_text: {
+    name: "find_text",
+    description: "Find text on page",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 2_000,
+  },
+  extract_table: {
+    name: "extract_table",
+    description: "Extract table data",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 10_000,
+  },
+};
 
 // ─── Tool Result Types ─────────────────────────────────────────────────────────
 
@@ -240,6 +393,24 @@ export function createBrowserTools(
             error:
               "Provide either 'selector' or 'text' to identify the element",
           };
+        }
+
+        // Reject dangerous selector patterns
+        const BLOCKED_PATTERNS = [
+          /:nth-child/,
+          /:nth-of-type/,
+          /:first-child/,
+          /:last-child/,
+        ];
+        if (selector) {
+          for (const pattern of BLOCKED_PATTERNS) {
+            if (pattern.test(selector)) {
+              return {
+                success: false as const,
+                error: `Selector pattern "${pattern}" is unreliable. Use text-based matching instead.`,
+              };
+            }
+          }
         }
         try {
           const result = await execIsolated(
@@ -745,6 +916,724 @@ export function createBrowserTools(
       },
     });
   }
+
+  // ── fill_input ──────────────────────────────────────────────────────────
+  if (caps.executeJs) {
+    tools.fill_input = tool({
+      description:
+        "Fill an input field with a value. Prefer this over execute_js for form filling. Use label text or placeholder to identify the field.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        label?: string;
+        value: string;
+      }>({
+        type: "object" as const,
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector for the input",
+          },
+          label: {
+            type: "string",
+            description: "Label text near the input (preferred)",
+          },
+          value: {
+            type: "string",
+            description: "Value to set",
+          },
+        },
+        required: ["value"],
+      }),
+      execute: async ({
+        selector,
+        label,
+        value,
+      }: {
+        selector?: string;
+        label?: string;
+        value: string;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: "Filling input",
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((sel: string | null, lbl: string | null, val: string) => {
+              let el: HTMLInputElement | HTMLTextAreaElement | null = null;
+              if (sel) {
+                el = document.querySelector(sel) as HTMLInputElement | null;
+              }
+              if (!el && lbl) {
+                // Find by label text
+                const labels = Array.from(document.querySelectorAll("label"));
+                const matchLabel = labels.find((l) =>
+                  l.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(lbl.toLowerCase()),
+                );
+                if (matchLabel?.htmlFor) {
+                  el = document.getElementById(
+                    matchLabel.htmlFor,
+                  ) as HTMLInputElement | null;
+                } else if (matchLabel) {
+                  el = matchLabel.querySelector(
+                    "input, textarea, select",
+                  ) as HTMLInputElement | null;
+                }
+                // Fallback: find by placeholder
+                if (!el) {
+                  el = document.querySelector(
+                    `input[placeholder*="${lbl}" i], textarea[placeholder*="${lbl}" i]`,
+                  ) as HTMLInputElement | null;
+                }
+                // Fallback: find by aria-label
+                if (!el) {
+                  el = document.querySelector(
+                    `input[aria-label*="${lbl}" i], textarea[aria-label*="${lbl}" i]`,
+                  ) as HTMLInputElement | null;
+                }
+              }
+              if (!el) return { found: false };
+
+              // Set value and dispatch events
+              const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype,
+                "value",
+              )?.set;
+              if (nativeInputValueSetter) {
+                nativeInputValueSetter.call(el, val);
+              } else {
+                el.value = val;
+              }
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+              el.dispatchEvent(new Event("change", { bubbles: true }));
+              return {
+                found: true,
+                element: el.tagName.toLowerCase(),
+                name: el.name || el.id || "",
+              };
+            }) as (...args: never[]) => {
+              found: boolean;
+              element?: string;
+              name?: string;
+            },
+            [selector || null, label || null, value],
+          );
+          if (!result?.found) {
+            return {
+              success: false,
+              error: `No input found${label ? ` with label "${label}"` : ""}${selector ? ` matching "${selector}"` : ""}`,
+            };
+          }
+          return { success: true, filled: result.element, name: result.name };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
+
+  // ── select_option ─────────────────────────────────────────────────────
+  if (caps.executeJs) {
+    tools.select_option = tool({
+      description:
+        "Select an option in a <select> dropdown. Identify by label, selector, or option text.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        label?: string;
+        option_text?: string;
+        option_value?: string;
+      }>({
+        type: "object" as const,
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector for the select element",
+          },
+          label: {
+            type: "string",
+            description: "Label text near the select (preferred)",
+          },
+          option_text: {
+            type: "string",
+            description: "Visible text of the option to select",
+          },
+          option_value: {
+            type: "string",
+            description: "Value attribute of the option",
+          },
+        },
+      }),
+      execute: async ({
+        selector,
+        label,
+        option_text,
+        option_value,
+      }: {
+        selector?: string;
+        label?: string;
+        option_text?: string;
+        option_value?: string;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: "Selecting option",
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((
+              sel: string | null,
+              lbl: string | null,
+              optText: string | null,
+              optValue: string | null,
+            ) => {
+              let el: HTMLSelectElement | null = null;
+              if (sel)
+                el = document.querySelector(sel) as HTMLSelectElement | null;
+              if (!el && lbl) {
+                const labels = Array.from(document.querySelectorAll("label"));
+                const matchLabel = labels.find((l) =>
+                  l.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(lbl.toLowerCase()),
+                );
+                if (matchLabel?.htmlFor) {
+                  el = document.getElementById(
+                    matchLabel.htmlFor,
+                  ) as HTMLSelectElement | null;
+                } else if (matchLabel) {
+                  el = matchLabel.querySelector(
+                    "select",
+                  ) as HTMLSelectElement | null;
+                }
+              }
+              if (!el || el.tagName !== "SELECT") return { found: false };
+
+              const options = Array.from(el.options);
+              let targetOpt: HTMLOptionElement | undefined;
+              if (optValue) {
+                targetOpt = options.find((o) => o.value === optValue);
+              }
+              if (!targetOpt && optText) {
+                targetOpt = options.find((o) =>
+                  o.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(optText.toLowerCase()),
+                );
+              }
+              if (!targetOpt)
+                return {
+                  found: true,
+                  selected: false,
+                  error: "Option not found",
+                };
+
+              el.value = targetOpt.value;
+              el.dispatchEvent(new Event("change", { bubbles: true }));
+              return {
+                found: true,
+                selected: true,
+                value: targetOpt.value,
+                text: targetOpt.textContent?.trim(),
+              };
+            }) as (...args: never[]) => {
+              found: boolean;
+              selected?: boolean;
+              value?: string;
+              text?: string;
+              error?: string;
+            },
+            [
+              selector || null,
+              label || null,
+              option_text || null,
+              option_value || null,
+            ],
+          );
+          if (!result?.found)
+            return { success: false, error: "Select element not found" };
+          if (!result.selected)
+            return {
+              success: false,
+              error: result.error || "Option not found",
+            };
+          return { success: true, selected: result.text, value: result.value };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
+
+  // ── toggle_checkbox ───────────────────────────────────────────────────
+  if (caps.executeJs) {
+    tools.toggle_checkbox = tool({
+      description: "Check or uncheck a checkbox or radio button.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        label?: string;
+        checked?: boolean;
+      }>({
+        type: "object" as const,
+        properties: {
+          selector: { type: "string", description: "CSS selector" },
+          label: {
+            type: "string",
+            description: "Label text near the checkbox (preferred)",
+          },
+          checked: {
+            type: "boolean",
+            description: "Target state (default: toggle)",
+          },
+        },
+      }),
+      execute: async ({
+        selector,
+        label,
+        checked,
+      }: {
+        selector?: string;
+        label?: string;
+        checked?: boolean;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: "Toggling checkbox",
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((
+              sel: string | null,
+              lbl: string | null,
+              targetState: boolean | null,
+            ) => {
+              let el: HTMLInputElement | null = null;
+              if (sel)
+                el = document.querySelector(sel) as HTMLInputElement | null;
+              if (!el && lbl) {
+                const labels = Array.from(document.querySelectorAll("label"));
+                const matchLabel = labels.find((l) =>
+                  l.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(lbl.toLowerCase()),
+                );
+                if (matchLabel?.htmlFor) {
+                  el = document.getElementById(
+                    matchLabel.htmlFor,
+                  ) as HTMLInputElement | null;
+                } else if (matchLabel) {
+                  el = matchLabel.querySelector(
+                    'input[type="checkbox"], input[type="radio"]',
+                  ) as HTMLInputElement | null;
+                }
+              }
+              if (!el) return { found: false };
+
+              if (targetState !== null) {
+                el.checked = targetState;
+              } else {
+                el.checked = !el.checked;
+              }
+              el.dispatchEvent(new Event("change", { bubbles: true }));
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+              return {
+                found: true,
+                checked: el.checked,
+                name: el.name || el.id,
+              };
+            }) as (...args: never[]) => {
+              found: boolean;
+              checked?: boolean;
+              name?: string;
+            },
+            [selector || null, label || null, checked ?? null],
+          );
+          if (!result?.found)
+            return { success: false, error: "Checkbox not found" };
+          return { success: true, checked: result.checked, name: result.name };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
+
+  // ── submit_form ───────────────────────────────────────────────────────
+  if (caps.executeJs) {
+    tools.submit_form = tool({
+      description:
+        "Submit a form on the page. This may cause a page navigation.",
+      inputSchema: jsonSchema<{ selector?: string; button_text?: string }>({
+        type: "object" as const,
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector for the form",
+          },
+          button_text: {
+            type: "string",
+            description: "Text of the submit button to click",
+          },
+        },
+      }),
+      execute: async ({
+        selector,
+        button_text,
+      }: {
+        selector?: string;
+        button_text?: string;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: "Submitting form",
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((sel: string | null, btnText: string | null) => {
+              let form: HTMLFormElement | null = null;
+              if (sel) {
+                form = document.querySelector(sel) as HTMLFormElement | null;
+              }
+              if (!form && btnText) {
+                // Find submit button by text, then get its form
+                const buttons = Array.from(
+                  document.querySelectorAll(
+                    'button, input[type="submit"], [role="button"]',
+                  ),
+                ) as HTMLElement[];
+                const btn = buttons.find((b) =>
+                  b.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(btnText.toLowerCase()),
+                );
+                if (btn) {
+                  form = btn.closest("form") as HTMLFormElement | null;
+                  if (!form) {
+                    // Just click the button directly
+                    btn.click();
+                    return { found: true, method: "button_click" };
+                  }
+                }
+              }
+              if (!form) {
+                form = document.querySelector("form") as HTMLFormElement | null;
+              }
+              if (!form) return { found: false };
+
+              form.requestSubmit();
+              return {
+                found: true,
+                method: "form_submit",
+                action: form.action || "",
+              };
+            }) as (...args: never[]) => {
+              found: boolean;
+              method?: string;
+              action?: string;
+            },
+            [selector || null, button_text || null],
+          );
+          if (!result?.found) return { success: false, error: "No form found" };
+          return { success: true, method: result.method };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
+
+  // ── scroll_to ─────────────────────────────────────────────────────────
+  tools.scroll_to = tool({
+    description: "Scroll an element into view.",
+    inputSchema: jsonSchema<{
+      selector?: string;
+      text?: string;
+      direction?: string;
+    }>({
+      type: "object" as const,
+      properties: {
+        selector: { type: "string", description: "CSS selector" },
+        text: {
+          type: "string",
+          description: "Text content to find and scroll to",
+        },
+        direction: {
+          type: "string",
+          enum: ["up", "down"],
+          description: "Scroll direction if no specific element",
+        },
+      },
+    }),
+    execute: async ({
+      selector,
+      text,
+      direction,
+    }: {
+      selector?: string;
+      text?: string;
+      direction?: string;
+    }) => {
+      ctx.onStreamEvent?.({ kind: "tool-status", content: "Scrolling" });
+      try {
+        const result = await execInPage(
+          ctx.tabId,
+          ((sel: string | null, txt: string | null, dir: string | null) => {
+            if (sel) {
+              const el = document.querySelector(sel) as HTMLElement | null;
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                return { scrolled: true, target: sel };
+              }
+            }
+            if (txt) {
+              const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+              );
+              while (walker.nextNode()) {
+                if (walker.currentNode.textContent?.includes(txt)) {
+                  const parent = walker.currentNode.parentElement;
+                  parent?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  });
+                  return { scrolled: true, target: `text: "${txt}"` };
+                }
+              }
+            }
+            if (dir === "up") {
+              window.scrollBy({ top: -500, behavior: "smooth" });
+              return { scrolled: true, target: "up" };
+            }
+            if (dir === "down") {
+              window.scrollBy({ top: 500, behavior: "smooth" });
+              return { scrolled: true, target: "down" };
+            }
+            return { scrolled: false };
+          }) as (...args: never[]) => { scrolled: boolean; target?: string },
+          [selector || null, text || null, direction || null],
+        );
+        if (!result?.scrolled)
+          return { success: false, error: "Nothing to scroll to" };
+        return { success: true, scrolledTo: result.target };
+      } catch (e) {
+        return {
+          success: false,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    },
+  });
+
+  // ── find_text ─────────────────────────────────────────────────────────
+  tools.find_text = tool({
+    description:
+      "Search for text on the page. Returns matching elements and their context.",
+    inputSchema: jsonSchema<{ query: string; max_results?: number }>({
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description: "Text to search for (case-insensitive)",
+        },
+        max_results: {
+          type: "number",
+          description: "Max matches to return (default: 10)",
+        },
+      },
+      required: ["query"],
+    }),
+    execute: async ({
+      query,
+      max_results,
+    }: {
+      query: string;
+      max_results?: number;
+    }) => {
+      ctx.onStreamEvent?.({ kind: "tool-status", content: "Searching page" });
+      try {
+        const result = await execInPage(
+          ctx.tabId,
+          ((searchText: string, maxResults: number) => {
+            const matches: Array<{
+              text: string;
+              tag: string;
+              context: string;
+            }> = [];
+            const walker = document.createTreeWalker(
+              document.body,
+              NodeFilter.SHOW_TEXT,
+            );
+            while (walker.nextNode() && matches.length < maxResults) {
+              const nodeText = walker.currentNode.textContent || "";
+              if (nodeText.toLowerCase().includes(searchText.toLowerCase())) {
+                const parent = walker.currentNode.parentElement;
+                if (!parent) continue;
+                matches.push({
+                  text: nodeText.trim().slice(0, 200),
+                  tag: parent.tagName.toLowerCase(),
+                  context: (
+                    parent.closest("section, article, div, main")
+                      ?.textContent || ""
+                  )
+                    .trim()
+                    .slice(0, 100),
+                });
+              }
+            }
+            return { matches, total: matches.length };
+          }) as (...args: never[]) => {
+            matches: Array<{ text: string; tag: string; context: string }>;
+            total: number;
+          },
+          [query, max_results || 10],
+        );
+        return { success: true, ...result };
+      } catch (e) {
+        return {
+          success: false,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    },
+  });
+
+  // ── extract_table ─────────────────────────────────────────────────────
+  tools.extract_table = tool({
+    description: "Extract data from a <table> element as JSON.",
+    inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({
+      type: "object" as const,
+      properties: {
+        selector: {
+          type: "string",
+          description: "CSS selector for the table",
+        },
+        near_text: {
+          type: "string",
+          description: "Text near the table to identify it (e.g. a heading)",
+        },
+      },
+    }),
+    execute: async ({
+      selector,
+      near_text,
+    }: {
+      selector?: string;
+      near_text?: string;
+    }) => {
+      ctx.onStreamEvent?.({
+        kind: "tool-status",
+        content: "Extracting table",
+      });
+      try {
+        const result = await execInPage(
+          ctx.tabId,
+          ((sel: string | null, nearTxt: string | null) => {
+            let table: HTMLTableElement | null = null;
+            if (sel) {
+              table = document.querySelector(sel) as HTMLTableElement | null;
+            }
+            if (!table && nearTxt) {
+              // Find a heading/text near the table
+              const tables = Array.from(document.querySelectorAll("table"));
+              for (const t of tables) {
+                const prev = t.previousElementSibling;
+                if (
+                  prev?.textContent
+                    ?.toLowerCase()
+                    .includes(nearTxt.toLowerCase())
+                ) {
+                  table = t;
+                  break;
+                }
+                // Check parent for heading
+                const heading = t
+                  .closest("section, div, article")
+                  ?.querySelector("h1, h2, h3, h4, h5");
+                if (
+                  heading?.textContent
+                    ?.toLowerCase()
+                    .includes(nearTxt.toLowerCase())
+                ) {
+                  table = t;
+                  break;
+                }
+              }
+            }
+            if (!table) {
+              table = document.querySelector(
+                "table",
+              ) as HTMLTableElement | null;
+            }
+            if (!table) return { found: false };
+
+            // Extract headers
+            const headers: string[] = [];
+            const headerCells = table.querySelectorAll(
+              "thead th, thead td, tr:first-child th",
+            );
+            headerCells.forEach((cell) =>
+              headers.push((cell.textContent || "").trim()),
+            );
+
+            // Extract rows
+            const rows: string[][] = [];
+            const bodyRows = table.querySelectorAll("tbody tr, tr");
+            bodyRows.forEach((row, i) => {
+              if (i === 0 && headers.length > 0) return; // skip header row
+              const cells: string[] = [];
+              row
+                .querySelectorAll("td, th")
+                .forEach((cell) => cells.push((cell.textContent || "").trim()));
+              if (cells.length > 0) rows.push(cells);
+            });
+
+            return { found: true, headers, rows, rowCount: rows.length };
+          }) as (...args: never[]) => {
+            found: boolean;
+            headers?: string[];
+            rows?: string[][];
+            rowCount?: number;
+          },
+          [selector || null, near_text || null],
+        );
+        if (!result?.found) return { success: false, error: "No table found" };
+        return {
+          success: true,
+          headers: result.headers,
+          rows: result.rows,
+          rowCount: result.rowCount,
+        };
+      } catch (e) {
+        return {
+          success: false,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    },
+  });
 
   return tools;
 }
