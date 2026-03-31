@@ -1365,275 +1365,284 @@ export function createBrowserTools(
   }
 
   // ── scroll_to ─────────────────────────────────────────────────────────
-  tools.scroll_to = tool({
-    description: "Scroll an element into view.",
-    inputSchema: jsonSchema<{
-      selector?: string;
-      text?: string;
-      direction?: string;
-    }>({
-      type: "object" as const,
-      properties: {
-        selector: { type: "string", description: "CSS selector" },
-        text: {
-          type: "string",
-          description: "Text content to find and scroll to",
+  if (caps.click || caps.executeJs) {
+    tools.scroll_to = tool({
+      description: "Scroll an element into view.",
+      inputSchema: jsonSchema<{
+        selector?: string;
+        text?: string;
+        direction?: string;
+      }>({
+        type: "object" as const,
+        properties: {
+          selector: { type: "string", description: "CSS selector" },
+          text: {
+            type: "string",
+            description: "Text content to find and scroll to",
+          },
+          direction: {
+            type: "string",
+            enum: ["up", "down"],
+            description: "Scroll direction if no specific element",
+          },
         },
-        direction: {
-          type: "string",
-          enum: ["up", "down"],
-          description: "Scroll direction if no specific element",
-        },
-      },
-    }),
-    execute: async ({
-      selector,
-      text,
-      direction,
-    }: {
-      selector?: string;
-      text?: string;
-      direction?: string;
-    }) => {
-      ctx.onStreamEvent?.({ kind: "tool-status", content: "Scrolling" });
-      try {
-        const result = await execInPage(
-          ctx.tabId,
-          ((sel: string | null, txt: string | null, dir: string | null) => {
-            if (sel) {
-              const el = document.querySelector(sel) as HTMLElement | null;
-              if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-                return { scrolled: true, target: sel };
+      }),
+      execute: async ({
+        selector,
+        text,
+        direction,
+      }: {
+        selector?: string;
+        text?: string;
+        direction?: string;
+      }) => {
+        ctx.onStreamEvent?.({ kind: "tool-status", content: "Scrolling" });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((sel: string | null, txt: string | null, dir: string | null) => {
+              if (sel) {
+                const el = document.querySelector(sel) as HTMLElement | null;
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return { scrolled: true, target: sel };
+                }
               }
-            }
-            if (txt) {
+              if (txt) {
+                const walker = document.createTreeWalker(
+                  document.body,
+                  NodeFilter.SHOW_TEXT,
+                );
+                while (walker.nextNode()) {
+                  if (walker.currentNode.textContent?.includes(txt)) {
+                    const parent = walker.currentNode.parentElement;
+                    parent?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                    return { scrolled: true, target: `text: "${txt}"` };
+                  }
+                }
+              }
+              if (dir === "up") {
+                window.scrollBy({ top: -500, behavior: "smooth" });
+                return { scrolled: true, target: "up" };
+              }
+              if (dir === "down") {
+                window.scrollBy({ top: 500, behavior: "smooth" });
+                return { scrolled: true, target: "down" };
+              }
+              return { scrolled: false };
+            }) as (...args: never[]) => { scrolled: boolean; target?: string },
+            [selector || null, text || null, direction || null],
+          );
+          if (!result?.scrolled)
+            return { success: false, error: "Nothing to scroll to" };
+          return { success: true, scrolledTo: result.target };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
+
+  // ── find_text ─────────────────────────────────────────────────────────
+  if (caps.click || caps.executeJs) {
+    tools.find_text = tool({
+      description:
+        "Search for text on the page. Returns matching elements and their context.",
+      inputSchema: jsonSchema<{ query: string; max_results?: number }>({
+        type: "object" as const,
+        properties: {
+          query: {
+            type: "string",
+            description: "Text to search for (case-insensitive)",
+          },
+          max_results: {
+            type: "number",
+            description: "Max matches to return (default: 10)",
+          },
+        },
+        required: ["query"],
+      }),
+      execute: async ({
+        query,
+        max_results,
+      }: {
+        query: string;
+        max_results?: number;
+      }) => {
+        ctx.onStreamEvent?.({ kind: "tool-status", content: "Searching page" });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((searchText: string, maxResults: number) => {
+              const matches: Array<{
+                text: string;
+                tag: string;
+                context: string;
+              }> = [];
               const walker = document.createTreeWalker(
                 document.body,
                 NodeFilter.SHOW_TEXT,
               );
-              while (walker.nextNode()) {
-                if (walker.currentNode.textContent?.includes(txt)) {
+              while (walker.nextNode() && matches.length < maxResults) {
+                const nodeText = walker.currentNode.textContent || "";
+                if (nodeText.toLowerCase().includes(searchText.toLowerCase())) {
                   const parent = walker.currentNode.parentElement;
-                  parent?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
+                  if (!parent) continue;
+                  matches.push({
+                    text: nodeText.trim().slice(0, 200),
+                    tag: parent.tagName.toLowerCase(),
+                    context: (
+                      parent.closest("section, article, div, main")
+                        ?.textContent || ""
+                    )
+                      .trim()
+                      .slice(0, 100),
                   });
-                  return { scrolled: true, target: `text: "${txt}"` };
                 }
               }
-            }
-            if (dir === "up") {
-              window.scrollBy({ top: -500, behavior: "smooth" });
-              return { scrolled: true, target: "up" };
-            }
-            if (dir === "down") {
-              window.scrollBy({ top: 500, behavior: "smooth" });
-              return { scrolled: true, target: "down" };
-            }
-            return { scrolled: false };
-          }) as (...args: never[]) => { scrolled: boolean; target?: string },
-          [selector || null, text || null, direction || null],
-        );
-        if (!result?.scrolled)
-          return { success: false, error: "Nothing to scroll to" };
-        return { success: true, scrolledTo: result.target };
-      } catch (e) {
-        return {
-          success: false,
-          error: e instanceof Error ? e.message : String(e),
-        };
-      }
-    },
-  });
-
-  // ── find_text ─────────────────────────────────────────────────────────
-  tools.find_text = tool({
-    description:
-      "Search for text on the page. Returns matching elements and their context.",
-    inputSchema: jsonSchema<{ query: string; max_results?: number }>({
-      type: "object" as const,
-      properties: {
-        query: {
-          type: "string",
-          description: "Text to search for (case-insensitive)",
-        },
-        max_results: {
-          type: "number",
-          description: "Max matches to return (default: 10)",
-        },
+              return { matches, total: matches.length };
+            }) as (...args: never[]) => {
+              matches: Array<{ text: string; tag: string; context: string }>;
+              total: number;
+            },
+            [query, max_results || 10],
+          );
+          return { success: true, ...result };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
       },
-      required: ["query"],
-    }),
-    execute: async ({
-      query,
-      max_results,
-    }: {
-      query: string;
-      max_results?: number;
-    }) => {
-      ctx.onStreamEvent?.({ kind: "tool-status", content: "Searching page" });
-      try {
-        const result = await execInPage(
-          ctx.tabId,
-          ((searchText: string, maxResults: number) => {
-            const matches: Array<{
-              text: string;
-              tag: string;
-              context: string;
-            }> = [];
-            const walker = document.createTreeWalker(
-              document.body,
-              NodeFilter.SHOW_TEXT,
-            );
-            while (walker.nextNode() && matches.length < maxResults) {
-              const nodeText = walker.currentNode.textContent || "";
-              if (nodeText.toLowerCase().includes(searchText.toLowerCase())) {
-                const parent = walker.currentNode.parentElement;
-                if (!parent) continue;
-                matches.push({
-                  text: nodeText.trim().slice(0, 200),
-                  tag: parent.tagName.toLowerCase(),
-                  context: (
-                    parent.closest("section, article, div, main")
-                      ?.textContent || ""
-                  )
-                    .trim()
-                    .slice(0, 100),
-                });
-              }
-            }
-            return { matches, total: matches.length };
-          }) as (...args: never[]) => {
-            matches: Array<{ text: string; tag: string; context: string }>;
-            total: number;
-          },
-          [query, max_results || 10],
-        );
-        return { success: true, ...result };
-      } catch (e) {
-        return {
-          success: false,
-          error: e instanceof Error ? e.message : String(e),
-        };
-      }
-    },
-  });
+    });
+  }
 
   // ── extract_table ─────────────────────────────────────────────────────
-  tools.extract_table = tool({
-    description: "Extract data from a <table> element as JSON.",
-    inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({
-      type: "object" as const,
-      properties: {
-        selector: {
-          type: "string",
-          description: "CSS selector for the table",
+  if (caps.click || caps.executeJs) {
+    tools.extract_table = tool({
+      description: "Extract data from a <table> element as JSON.",
+      inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({
+        type: "object" as const,
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector for the table",
+          },
+          near_text: {
+            type: "string",
+            description: "Text near the table to identify it (e.g. a heading)",
+          },
         },
-        near_text: {
-          type: "string",
-          description: "Text near the table to identify it (e.g. a heading)",
-        },
-      },
-    }),
-    execute: async ({
-      selector,
-      near_text,
-    }: {
-      selector?: string;
-      near_text?: string;
-    }) => {
-      ctx.onStreamEvent?.({
-        kind: "tool-status",
-        content: "Extracting table",
-      });
-      try {
-        const result = await execInPage(
-          ctx.tabId,
-          ((sel: string | null, nearTxt: string | null) => {
-            let table: HTMLTableElement | null = null;
-            if (sel) {
-              table = document.querySelector(sel) as HTMLTableElement | null;
-            }
-            if (!table && nearTxt) {
-              // Find a heading/text near the table
-              const tables = Array.from(document.querySelectorAll("table"));
-              for (const t of tables) {
-                const prev = t.previousElementSibling;
-                if (
-                  prev?.textContent
-                    ?.toLowerCase()
-                    .includes(nearTxt.toLowerCase())
-                ) {
-                  table = t;
-                  break;
-                }
-                // Check parent for heading
-                const heading = t
-                  .closest("section, div, article")
-                  ?.querySelector("h1, h2, h3, h4, h5");
-                if (
-                  heading?.textContent
-                    ?.toLowerCase()
-                    .includes(nearTxt.toLowerCase())
-                ) {
-                  table = t;
-                  break;
+      }),
+      execute: async ({
+        selector,
+        near_text,
+      }: {
+        selector?: string;
+        near_text?: string;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: "Extracting table",
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((sel: string | null, nearTxt: string | null) => {
+              let table: HTMLTableElement | null = null;
+              if (sel) {
+                table = document.querySelector(sel) as HTMLTableElement | null;
+              }
+              if (!table && nearTxt) {
+                // Find a heading/text near the table
+                const tables = Array.from(document.querySelectorAll("table"));
+                for (const t of tables) {
+                  const prev = t.previousElementSibling;
+                  if (
+                    prev?.textContent
+                      ?.toLowerCase()
+                      .includes(nearTxt.toLowerCase())
+                  ) {
+                    table = t;
+                    break;
+                  }
+                  // Check parent for heading
+                  const heading = t
+                    .closest("section, div, article")
+                    ?.querySelector("h1, h2, h3, h4, h5");
+                  if (
+                    heading?.textContent
+                      ?.toLowerCase()
+                      .includes(nearTxt.toLowerCase())
+                  ) {
+                    table = t;
+                    break;
+                  }
                 }
               }
-            }
-            if (!table) {
-              table = document.querySelector(
-                "table",
-              ) as HTMLTableElement | null;
-            }
-            if (!table) return { found: false };
+              if (!table) {
+                table = document.querySelector(
+                  "table",
+                ) as HTMLTableElement | null;
+              }
+              if (!table) return { found: false };
 
-            // Extract headers
-            const headers: string[] = [];
-            const headerCells = table.querySelectorAll(
-              "thead th, thead td, tr:first-child th",
-            );
-            headerCells.forEach((cell) =>
-              headers.push((cell.textContent || "").trim()),
-            );
+              // Extract headers
+              const headers: string[] = [];
+              const headerCells = table.querySelectorAll(
+                "thead th, thead td, tr:first-child th",
+              );
+              headerCells.forEach((cell) =>
+                headers.push((cell.textContent || "").trim()),
+              );
 
-            // Extract rows
-            const rows: string[][] = [];
-            const bodyRows = table.querySelectorAll("tbody tr, tr");
-            bodyRows.forEach((row, i) => {
-              if (i === 0 && headers.length > 0) return; // skip header row
-              const cells: string[] = [];
-              row
-                .querySelectorAll("td, th")
-                .forEach((cell) => cells.push((cell.textContent || "").trim()));
-              if (cells.length > 0) rows.push(cells);
-            });
+              // Extract rows
+              const rows: string[][] = [];
+              const bodyRows = table.querySelectorAll("tbody tr, tr");
+              bodyRows.forEach((row, i) => {
+                if (i === 0 && headers.length > 0) return; // skip header row
+                const cells: string[] = [];
+                row
+                  .querySelectorAll("td, th")
+                  .forEach((cell) =>
+                    cells.push((cell.textContent || "").trim()),
+                  );
+                if (cells.length > 0) rows.push(cells);
+              });
 
-            return { found: true, headers, rows, rowCount: rows.length };
-          }) as (...args: never[]) => {
-            found: boolean;
-            headers?: string[];
-            rows?: string[][];
-            rowCount?: number;
-          },
-          [selector || null, near_text || null],
-        );
-        if (!result?.found) return { success: false, error: "No table found" };
-        return {
-          success: true,
-          headers: result.headers,
-          rows: result.rows,
-          rowCount: result.rowCount,
-        };
-      } catch (e) {
-        return {
-          success: false,
-          error: e instanceof Error ? e.message : String(e),
-        };
-      }
-    },
-  });
+              return { found: true, headers, rows, rowCount: rows.length };
+            }) as (...args: never[]) => {
+              found: boolean;
+              headers?: string[];
+              rows?: string[][];
+              rowCount?: number;
+            },
+            [selector || null, near_text || null],
+          );
+          if (!result?.found)
+            return { success: false, error: "No table found" };
+          return {
+            success: true,
+            headers: result.headers,
+            rows: result.rows,
+            rowCount: result.rowCount,
+          };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+  }
 
   return tools;
 }
