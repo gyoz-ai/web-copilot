@@ -7,21 +7,314 @@
 
 ## Table of Contents
 
-1. [Query Engine & Error Recovery](#1-query-engine--error-recovery)
-2. [Context Management & Token Optimization](#2-context-management--token-optimization)
-3. [Tool System Improvements](#3-tool-system-improvements)
-4. [State Management Overhaul](#4-state-management-overhaul)
-5. [Streaming & Concurrency](#5-streaming--concurrency)
-6. [Session Persistence & History](#6-session-persistence--history)
-7. [Performance Optimizations](#7-performance-optimizations)
-8. [Extensibility: Recipe/Manifest System](#8-extensibility-recipemanifest-system)
-9. [Resilient Provider Abstraction](#9-resilient-provider-abstraction)
-10. [Cost & Usage Tracking](#10-cost--usage-tracking)
-11. [Testing & Observability](#11-testing--observability)
+1. [Background Worker Decomposition: Extract a Query Engine](#1-background-worker-decomposition-extract-a-query-engine)
+2. [Query Engine & Error Recovery](#2-query-engine--error-recovery)
+3. [Context Management & Token Optimization](#3-context-management--token-optimization)
+4. [Tool System Improvements](#4-tool-system-improvements)
+5. [State Management Overhaul](#5-state-management-overhaul)
+6. [Streaming & Concurrency](#6-streaming--concurrency)
+7. [Session Persistence & History](#7-session-persistence--history)
+8. [Performance Optimizations](#8-performance-optimizations)
+9. [Extensibility: Recipe/Manifest System](#9-extensibility-recipemanifest-system)
+10. [Resilient Provider Abstraction](#10-resilient-provider-abstraction)
+11. [Cost & Usage Tracking](#11-cost--usage-tracking)
+12. [Testing & Observability](#12-testing--observability)
 
 ---
 
-## 1. Query Engine & Error Recovery
+## 1. Background Worker Decomposition: Extract a Query Engine
+
+### Problem
+
+The background worker (`packages/extension/src/entrypoints/background.ts`, 600 lines) is a monolith that mixes **six unrelated responsibilities** into a single file:
+
+1. **Message routing** — 15 `if (message.type === ...)` branches dispatching Chrome runtime messages (session load/save, settings, recipes, expression persistence, history patching, tab commands)
+2. **Query orchestration** — The `handleQuery()` function (lines 304-558) that builds prompts, selects providers, manages conversation history, and returns results
+3. **Streaming consumption** — Stream loop consuming Vercel AI SDK events, forwarding to content script
+4. **Tool execution tracking** — Accumulating tool calls from `onStepFinish`, logging
+5. **History management** — Loading/saving LLM conversation history, building tool summaries for context
+6. **Legacy conversion** — `convertLegacyToAgentResult()` translating managed-mode responses
+
+Meanwhile, `packages/engine/src/engine.ts` (561 lines) is a **separate query engine** that only works for the legacy managed mode (direct HTTP to proxy). It has its own conversation history, its own HTML capture, and its own action dispatch — completely disconnected from the BYOK streaming path. This means:
+
+- The two query paths (legacy vs. BYOK) share no code for history, context building, or error handling
+- Any improvement (retry logic, compaction, context budgeting) must be implemented **twice**
+- The background worker's `handleQuery()` function is untestable without mocking the entire Chrome extension API
+- Claude Code solves this with a clean split: `QueryEngine.ts` (session coordination) + `query.ts` (per-turn state machine), both independent of the rendering layer
+
+### Improvements
+
+#### 1.1 Extract `QueryEngine` Class
+
+**Where:** New file `packages/engine/src/query-engine.ts`
+
+**Implementation:**
+
+Create a unified `QueryEngine` that handles both legacy and BYOK paths, inspired by Claude Code's `QueryEngine.ts`:
+
+```typescript
+interface QueryEngineConfig {
+  // Provider abstraction — works for both legacy and BYOK
+  provider: LLMProvider;
+
+  // Context building
+  systemPromptBuilder: (mode: PromptMode, caps: Capabilities, yolo: boolean) => string;
+  userPromptBuilder: (params: UserPromptParams) => string;
+
+  // Tool execution — injected by the extension layer
+  toolExecutor?: ToolExecutor;
+
+  // Callbacks for streaming events
+  onStreamEvent?: (event: StreamEvent) => void;
+  onError?: (error: QueryError) => void;
+
+  // History config
+  maxHistoryMessages: number;  // default: 20
+  maxToolSteps: number;        // default: 10
+}
+
+class QueryEngine {
+  private history: ConversationHistory;
+  private config: QueryEngineConfig;
+
+  constructor(config: QueryEngineConfig) { ... }
+
+  /**
+   * Submit a query and get a result. Handles:
+   * - Prompt construction (system + user + history)
+   * - Provider dispatch (legacy HTTP or BYOK streaming)
+   * - Tool execution loop (up to maxToolSteps)
+   * - History updates
+   * - Streaming event forwarding
+   * - Error classification and retry (see section 2)
+   */
+  async query(input: QueryInput): Promise<QueryResult> { ... }
+
+  /**
+   * Load/restore history from external storage.
+   * The engine doesn't know about chrome.storage — the caller provides it.
+   */
+  loadHistory(history: HistoryEntry[]): void { ... }
+  getHistory(): HistoryEntry[] { ... }
+
+  /** Reset conversation state */
+  reset(): void { ... }
+}
+```
+
+**Key types:**
+
+```typescript
+interface QueryInput {
+  query: string;
+  manifestMode: boolean;
+  recipe?: string;
+  htmlSnapshot?: string;
+  pageContext?: string;
+  currentRoute?: string;
+  context?: Record<string, unknown>;
+  capabilities?: Capabilities;
+}
+
+interface QueryResult {
+  messages: string[];
+  clarify?: { message: string; options: string[] } | null;
+  expression?: string | null;
+  navigated?: boolean;
+  toolCalls: Array<{ tool: string; args: Record<string, unknown> }>;
+  streamed?: boolean;
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
+// Unified provider interface — both legacy and BYOK implement this
+interface LLMProvider {
+  type: "legacy" | "byok";
+  query(
+    params: LLMQueryParams,
+  ): Promise<LLMResponse> | AsyncIterable<LLMStreamChunk>;
+}
+```
+
+**What moves into QueryEngine:**
+
+| Current Location              | Code                                            | New Location                                          |
+| ----------------------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| `background.ts` lines 318-340 | Settings fetch, provider creation, history load | `QueryEngine.constructor` / `query()` preamble        |
+| `background.ts` lines 328-340 | System/user prompt building                     | `QueryEngine.query()` — calls injected builders       |
+| `background.ts` lines 342-375 | Request logging                                 | `QueryEngine` with injected logger                    |
+| `background.ts` lines 379-411 | Legacy mode query path                          | `QueryEngine.queryLegacy()` private method            |
+| `background.ts` lines 468-508 | BYOK streaming + tool tracking                  | `QueryEngine.queryBYOK()` private method              |
+| `background.ts` lines 520-535 | History update + tool summary                   | `ConversationHistory.append()`                        |
+| `background.ts` lines 537-541 | Expression persistence                          | Stays in background (side effect) via `onStreamEvent` |
+| `background.ts` lines 562-599 | `convertLegacyToAgentResult`                    | `QueryEngine.normalizeLegacyResult()` private         |
+| `engine.ts` lines 92-422      | `createEngine()` + query + dispatch             | **Deprecated** — replaced by QueryEngine              |
+
+**Files to create:**
+
+- `packages/engine/src/query-engine.ts` — The QueryEngine class
+- `packages/engine/src/conversation-history.ts` — History management (append, cap, summary, serialize/deserialize)
+
+**Files to modify:**
+
+- `packages/engine/src/index.ts` — Export QueryEngine
+- `packages/engine/src/engine.ts` — Mark as deprecated, thin wrapper around QueryEngine for backward compat
+
+#### 1.2 Slim Down Background Worker to Pure Message Router
+
+**Where:** `packages/extension/src/entrypoints/background.ts`
+
+**Implementation:**
+
+After extracting QueryEngine, the background worker becomes a thin **message router** — its only job is to:
+
+1. Listen for Chrome runtime messages
+2. Route each message type to the appropriate handler
+3. Manage Chrome-specific side effects (notifications, storage, scripting)
+
+```typescript
+// background.ts — AFTER refactor (~150 lines, down from 600)
+
+export default defineBackground(() => {
+  // One QueryEngine instance per tab conversation
+  const engines = new Map<string, QueryEngine>();
+
+  const router: Record<string, MessageHandler> = {
+    gyozai_query: handleQuery,
+    gyozai_load_session: handleLoadSession,
+    gyozai_save_session: handleSaveSession,
+    gyozai_save_expression: handleSaveExpression,
+    gyozai_load_expression: handleLoadExpression,
+    gyozai_patch_history: handlePatchHistory,
+    gyozai_get_settings: handleGetSettings,
+    gyozai_get_recipe: handleGetRecipe,
+    gyozai_auto_import_recipe: handleAutoImportRecipe,
+    // ... etc
+  };
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    const handler = router[message.type];
+    if (handler) {
+      handler(message, sender, sendResponse, engines);
+      return true; // async response
+    }
+    return false;
+  });
+
+  // ... keyboard command listener, tab removal cleanup
+});
+
+// Each handler is a small, focused function in its own file or grouped by concern:
+// handlers/query.ts, handlers/session.ts, handlers/recipes.ts, handlers/settings.ts
+```
+
+**Handler file structure:**
+
+```
+packages/extension/src/entrypoints/
+├── background.ts              # ~80 lines: router + lifecycle only
+├── handlers/
+│   ├── query.ts               # handleQuery — creates/reuses QueryEngine, maps result
+│   ├── session.ts             # load/save/clear widget session
+│   ├── recipes.ts             # get/import/list recipes
+│   ├── settings.ts            # get settings, get tab ID
+│   ├── expression.ts          # save/load expression
+│   └── navigation.ts          # patch history, legacy exec
+```
+
+**The `handleQuery` handler** becomes simple glue:
+
+```typescript
+// handlers/query.ts
+async function handleQuery(message, sender, sendResponse, engines) {
+  const settings = await getSettings();
+  const provider = createProvider(settings);
+  const tabId = sender.tab?.id;
+
+  // Get or create engine for this conversation
+  const convId = message.conversationId || "default";
+  let engine = engines.get(convId);
+  if (!engine) {
+    engine = new QueryEngine({
+      provider,
+      systemPromptBuilder: buildSystemPrompt,
+      userPromptBuilder: buildUserPrompt,
+      toolExecutor: createToolExecutor(tabId, settings),
+      onStreamEvent: (event) =>
+        forwardToContentScript(tabId, message.queryId, event),
+      maxHistoryMessages: 20,
+      maxToolSteps: 10,
+    });
+    // Restore history if conversation exists
+    const history = await getConversationLlmHistory(convId);
+    if (history.length) engine.loadHistory(history);
+    engines.set(convId, engine);
+  }
+
+  const result = await engine.query(message);
+
+  // Chrome-specific side effects
+  await saveConversationLlmHistory(convId, engine.getHistory());
+  if (result.expression) {
+    chrome.storage.local
+      .set({ gyozai_expression: result.expression })
+      .catch(() => {});
+  }
+  showNotificationIfTabInactive(sender.tab, result);
+
+  sendResponse(result);
+}
+```
+
+**Files to create:**
+
+- `packages/extension/src/entrypoints/handlers/query.ts`
+- `packages/extension/src/entrypoints/handlers/session.ts`
+- `packages/extension/src/entrypoints/handlers/recipes.ts`
+- `packages/extension/src/entrypoints/handlers/settings.ts`
+- `packages/extension/src/entrypoints/handlers/expression.ts`
+- `packages/extension/src/entrypoints/handlers/navigation.ts`
+
+**Files to modify:**
+
+- `packages/extension/src/entrypoints/background.ts` — Gut to ~80 lines, import handlers
+
+#### 1.3 Deprecate Legacy `createEngine()`
+
+**Where:** `packages/engine/src/engine.ts`
+
+**Implementation:**
+
+The current `createEngine()` in `packages/engine/src/engine.ts` is only used by `packages/sdk/` for the React hook. After QueryEngine exists:
+
+- Keep `createEngine()` as a thin wrapper that instantiates a `QueryEngine` with a legacy HTTP provider internally
+- Mark it as deprecated: `@deprecated Use QueryEngine directly`
+- The SDK's `useEngine` hook can either continue using `createEngine()` or migrate to `QueryEngine` when ready
+- Remove the duplicated HTML capture logic (`captureHtml()` at line 530) — use the shared page-context module
+- Remove the duplicated action dispatch logic (`dispatchAction()` at line 427) — the SDK should handle dispatch via callbacks
+
+**Files to modify:**
+
+- `packages/engine/src/engine.ts` — Slim to wrapper + deprecation notice
+
+### Benefits
+
+This decomposition is the **prerequisite for almost every other improvement in this plan**:
+
+| Improvement                 | Why it needs QueryEngine extraction                              |
+| --------------------------- | ---------------------------------------------------------------- |
+| 2.1 Retry state machine     | Retry logic lives in QueryEngine, not scattered in background.ts |
+| 2.2 Conversation compaction | Compaction triggers in QueryEngine before API call               |
+| 3.1 Context budgeting       | Budget allocation happens in QueryEngine.query()                 |
+| 5.1 Centralized store       | Store dispatches to QueryEngine, not raw background messages     |
+| 6.1 Granular streaming      | QueryEngine emits typed events, background just forwards         |
+| 11.1 Cost tracking          | QueryEngine exposes `usage` in result, caller tracks cost        |
+| 12.1-12.2 Testing           | QueryEngine is testable without Chrome APIs                      |
+
+Without this split, every improvement requires modifying the 600-line `handleQuery()` function and testing it requires the full Chrome extension environment.
+
+---
+
+## 2. Query Engine & Error Recovery
 
 ### Problem
 
@@ -58,7 +351,7 @@ type RetryState = {
 
 - `packages/engine/src/engine.ts` — Add retry wrapper
 - `packages/engine/src/schemas/query.ts` — Add retry config to `EngineConfig`
-- `packages/extension/src/entrypoints/background.ts` — Wire retry callbacks to content script messages
+- `packages/extension/src/entrypoints/handlers/query.ts` — Wire retry callbacks to content script messages
 
 #### 1.2 Streaming Failure Recovery
 
@@ -95,7 +388,7 @@ type RetryState = {
 
 ---
 
-## 2. Context Management & Token Optimization
+## 3. Context Management & Token Optimization
 
 ### Problem
 
@@ -103,7 +396,7 @@ Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending o
 
 ### Improvements
 
-#### 2.1 Incremental Page Context (Diff-Based)
+#### 3.1 Incremental Page Context (Diff-Based)
 
 **Where:** `packages/engine/src/page-context.ts`
 
@@ -120,9 +413,9 @@ Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending o
 - `packages/engine/src/page-context.ts` — Add `PageContextCache` with hash comparison and diff generation
 - `packages/engine/src/engine.ts` — Use cache in `query()` to decide full vs. diff context
 
-#### 2.2 Conversation Compaction (Summarization)
+#### 3.2 Conversation Compaction (Summarization)
 
-**Where:** `packages/engine/src/engine.ts` — conversation history management
+**Where:** `packages/engine/src/query-engine.ts` — conversation history management
 
 **Implementation:**
 
@@ -138,9 +431,9 @@ Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending o
 
 - `packages/engine/src/engine.ts` — Add `compactHistory(history, tokenBudget)` method
 - `packages/engine/src/schemas/query.ts` — Add `compactionModel?: string` to config
-- `packages/extension/src/entrypoints/background.ts` — Call compaction before query when history is large
+- `packages/engine/src/query-engine.ts` — Call compaction before query when history is large
 
-#### 2.3 Smart Context Budgeting
+#### 3.3 Smart Context Budgeting
 
 **Where:** New file `packages/engine/src/context-budget.ts`
 
@@ -171,9 +464,9 @@ Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending o
 - `packages/engine/src/engine.ts` — Use budget to cap each context section
 - `packages/engine/src/page-context.ts` — Accept a `maxTokens` parameter for truncation
 
-#### 2.4 Microcompaction for Tool Results
+#### 3.4 Microcompaction for Tool Results
 
-**Where:** `packages/extension/src/entrypoints/background.ts`
+**Where:** `packages/engine/src/query-engine.ts`
 
 **Implementation:**
 
@@ -191,7 +484,7 @@ Every query in no-manifest mode sends a full HTML snapshot (~10-50KB depending o
 
 ---
 
-## 3. Tool System Improvements
+## 4. Tool System Improvements
 
 ### Problem
 
@@ -199,7 +492,7 @@ Tools are currently defined as flat objects in `packages/extension/src/tools.ts`
 
 ### Improvements
 
-#### 3.1 Unified Tool Interface
+#### 4.1 Unified Tool Interface
 
 **Where:** New file `packages/engine/src/tool.ts`
 
@@ -263,7 +556,7 @@ type ToolResult<T> =
 - `packages/extension/src/tools.ts` — Refactor each tool to implement the interface
 - `packages/extension/src/entrypoints/background.ts` — Use the interface for tool dispatch
 
-#### 3.2 Concurrent Tool Execution
+#### 4.2 Concurrent Tool Execution
 
 **Where:** `packages/extension/src/entrypoints/background.ts`
 
@@ -287,7 +580,7 @@ This is directly inspired by Claude Code's `partitionToolCalls` pattern. For the
 - `packages/extension/src/entrypoints/background.ts` — Add `executeBatched(toolCalls[])`
 - `packages/extension/src/tools.ts` — Expose `isConcurrencySafe` per tool
 
-#### 3.3 Tool Result Budgeting
+#### 4.3 Tool Result Budgeting
 
 **Where:** `packages/extension/src/tools.ts`
 
@@ -304,7 +597,7 @@ This is directly inspired by Claude Code's `partitionToolCalls` pattern. For the
 
 ---
 
-## 4. State Management Overhaul
+## 5. State Management Overhaul
 
 ### Problem
 
@@ -312,7 +605,7 @@ State is scattered across 4 storage layers (in-memory, React state, chrome.stora
 
 ### Improvements
 
-#### 4.1 Centralized Store (Zustand-like)
+#### 5.1 Centralized Store (Zustand-like)
 
 **Where:** New file `packages/extension/src/store.ts`
 
@@ -408,7 +701,7 @@ function useWidgetStore<T>(selector: (state: WidgetState) => T): T {
 
 ---
 
-## 5. Streaming & Concurrency
+## 6. Streaming & Concurrency
 
 ### Problem
 
@@ -418,7 +711,7 @@ In managed mode, there's no streaming at all — the entire response is awaited.
 
 ### Improvements
 
-#### 5.1 Granular Streaming Events
+#### 6.1 Granular Streaming Events
 
 **Where:** `packages/extension/src/entrypoints/background.ts`
 
@@ -451,7 +744,7 @@ type StreamEvent =
 - `packages/extension/src/components/GyozaiWidget.tsx` — Handle each event type
 - `packages/extension/src/entrypoints/content/index.tsx` — Forward events to widget
 
-#### 5.2 Overlapping Tool Execution with Streaming
+#### 6.2 Overlapping Tool Execution with Streaming
 
 **Where:** `packages/extension/src/entrypoints/background.ts`
 
@@ -482,7 +775,7 @@ const results = await Promise.all(pendingExecutions);
 
 ---
 
-## 6. Session Persistence & History
+## 7. Session Persistence & History
 
 ### Problem
 
@@ -490,7 +783,7 @@ Session persistence is fragile. The widget saves session state via `useEffect` o
 
 ### Improvements
 
-#### 6.1 Append-Only Transcript Recording
+#### 7.1 Append-Only Transcript Recording
 
 **Where:** New file `packages/extension/src/utils/transcript.ts`
 
@@ -533,7 +826,7 @@ async function reconstructFromTranscript(convId: string): Promise<Message[]> {
 - `packages/extension/src/entrypoints/background.ts` — Write transcript entries around each query
 - `packages/extension/src/entrypoints/content/index.tsx` — Use transcript for crash recovery
 
-#### 6.2 Paginated Conversation History
+#### 7.2 Paginated Conversation History
 
 **Where:** `packages/extension/src/utils/storage.ts`
 
@@ -568,7 +861,7 @@ async function reconstructFromTranscript(convId: string): Promise<Message[]> {
 - `packages/extension/src/utils/storage.ts` — Split `getConversations()` into index + content
 - `packages/extension/src/components/GyozaiWidget.tsx` — Load content lazily on conversation select
 
-#### 6.3 Debounced Session Save
+#### 7.3 Debounced Session Save
 
 **Where:** `packages/extension/src/utils/session.ts`
 
@@ -586,7 +879,7 @@ async function reconstructFromTranscript(convId: string): Promise<Message[]> {
 
 ---
 
-## 7. Performance Optimizations
+## 8. Performance Optimizations
 
 ### Problem
 
@@ -599,7 +892,7 @@ Several performance gaps identified:
 
 ### Improvements
 
-#### 7.1 Cached Page Context with Hash Invalidation
+#### 8.1 Cached Page Context with Hash Invalidation
 
 **Where:** `packages/engine/src/page-context.ts`
 
@@ -642,7 +935,7 @@ class PageContextCache {
 - `packages/engine/src/page-context.ts` — Replace TTL cache with hash-based cache
 - `packages/extension/src/entrypoints/content/index.tsx` — Add MutationObserver for cache invalidation
 
-#### 7.2 Progressive HTML Stripping
+#### 8.2 Progressive HTML Stripping
 
 **Where:** `packages/engine/src/page-context.ts`
 
@@ -664,13 +957,13 @@ Track which stripping levels were applied so the AI knows: `"[HTML truncated: re
 
 - `packages/engine/src/page-context.ts` — Add `stripToFit(html, maxChars)` function
 
-#### 7.3 Widget Render Optimization
+#### 8.3 Widget Render Optimization
 
 **Where:** `packages/extension/src/components/GyozaiWidget.tsx`
 
 **Implementation:**
 
-- With the centralized store (section 4), use selector-based subscriptions:
+- With the centralized store (section 5), use selector-based subscriptions:
 
   ```typescript
   // Only re-render when messages change
@@ -694,7 +987,7 @@ Track which stripping levels were applied so the AI knows: `"[HTML truncated: re
 
 ---
 
-## 8. Extensibility: Recipe/Manifest System
+## 9. Extensibility: Recipe/Manifest System
 
 ### Problem
 
@@ -702,7 +995,7 @@ The recipe system (`packages/extension/src/utils/recipes.ts`) supports auto-impo
 
 ### Improvements
 
-#### 8.1 Recipe Frontmatter (Inspired by Skills)
+#### 9.1 Recipe Frontmatter (Inspired by Skills)
 
 **Where:** `packages/extension/src/utils/recipes.ts`
 
@@ -748,7 +1041,7 @@ You are helping the user review a GitHub pull request...
 - `packages/extension/src/entrypoints/background.ts` — Apply recipe metadata to query config
 - `packages/engine/src/schemas/manifest.ts` — Add recipe metadata to manifest schema
 
-#### 8.2 Recipe Auto-Update Detection
+#### 9.2 Recipe Auto-Update Detection
 
 **Where:** `packages/extension/src/utils/recipes.ts`
 
@@ -767,7 +1060,7 @@ You are helping the user review a GitHub pull request...
 
 ---
 
-## 9. Resilient Provider Abstraction
+## 10. Resilient Provider Abstraction
 
 ### Problem
 
@@ -775,7 +1068,7 @@ The provider abstraction (`packages/extension/src/providers/index.ts`) is a thin
 
 ### Improvements
 
-#### 9.1 Provider Capability Registry
+#### 10.1 Provider Capability Registry
 
 **Where:** `packages/extension/src/providers/index.ts`
 
@@ -817,8 +1110,8 @@ const PROVIDER_REGISTRY: Record<string, ProviderCapabilities> = {
 
 **Usage:**
 
-- Context budget (section 2.3) uses `maxContextTokens` to size allocations
-- Cost tracking (section 10) uses per-token costs
+- Context budget (section 3.3) uses `maxContextTokens` to size allocations
+- Cost tracking (section 11) uses per-token costs
 - Feature gating: if `!toolCalling`, fall back to structured JSON mode
 - If `!streaming`, use non-streaming path without showing typewriter
 
@@ -827,7 +1120,7 @@ const PROVIDER_REGISTRY: Record<string, ProviderCapabilities> = {
 - `packages/extension/src/providers/index.ts` — Add capability registry
 - `packages/engine/src/context-budget.ts` — Read max tokens from registry
 
-#### 9.2 Token Counting Utility
+#### 10.2 Token Counting Utility
 
 **Where:** New file `packages/engine/src/token-count.ts`
 
@@ -850,7 +1143,7 @@ const PROVIDER_REGISTRY: Record<string, ProviderCapabilities> = {
 
 ---
 
-## 10. Cost & Usage Tracking
+## 11. Cost & Usage Tracking
 
 ### Problem
 
@@ -858,7 +1151,7 @@ There's no cost tracking at all. Users on BYOK mode have no visibility into how 
 
 ### Improvements
 
-#### 10.1 Per-Query Cost Estimation
+#### 11.1 Per-Query Cost Estimation
 
 **Where:** New file `packages/extension/src/utils/cost-tracker.ts`
 
@@ -883,7 +1176,7 @@ type SessionCosts = {
 ```
 
 - After each query, extract token usage from the Vercel AI SDK response (`usage.promptTokens`, `usage.completionTokens`)
-- Calculate cost using the provider capability registry (section 9.1)
+- Calculate cost using the provider capability registry (section 10.1)
 - Store cumulative session costs in `chrome.storage.session`
 - Show in the widget header: "$0.03 this session" (clickable to expand)
 
@@ -896,7 +1189,7 @@ type SessionCosts = {
 - `packages/extension/src/entrypoints/background.ts` — Track usage after each query
 - `packages/extension/src/components/GyozaiWidget.tsx` — Show cost in header
 
-#### 10.2 Budget Alerts
+#### 11.2 Budget Alerts
 
 **Where:** `packages/extension/src/utils/cost-tracker.ts`
 
@@ -915,7 +1208,7 @@ type SessionCosts = {
 
 ---
 
-## 11. Testing & Observability
+## 12. Testing & Observability
 
 ### Problem
 
@@ -923,7 +1216,7 @@ Tests exist but coverage is limited to schema validation and basic engine tests.
 
 ### Improvements
 
-#### 11.1 Tool Execution Tests
+#### 12.1 Tool Execution Tests
 
 **Where:** New file `packages/extension/src/tools.test.ts`
 
@@ -936,14 +1229,14 @@ Tests exist but coverage is limited to schema validation and basic engine tests.
   - `execute_js` with syntax error → error + JS error message
   - `navigate` → success + navigation flag
   - `get_page_context` → returns structured elements
-- Test tool result truncation (section 3.3)
-- Test concurrency classification (section 3.2)
+- Test tool result truncation (section 4.3)
+- Test concurrency classification (section 4.2)
 
 **Files to create:**
 
 - `packages/extension/src/tools.test.ts`
 
-#### 11.2 Streaming Integration Tests
+#### 12.2 Streaming Integration Tests
 
 **Where:** New file `packages/extension/src/entrypoints/background.test.ts`
 
@@ -954,13 +1247,13 @@ Tests exist but coverage is limited to schema validation and basic engine tests.
 - Test: tool calls execute during streaming
 - Test: stream failure triggers retry
 - Test: partial result recovery after crash
-- Test: token budget continuation (section 4.4 analog)
+- Test: token budget continuation (section 3.3 analog)
 
 **Files to create:**
 
 - `packages/extension/src/entrypoints/background.test.ts`
 
-#### 11.3 Structured Error Logging
+#### 12.3 Structured Error Logging
 
 **Where:** New file `packages/extension/src/utils/logger.ts`
 
@@ -1006,58 +1299,69 @@ const logger = {
 
 Ordered by impact-to-effort ratio:
 
-| Priority | Section                            | Estimated Effort | Impact                                                |
-| -------- | ---------------------------------- | ---------------- | ----------------------------------------------------- |
-| 1        | 1.1 Retry state machine            | Small            | High — eliminates most user-visible errors            |
-| 2        | 5.1 Granular streaming events      | Medium           | High — dramatically better UX                         |
-| 3        | 4.1 Centralized store              | Medium           | High — eliminates state bugs, enables everything else |
-| 4        | 2.1 Incremental page context       | Small            | Medium — reduces token waste significantly            |
-| 5        | 6.2 Paginated conversation history | Small            | Medium — fixes slow history loading                   |
-| 6        | 7.1 Cached page context            | Small            | Medium — reduces redundant DOM walks                  |
-| 7        | 2.2 Conversation compaction        | Medium           | High — enables longer conversations                   |
-| 8        | 10.1 Cost tracking                 | Small            | Medium — critical for BYOK users                      |
-| 9        | 3.1 Unified tool interface         | Medium           | Medium — enables 3.2 and 3.3                          |
-| 10       | 11.3 Structured logging            | Small            | Medium — improves debuggability                       |
-| 11       | 9.1 Provider capability registry   | Small            | Medium — enables context budgeting                    |
-| 12       | 8.1 Recipe frontmatter             | Medium           | Medium — better extensibility                         |
-| 13       | 1.3 Provider fallback              | Small            | Low-Medium — niche but valuable                       |
-| 14       | 5.2 Overlapping tool execution     | Medium           | Medium — latency reduction                            |
-| 15       | 6.1 Transcript recording           | Small            | Low — insurance against data loss                     |
-| 16       | 2.3 Smart context budgeting        | Medium           | Medium — requires token counting                      |
-| 17       | 7.2 Progressive HTML stripping     | Medium           | Medium — helps with large pages                       |
-| 18       | 7.3 Widget render optimization     | Small            | Low — only matters with store                         |
-| 19       | 2.4 Microcompaction                | Small            | Low — optimization for long conversations             |
-| 20       | 9.2 Token counting                 | Small            | Low — enables precision elsewhere                     |
-| 21       | 10.2 Budget alerts                 | Small            | Low — nice-to-have for BYOK                           |
-| 22       | 8.2 Recipe auto-update             | Small            | Low — nice-to-have                                    |
-| 23       | 1.2 Streaming failure recovery     | Medium           | Low — rare edge case                                  |
-| 24       | 3.2 Concurrent tool execution      | Medium           | Low — small win for current tool set                  |
-| 25       | 11.1-11.2 Tool/streaming tests     | Medium           | Low — quality investment                              |
-| 26       | 6.3 Debounced session save         | Small            | Low — minor reliability improvement                   |
-| 27       | 3.3 Tool result budgeting          | Small            | Low — edge case for large results                     |
+| Priority | Section                                           | Estimated Effort | Impact                                                  |
+| -------- | ------------------------------------------------- | ---------------- | ------------------------------------------------------- |
+| **1**    | **1.1-1.2 Extract QueryEngine + slim background** | **Medium**       | **Critical — prerequisite for most other improvements** |
+| 2        | 2.1 Retry state machine                           | Small            | High — eliminates most user-visible errors              |
+| 3        | 6.1 Granular streaming events                     | Medium           | High — dramatically better UX                           |
+| 4        | 5.1 Centralized store                             | Medium           | High — eliminates state bugs, enables everything else   |
+| 5        | 3.1 Incremental page context                      | Small            | Medium — reduces token waste significantly              |
+| 6        | 7.2 Paginated conversation history                | Small            | Medium — fixes slow history loading                     |
+| 7        | 8.1 Cached page context                           | Small            | Medium — reduces redundant DOM walks                    |
+| 8        | 3.2 Conversation compaction                       | Medium           | High — enables longer conversations                     |
+| 9        | 11.1 Cost tracking                                | Small            | Medium — critical for BYOK users                        |
+| 10       | 4.1 Unified tool interface                        | Medium           | Medium — enables 4.2 and 4.3                            |
+| 11       | 12.3 Structured logging                           | Small            | Medium — improves debuggability                         |
+| 12       | 10.1 Provider capability registry                 | Small            | Medium — enables context budgeting                      |
+| 13       | 9.1 Recipe frontmatter                            | Medium           | Medium — better extensibility                           |
+| 14       | 2.3 Provider fallback                             | Small            | Low-Medium — niche but valuable                         |
+| 15       | 6.2 Overlapping tool execution                    | Medium           | Medium — latency reduction                              |
+| 16       | 7.1 Transcript recording                          | Small            | Low — insurance against data loss                       |
+| 17       | 3.3 Smart context budgeting                       | Medium           | Medium — requires token counting                        |
+| 18       | 8.2 Progressive HTML stripping                    | Medium           | Medium — helps with large pages                         |
+| 19       | 8.3 Widget render optimization                    | Small            | Low — only matters with store                           |
+| 20       | 3.4 Microcompaction                               | Small            | Low — optimization for long conversations               |
+| 21       | 10.2 Token counting                               | Small            | Low — enables precision elsewhere                       |
+| 22       | 11.2 Budget alerts                                | Small            | Low — nice-to-have for BYOK                             |
+| 23       | 9.2 Recipe auto-update                            | Small            | Low — nice-to-have                                      |
+| 24       | 2.2 Streaming failure recovery                    | Medium           | Low — rare edge case                                    |
+| 25       | 4.2 Concurrent tool execution                     | Medium           | Low — small win for current tool set                    |
+| 26       | 12.1-12.2 Tool/streaming tests                    | Medium           | Low — quality investment                                |
+| 27       | 7.3 Debounced session save                        | Small            | Low — minor reliability improvement                     |
+| 28       | 4.3 Tool result budgeting                         | Small            | Low — edge case for large results                       |
+| 29       | 1.3 Deprecate legacy createEngine                 | Small            | Low — cleanup after QueryEngine is stable               |
 
 ---
 
 ## Dependencies Between Sections
 
 ```
-4.1 Centralized Store ──────────┬──→ 7.3 Widget Render Optimization
-                                ├──→ 5.1 Granular Streaming Events
-                                └──→ 6.3 Debounced Session Save
+1.1 Extract QueryEngine ────────┬──→ 2.1 Retry State Machine
+(FOUNDATION — do this first)    ├──→ 2.2 Streaming Failure Recovery
+                                ├──→ 2.3 Provider Fallback
+                                ├──→ 3.2 Conversation Compaction
+                                ├──→ 3.3 Smart Context Budgeting
+                                ├──→ 6.1 Granular Streaming Events
+                                ├──→ 11.1 Cost Tracking
+                                └──→ 12.1-12.2 Testing (testable without Chrome APIs)
 
-9.1 Provider Capability Registry ─┬──→ 2.3 Smart Context Budgeting
-                                  ├──→ 10.1 Cost Tracking
-                                  └──→ 10.2 Budget Alerts
+5.1 Centralized Store ──────────┬──→ 8.3 Widget Render Optimization
+                                ├──→ 6.1 Granular Streaming Events
+                                └──→ 7.3 Debounced Session Save
 
-9.2 Token Counting ──────────────┬──→ 2.2 Conversation Compaction
-                                 ├──→ 2.3 Smart Context Budgeting
-                                 └──→ 7.2 Progressive HTML Stripping
+10.1 Provider Capability Registry ┬──→ 3.3 Smart Context Budgeting
+                                  ├──→ 11.1 Cost Tracking
+                                  └──→ 11.2 Budget Alerts
 
-3.1 Unified Tool Interface ──────┬──→ 3.2 Concurrent Tool Execution
-                                 ├──→ 3.3 Tool Result Budgeting
-                                 └──→ 2.4 Microcompaction
+10.2 Token Counting ─────────────┬──→ 3.2 Conversation Compaction
+                                 ├──→ 3.3 Smart Context Budgeting
+                                 └──→ 8.2 Progressive HTML Stripping
 
-1.1 Retry State Machine ────────→ 1.3 Provider Fallback
+4.1 Unified Tool Interface ──────┬──→ 4.2 Concurrent Tool Execution
+                                 ├──→ 4.3 Tool Result Budgeting
+                                 └──→ 3.4 Microcompaction
+
+2.1 Retry State Machine ────────→ 2.3 Provider Fallback
 ```
 
 ---
