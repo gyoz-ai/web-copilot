@@ -109,34 +109,18 @@ export default defineBackground(() => {
     }
 
     if (message.type === "gyozai_save_expression") {
-      console.log("[gyoza:bg] save_expression requested:", message.expression);
       chrome.storage.local
         .set({ gyozai_expression: message.expression })
-        .then(() => {
-          console.log("[gyoza:bg] expression saved OK:", message.expression);
-          sendResponse({ ok: true });
-        })
-        .catch((err) => {
-          console.error("[gyoza:bg] expression save FAILED:", err);
-          sendResponse({ ok: false });
-        });
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
       return true;
     }
 
     if (message.type === "gyozai_load_expression") {
       chrome.storage.local
         .get("gyozai_expression")
-        .then((r) => {
-          console.log(
-            "[gyoza:bg] load_expression result:",
-            r.gyozai_expression ?? "NOT FOUND",
-          );
-          sendResponse(r.gyozai_expression ?? null);
-        })
-        .catch((err) => {
-          console.error("[gyoza:bg] load_expression FAILED:", err);
-          sendResponse(null);
-        });
+        .then((r) => sendResponse(r.gyozai_expression ?? null))
+        .catch(() => sendResponse(null));
       return true;
     }
 
@@ -552,20 +536,9 @@ async function handleQuery(
 
     // Persist expression to local storage so it survives page refresh
     if (ctx.expression) {
-      console.log("[gyoza:bg] handleQuery saving expression:", ctx.expression);
       chrome.storage.local
         .set({ gyozai_expression: ctx.expression })
-        .then(() =>
-          console.log(
-            "[gyoza:bg] handleQuery expression saved OK:",
-            ctx.expression,
-          ),
-        )
-        .catch((err) =>
-          console.error("[gyoza:bg] handleQuery expression save FAILED:", err),
-        );
-    } else {
-      console.log("[gyoza:bg] handleQuery — no expression set by AI");
+        .catch(() => {});
     }
 
     return {

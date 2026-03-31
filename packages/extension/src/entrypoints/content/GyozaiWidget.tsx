@@ -126,19 +126,9 @@ export function GyozaiWidget() {
   const [expression, setExpression] = useState<Expression>(() => {
     // Session expression > preloaded local storage > default
     const saved = _preloadedSession?.expression ?? _preloadedExpression ?? null;
-    const result =
-      saved && EXPRESSIONS.includes(saved as Expression)
-        ? (saved as Expression)
-        : DEFAULT_EXPRESSION;
-    console.log(
-      "[gyoza:widget] expression init — session:",
-      _preloadedSession?.expression ?? "NONE",
-      "| preloaded:",
-      _preloadedExpression ?? "NONE",
-      "| using:",
-      result,
-    );
-    return result;
+    return saved && EXPRESSIONS.includes(saved as Expression)
+      ? (saved as Expression)
+      : DEFAULT_EXPRESSION;
   });
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
@@ -977,7 +967,6 @@ export function GyozaiWidget() {
           addToolStatusMessage(evt.content);
           break;
         case "expression":
-          console.log("[gyoza:widget] expression stream event:", evt.face);
           if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
             setExpression(evt.face as Expression);
             // Persist via background worker (reliable local storage write)
@@ -986,12 +975,7 @@ export function GyozaiWidget() {
                 type: "gyozai_save_expression",
                 expression: evt.face,
               })
-              .then((r) =>
-                console.log("[gyoza:widget] expression save response:", r),
-              )
-              .catch((err) =>
-                console.error("[gyoza:widget] expression save FAILED:", err),
-              );
+              .catch(() => {});
           }
           break;
         case "clarify":
