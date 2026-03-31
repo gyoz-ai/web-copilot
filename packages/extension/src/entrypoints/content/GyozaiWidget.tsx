@@ -314,6 +314,10 @@ export function GyozaiWidget() {
     if (!container) return;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const onScroll = () => {
+      // When the panel is hidden (display:none), the browser resets scrollTop
+      // to 0 and fires a scroll event. Ignore these phantom resets so we don't
+      // overwrite the real scroll position.
+      if (container.offsetParent === null && container.scrollTop === 0) return;
       // Track last known good scroll position (survives host detach/reattach)
       lastKnownScrollTopRef.current = container.scrollTop;
       // Update ref immediately for beforeunload
@@ -534,6 +538,19 @@ export function GyozaiWidget() {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [expanded, initialized, viewMode]);
+
+  // Restore scroll position when panel re-expands (display:none → display:flex
+  // resets scrollTop to 0, so we need to restore from lastKnownScrollTopRef)
+  useEffect(() => {
+    if (!expanded) return;
+    const container = messagesContainerRef.current;
+    const saved = lastKnownScrollTopRef.current;
+    if (container && saved > 0) {
+      requestAnimationFrame(() => {
+        container.scrollTop = saved;
+      });
+    }
+  }, [expanded]);
 
   // Safety net: periodically check if cursor is still near panel/avatar
   // Shadow DOM onMouseLeave can miss fast exits — this catches them
