@@ -17,6 +17,8 @@ interface AvatarProps {
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
   /** Called when drag state changes. */
   onDragStateChange?: (isDragging: boolean) => void;
+  /** Called whenever the avatar's rendered position changes (e.g. after session restore). */
+  onPositionChange?: () => void;
 }
 
 export function Avatar({
@@ -29,6 +31,7 @@ export function Avatar({
   onClick,
   wrapperRef,
   onDragStateChange,
+  onPositionChange,
 }: AvatarProps) {
   const px = AVATAR_SIZES[size];
   const {
@@ -45,6 +48,12 @@ export function Avatar({
   useEffect(() => {
     onDragStateChange?.(isDragging);
   }, [isDragging, onDragStateChange]);
+
+  // Notify parent when rendered position changes (e.g. after session restore)
+  // so pill/bubble can recompute its placement from the new bounding rect.
+  useEffect(() => {
+    onPositionChange?.();
+  }, [pos, onPositionChange]);
 
   const handleClick = useCallback(() => {
     // Only fire click if the pointer wasn't dragged

@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useReducer,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import type { ExtensionSettings } from "../../lib/storage";
 import { Avatar, AVATAR_SIZES } from "./components/Avatar";
 import { SpeechBubble } from "./components/SpeechBubble";
@@ -111,6 +117,9 @@ export function GyozaiWidget() {
     x: number;
     y: number;
   } | null>(null);
+  // Bumped when the avatar's rendered position changes so the status
+  // pill / speech bubble re-reads the avatar bounding rect.
+  const [, bumpAvatarPosTick] = useReducer((c: number) => c + 1, 0);
   // Tracks whether session has been restored — prevents the save effect
   // from immediately overwriting the stored session with empty defaults.
   const sessionRestoredRef = useRef(false);
@@ -1286,6 +1295,7 @@ export function GyozaiWidget() {
         onClick={() => {}}
         wrapperRef={avatarWrapperRef}
         onDragStateChange={setIsDraggingAvatar}
+        onPositionChange={bumpAvatarPosTick}
       />
 
       {/* Chat panel — positioned dynamically relative to avatar */}
