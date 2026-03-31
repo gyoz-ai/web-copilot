@@ -34,26 +34,27 @@
 
 ### Phase 5: Session, History, and Performance
 
-12. [Session Persistence & History](#12-session-persistence--history)
+12. [Session Persistence](#12-session-persistence)
 13. [Performance Optimizations](#13-performance-optimizations)
 
-### Phase 6: Extensibility and Provider Layer
+### Phase 6: Extensibility
 
-14. [Recipe & Playbook System](#14-recipe--playbook-system)
-15. [Resilient Provider Abstraction](#15-resilient-provider-abstraction)
-16. [Cost & Usage Tracking](#16-cost--usage-tracking)
+14. [Recipe System with Playbooks](#14-recipe-system-with-playbooks)
+15. [Token Counting Utility](#15-token-counting-utility)
 
 ### Phase 7: New Product Capabilities
 
-17. [Plan Mode for Browser Tasks](#17-plan-mode-for-browser-tasks)
-18. [Task Checklists & Progress Tracking](#18-task-checklists--progress-tracking)
-19. [Browser Memory](#19-browser-memory)
-20. [Evidence-Backed Answers](#20-evidence-backed-answers)
-21. [Page Watchers](#21-page-watchers)
+16. [Browser Memory](#16-browser-memory)
+17. [Page Watchers](#17-page-watchers)
 
 ### Phase 8: Testing & Observability
 
-22. [Testing & Observability](#22-testing--observability)
+18. [Testing & Observability](#18-testing--observability)
+
+### Deferred
+
+- [Plan Mode for Browser Tasks](#deferred-plan-mode-for-browser-tasks)
+- [Task Checklists & Progress Tracking](#deferred-task-checklists--progress-tracking)
 
 ---
 
@@ -144,7 +145,7 @@ Keep `createEngine()` as a thin wrapper with `@deprecated` annotation. Remove du
 
 ### Why This Is Priority #1
 
-Every subsequent improvement plugs into QueryEngine: retry logic (5), context management (4), streaming events (9), cost tracking (16), task memory (6), plan mode (17), and testability (22).
+Every subsequent improvement plugs into QueryEngine: retry logic (5), context management (4), streaming events (9), task memory (6), and testability (18).
 
 ---
 
@@ -353,25 +354,7 @@ Store as structured layers:
 - Unresolved clarification state
 - Navigation chain summary
 
-#### 4.4 Smart Context Budgeting
-
-Allocate tokens across categories adaptively:
-
-```typescript
-type ContextBudget = {
-  systemPrompt: number; // ~2K (fixed)
-  recipe: number; // ~1K (if manifest mode)
-  pageContext: number; // ~5K (adaptive)
-  history: number; // ~8K (adaptive)
-  userQuery: number; // ~500 (fixed)
-  toolResults: number; // ~3K (adaptive)
-  reserve: number; // ~1K for output
-};
-```
-
-If page is small → more budget to history. If history is short → more to page context.
-
-#### 4.5 Microcompaction for Tool Results
+#### 4.4 Microcompaction for Tool Results
 
 After consumption, replace large tool results with summaries:
 
@@ -384,12 +367,11 @@ Keep full result only for the most recent call of each type.
 **Files to create:**
 
 - `packages/engine/src/context-manager.ts`
-- `packages/engine/src/context-budget.ts`
 
 **Files to modify:**
 
 - `packages/engine/src/page-context.ts` — Hash-based cache, accept `maxTokens` for truncation
-- `packages/engine/src/query-engine.ts` — Use context manager, compaction, budgeting
+- `packages/engine/src/query-engine.ts` — Use context manager, compaction
 
 ---
 
@@ -397,7 +379,7 @@ Keep full result only for the most recent call of each type.
 
 ### Problem
 
-No retry logic, no fallback, no recovery from mid-stream failures. If the LLM returns 429/529, the user sees a raw error. Tool failures (stale context, unexpected page changes) aren't classified for recovery.
+No retry logic, no fallback, no recovery from mid-stream failures. If the LLM returns 429/529, the user sees a raw error. Tool failures (stale context, unexpected page changes) aren't classified for recovery. If the user's BYOK API key runs out of credits, they get a cryptic error instead of a clear message.
 
 ### Improvements
 
@@ -419,19 +401,32 @@ type RetryState = {
 - Emit `onRetry?(attempt, error, nextBackoffMs)` for UI feedback
 - Accept `signal: AbortSignal` for user cancellation
 
-#### 5.2 Streaming Failure Recovery
+#### 5.2 BYOK Resource Exhaustion Handling
+
+Detect when the user's API key has run out of credits or quota:
+
+- **Detection:** Catch 402 (Payment Required), 429 with `quota_exceeded` body, or provider-specific "insufficient funds" errors from Anthropic/OpenAI/Google APIs
+- **User-facing message:** Clear, actionable error: "Your API key has run out of credits. Top up your balance at [provider dashboard link] to continue."
+- **Behavior:** Block further queries with a dismissible banner (not a toast that disappears). Show a "Check again" button that re-validates the key
+- **Per-provider dashboard links:**
+  - Anthropic: `console.anthropic.com/settings/billing`
+  - OpenAI: `platform.openai.com/account/billing`
+  - Google: `aistudio.google.com/billing`
+- **Distinguish from rate limiting:** 429 rate limit (transient, retry with backoff) vs. 429 quota exceeded (permanent until user tops up) — check the response body/error code
+
+#### 5.3 Streaming Failure Recovery
 
 - Capture accumulated tool calls + partial text on stream failure
 - Re-query with recovery prompt: "Continue from where you left off"
 - Max 2 recovery attempts, then return partial result
 
-#### 5.3 Provider Fallback Chain
+#### 5.4 Provider Fallback Chain
 
 - Configure fallback provider in settings (e.g., primary: Claude, fallback: OpenAI)
 - On persistent 529, auto-switch with toast notification
 - Track active provider in session state
 
-#### 5.4 Tool Failure Recovery
+#### 5.5 Tool Failure Recovery
 
 Leverage structured `ToolOutcome` (section 2.2):
 
@@ -442,9 +437,10 @@ Leverage structured `ToolOutcome` (section 2.2):
 
 **Files to modify:**
 
-- `packages/engine/src/query-engine.ts` — Add retry loop, recovery logic
-- `packages/extension/src/lib/providers/index.ts` — Add fallback chain
+- `packages/engine/src/query-engine.ts` — Add retry loop, resource exhaustion detection, recovery logic
+- `packages/extension/src/lib/providers/index.ts` — Add fallback chain, provider-specific error parsing
 - `packages/extension/src/lib/storage.ts` — Add `fallbackProvider` to settings
+- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Resource exhaustion banner UI
 
 ---
 
@@ -474,8 +470,6 @@ type TaskMemory = {
 - Updated by QueryEngine after each tool execution
 - Injected into context when relevant (e.g., after navigation, on retry)
 - Persisted to `chrome.storage.session` for resume across SPA navigations
-
-This is a browser-specific version of Claude Code's memory system — focused on task state rather than user preferences.
 
 **Files to create:**
 
@@ -514,12 +508,17 @@ Add focused tools replacing common `execute_js` patterns:
 - Each uses `chrome.scripting.executeScript` with a focused, auditable function
 - Each has typed Zod input schemas (not arbitrary code strings)
 - Each returns structured `ToolOutcome` with clear success/failure semantics
-- `execute_js` remains available for edge cases the narrow tools don't cover
+
+**`execute_js` as last-resort fallback:**
+
+- `execute_js` stays available for edge cases the narrow tools can't handle
+- The system prompt instructs the model to prefer narrow tools first and only fall back to `execute_js` when none of the specific tools can accomplish the task
+- This gives the model an escape hatch while still nudging it toward the safer, auditable tools for common operations
 
 **Files to modify:**
 
 - `packages/extension/src/lib/tools.ts` — Add new tool definitions
-- `packages/extension/src/lib/prompts.ts` — Update tool descriptions
+- `packages/extension/src/lib/prompts.ts` — Update tool descriptions, add preference ordering
 
 ---
 
@@ -643,9 +642,6 @@ type WidgetState = {
   // Avatar
   expression: Expression;
   avatarPosition: AvatarPosition;
-  // Task (new)
-  taskChecklist: TaskStep[] | null; // Section 18
-  taskProgress: "idle" | "running" | "blocked" | "done";
 };
 ```
 
@@ -657,7 +653,6 @@ Split `GyozaiWidget` into sub-components:
 - `<ChatPanel>` — messages, loading, error
 - `<InputBar>` — input, loading
 - `<HistoryView>` — viewMode
-- `<TaskProgress>` — taskChecklist, taskProgress (section 18)
 
 **Files to create:**
 
@@ -716,7 +711,7 @@ type DecisionCard = {
 
 # Phase 5: Session, History, and Performance
 
-## 12. Session Persistence & History
+## 12. Session Persistence
 
 ### Improvements
 
@@ -724,16 +719,7 @@ type DecisionCard = {
 
 Before every LLM query, append user message to transcript log. After every response, append assistant + tool results. On crash, reconstruct from transcript (source of truth).
 
-#### 12.2 Paginated Conversation History
-
-Store index separately from content:
-
-- `gyozai_conv_index` — small metadata (title, domain, date, preview), loaded eagerly
-- `gyozai_conv_{id}` — full messages + LLM history, loaded on demand
-
-Eliminates loading ALL conversation data to show titles.
-
-#### 12.3 Debounced Session Save
+#### 12.2 Debounced Session Save
 
 Replace immediate `useEffect` save with debounced writer (300ms). Flush on `beforeunload`/`visibilitychange`. Use `navigator.locks.request()` to prevent concurrent writes.
 
@@ -743,7 +729,6 @@ Replace immediate `useEffect` save with debounced writer (300ms). Flush on `befo
 
 **Files to modify:**
 
-- `packages/extension/src/lib/storage.ts` — Split index + content
 - `packages/extension/src/lib/session.ts` — Debounced writer
 
 ---
@@ -762,10 +747,6 @@ When HTML too large for token budget, progressively strip:
 
 1. `data-*` attributes → 2. inline `style` → 3. depth > 8 → 4. hidden elements → 5. duplicate text blocks → 6. whitespace nodes → 7. non-interactive elements only
 
-#### 13.3 Widget Render Optimization
-
-With centralized store (section 10), selector-based subscriptions prevent unnecessary re-renders. `React.memo` on message list items.
-
 **Files to modify:**
 
 - `packages/engine/src/page-context.ts` — Hash cache + `stripToFit()`
@@ -773,13 +754,13 @@ With centralized store (section 10), selector-based subscriptions prevent unnece
 
 ---
 
-# Phase 6: Extensibility and Provider Layer
+# Phase 6: Extensibility
 
-## 14. Recipe & Playbook System
+## 14. Recipe System with Playbooks
 
 ### Problem
 
-Recipes are static text blobs. No versioning, no conditional activation, no way to describe multi-step task workflows.
+Recipes are static text blobs. No versioning, no conditional activation, and no way to describe multi-step task workflows within the recipe format.
 
 ### Improvements
 
@@ -801,156 +782,64 @@ maxSteps: 5
 
 Route-specific activation, capability restriction, model hints.
 
-#### 14.2 Site Playbooks
+#### 14.2 Playbook Section Within Recipes
 
-Broader than recipes — reusable multi-step task scripts generated from successful sessions:
+Playbooks are not a separate concept — they're a new section within the recipe format. A recipe can optionally include a `## Playbooks` section that defines reusable multi-step task scripts for common workflows on that site:
 
-```yaml
+```markdown
 ---
-name: Download Stripe Invoice
+name: Stripe Dashboard Helper
 domain: dashboard.stripe.com
-type: playbook
-steps:
-  - navigate to Billing > Invoices
-  - find the target invoice by date
-  - click Download PDF
 ---
+
+You are helping the user navigate the Stripe dashboard...
+
+## Playbooks
+
+### Download Invoice
+
+1. Navigate to Billing > Invoices
+2. Find the target invoice by date
+3. Click the "..." menu on that row
+4. Click "Download PDF"
+
+### Cancel Subscription
+
+1. Navigate to Customers > [customer]
+2. Find the active subscription
+3. Click "Cancel subscription"
+4. Select cancellation reason
+5. Confirm cancellation
 ```
 
-Difference from recipes: recipes describe a site; playbooks describe how to complete a task on a site. Playbooks can be auto-generated by recording successful task completions and distilling them.
+**How it works:**
 
-#### 14.3 Recipe Auto-Update
-
-Store ETag/Last-Modified on auto-import. Check periodically (24h). Show notification on change.
+- The playbook section is included in the system prompt when the recipe is active
+- The model uses the playbook as a step-by-step guide when the user's request matches a playbook's purpose
+- Playbooks can be auto-generated: after a successful multi-step task, the model proposes a playbook distilled from the session, and the user can save it into the recipe
 
 **Files to modify:**
 
-- `packages/extension/src/lib/recipes.ts` — Parse frontmatter, add playbook support
-- `packages/extension/src/lib/storage.ts` — Store recipe ETags + playbooks
+- `packages/extension/src/lib/recipes.ts` — Parse frontmatter, recognize playbook sections
+- `packages/extension/src/lib/prompts.ts` — Inject playbook context when recipe is active
 
 ---
 
-## 15. Resilient Provider Abstraction
+## 15. Token Counting Utility
 
-### Improvements
+**Where:** New file `packages/engine/src/token-count.ts`
 
-#### 15.1 Provider Capability Registry
-
-```typescript
-const PROVIDER_REGISTRY: Record<string, {
-  streaming: boolean;
-  toolCalling: boolean;
-  maxContextTokens: number;
-  maxOutputTokens: number;
-  costPerInputToken: number;
-  costPerOutputToken: number;
-}> = { ... };
-```
-
-Used by: context budgeting (4.4), cost tracking (16), feature gating.
-
-#### 15.2 Token Counting Utility
-
-Fast approximate counter: `Math.ceil(text.length / 4)` for English, `/2` for CJK-heavy. Optional `tiktoken-lite` for exact counts.
+Fast approximate counter: `Math.ceil(text.length / 4)` for English, `/2` for CJK-heavy. Used by conversation compaction (4.3) to decide when to trigger summarization.
 
 **Files to create:**
 
 - `packages/engine/src/token-count.ts`
 
-**Files to modify:**
-
-- `packages/extension/src/lib/providers/index.ts` — Add registry
-
----
-
-## 16. Cost & Usage Tracking
-
-### Improvements
-
-#### 16.1 Per-Query Cost Estimation
-
-Extract `usage.promptTokens` / `usage.completionTokens` from Vercel AI SDK. Calculate cost via provider registry. Show in widget header: "$0.03 this session".
-
-#### 16.2 Budget Alerts
-
-Add `maxSessionBudgetUsd` to settings (default $1.00). Warn at 80%, block at 100%. Show per-query cost as muted text under assistant messages.
-
-**Files to create:**
-
-- `packages/extension/src/lib/cost-tracker.ts`
-
-**Files to modify:**
-
-- `packages/extension/src/lib/storage.ts` — Add budget setting
-- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Show cost display
-
 ---
 
 # Phase 7: New Product Capabilities
 
-## 17. Plan Mode for Browser Tasks
-
-A "plan first" interaction mode where Gyozai inspects the site, proposes steps, and waits for approval before acting.
-
-**Why it matters:**
-
-- Better trust for checkout, banking, job applications, admin dashboards
-- Users can correct intent before actions happen
-- Makes long tasks legible
-
-**Examples:**
-
-- "Apply these filters, compare 3 plans, then recommend one"
-- "Walk me through the tax form before you fill anything"
-- "Show me the steps to cancel this subscription before clicking"
-
-**Implementation:**
-
-- Add `planMode: boolean` to QueryEngine config
-- In plan mode, the model only proposes actions (returns a checklist), doesn't execute them
-- User reviews and approves/edits the plan
-- On approval, execute the plan step by step with the task checklist UI (section 18)
-- Activated manually via UI toggle
-
-**Files to modify:**
-
-- `packages/engine/src/query-engine.ts` — Plan mode query path
-- `packages/extension/src/lib/prompts.ts` — Plan mode system prompt variant
-- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Plan approval UI
-
----
-
-## 18. Task Checklists & Progress Tracking
-
-Visible checklist for multi-step browser tasks. Each item: `pending | running | blocked | done`.
-
-```typescript
-type TaskStep = {
-  id: string;
-  description: string;
-  status: "pending" | "running" | "blocked" | "done" | "failed";
-  result?: string;
-};
-```
-
-**Examples:**
-
-- Find pricing page → Compare annual vs monthly → Open billing settings → Complete cancellation
-
-**Implementation:**
-
-- QueryEngine emits checklist from plan mode or generates it on the fly
-- Widget shows collapsible progress panel
-- Steps update in real-time via streaming events
-- Failed steps show retry option
-
-**Files to create:**
-
-- `packages/extension/src/components/TaskProgress.tsx`
-
----
-
-## 19. Browser Memory
+## 16. Browser Memory
 
 Remember stable user/browser preferences across sites:
 
@@ -980,32 +869,7 @@ type BrowserMemory = {
 
 ---
 
-## 20. Evidence-Backed Answers
-
-Every significant answer cites what it relied on:
-
-```typescript
-type Evidence = {
-  pageSection?: string; // "Billing > Subscription > Plan Details"
-  element?: string; // "Button: Cancel Plan"
-  route?: string; // "/settings/billing"
-  quote?: string; // "Monthly: $29/mo, Annual: $24/mo"
-};
-```
-
-- Tool results include evidence metadata
-- Assistant messages can reference evidence
-- Widget renders evidence as expandable citations under messages
-- Dramatically improves trust: "I found the cancel button in Billing > Subscription"
-
-**Files to modify:**
-
-- `packages/extension/src/lib/tools.ts` — Tools return evidence in results
-- `packages/extension/src/entrypoints/content/GyozaiWidget.tsx` — Render citations
-
----
-
-## 21. Page Watchers
+## 17. Page Watchers
 
 Ask Gyozai to watch for a condition and notify when it changes:
 
@@ -1034,23 +898,24 @@ Ask Gyozai to watch for a condition and notify when it changes:
 
 # Phase 8: Testing & Observability
 
-## 22. Testing & Observability
+## 18. Testing & Observability
 
 ### Improvements
 
-#### 22.1 Tool Execution Tests
+#### 18.1 Tool Execution Tests
 
 Test each tool in isolation with mock `chrome.scripting.executeScript`. Test success/failure paths, concurrency flags, result truncation.
 
-#### 22.2 QueryEngine Unit Tests
+#### 18.2 QueryEngine Unit Tests
 
 With QueryEngine extracted, test without Chrome APIs:
 
 - Mock provider returns controlled responses
 - Test retry logic, compaction triggers, tool outcome handling
-- Test plan mode, task memory updates
+- Test resource exhaustion detection
+- Test task memory updates
 
-#### 22.3 Structured Error Logging
+#### 18.3 Structured Error Logging
 
 Replace scattered `console.log` with structured logger:
 
@@ -1067,7 +932,7 @@ const logger = {
 - Store last 100 errors in `chrome.storage.local`
 - Hidden debug panel (triple-tap avatar) showing recent logs + tool traces + prompt snapshots
 
-#### 22.4 Outcome-Oriented Analytics
+#### 18.4 Outcome-Oriented Analytics
 
 Log browser-task outcomes, not just model/provider stats:
 
@@ -1088,50 +953,55 @@ Log browser-task outcomes, not just model/provider stats:
 
 ---
 
+# Deferred
+
+Items worth building later but not prioritized now.
+
+## Deferred: Plan Mode for Browser Tasks
+
+A "plan first" interaction mode where Gyozai inspects the site, proposes steps, and waits for approval before acting. Useful for checkout, banking, job applications. Depends on QueryEngine (1) and task templates (3.2).
+
+## Deferred: Task Checklists & Progress Tracking
+
+Visible checklist for multi-step browser tasks with real-time status (`pending | running | blocked | done`). Depends on centralized store (10) and task memory (6).
+
+---
+
 ## Implementation Priority
 
-| Priority | Section                                    | Effort     | Impact                                                |
-| -------- | ------------------------------------------ | ---------- | ----------------------------------------------------- |
-| **1**    | **1. Extract QueryEngine**                 | **Medium** | **Critical — prerequisite for everything**            |
-| **2**    | **2. Tool registry + structured outcomes** | **Medium** | **High — enables narrow tools, self-healing**         |
-| **3**    | **3. Prompt rules → runtime code**         | **Small**  | **High — reduces prompt bloat, improves reliability** |
-| 4        | 5.1 Retry state machine                    | Small      | High — eliminates user-visible errors                 |
-| 5        | 9.1 Granular streaming events              | Medium     | High — dramatically better UX                         |
-| 6        | 10.1 Centralized store                     | Medium     | High — eliminates state bugs                          |
-| 7        | 4.1 Freshness-aware context levels         | Medium     | High — biggest token savings                          |
-| 8        | 7. Narrow interaction tools                | Medium     | High — safer, more reliable actions                   |
-| 9        | 8. Self-healing strategies                 | Medium     | High — "it actually works on messy sites"             |
-| 10       | 4.3 Conversation compaction                | Medium     | High — enables longer tasks                           |
-| 11       | 11. Structured decision cards              | Small      | Medium — better clarify UX                            |
-| 12       | 17. Plan mode                              | Medium     | Medium — high-value for multi-step tasks              |
-| 13       | 18. Task checklists                        | Small      | Medium — makes multi-step tasks legible               |
-| 14       | 16.1 Cost tracking                         | Small      | Medium — critical for BYOK                            |
-| 15       | 22.3 Structured logging                    | Small      | Medium — improves debuggability                       |
-| 16       | 6. Structured task memory                  | Medium     | Medium — enables multi-page tasks                     |
-| 17       | 15.1 Provider capability registry          | Small      | Medium — enables budgeting + cost                     |
-| 18       | 14.1 Recipe frontmatter                    | Medium     | Medium — better extensibility                         |
-| 19       | 20. Evidence-backed answers                | Small      | Medium — improves trust                               |
-| 20       | 12.2 Paginated history                     | Small      | Medium — fixes slow history                           |
-| 21       | 19. Browser memory                         | Medium     | Medium — personalization                              |
-| 22       | 13.1 Cached page context                   | Small      | Medium — performance                                  |
-| 23       | 5.3 Provider fallback                      | Small      | Low-Medium                                            |
-| 24       | 14.2 Site playbooks                        | Medium     | Medium — product differentiator                       |
-| 25       | 21. Page watchers                          | Large      | Medium — product differentiator                       |
-| 26       | 13.2 Progressive HTML stripping            | Medium     | Low-Medium                                            |
-| 27       | 12.1 Transcript recording                  | Small      | Low                                                   |
-| 28       | 4.4 Smart context budgeting                | Medium     | Low-Medium                                            |
-| 29       | 9.2 Overlapping tool execution             | Medium     | Low-Medium                                            |
-| 30       | 15.2 Token counting                        | Small      | Low                                                   |
-| 31       | 16.2 Budget alerts                         | Small      | Low                                                   |
-| 32       | 14.3 Recipe auto-update                    | Small      | Low                                                   |
-| 33       | 5.2 Streaming failure recovery             | Medium     | Low                                                   |
-| 34       | 2.3 Concurrent tool execution              | Medium     | Low                                                   |
-| 35       | 22.1-22.2 Tests                            | Medium     | Low (quality investment)                              |
-| 36       | 12.3 Debounced session save                | Small      | Low                                                   |
-| 37       | 4.5 Microcompaction                        | Small      | Low                                                   |
-| 38       | 13.3 Widget render optimization            | Small      | Low                                                   |
-| 39       | 22.4 Outcome analytics                     | Small      | Low                                                   |
-| 40       | 1.3 Deprecate legacy createEngine          | Small      | Low (cleanup)                                         |
+| Priority | Section                                           | Effort     | Impact                                                |
+| -------- | ------------------------------------------------- | ---------- | ----------------------------------------------------- |
+| **1**    | **1. Extract QueryEngine**                        | **Medium** | **Critical — prerequisite for everything**            |
+| **2**    | **2. Tool registry + structured outcomes**        | **Medium** | **High — enables narrow tools, self-healing**         |
+| **3**    | **3. Prompt rules → runtime code**                | **Small**  | **High — reduces prompt bloat, improves reliability** |
+| 4        | 5.1 Retry state machine                           | Small      | High — eliminates user-visible errors                 |
+| 5        | 5.2 BYOK resource exhaustion handling             | Small      | High — critical for BYOK users                        |
+| 6        | 9.1 Granular streaming events                     | Medium     | High — dramatically better UX                         |
+| 7        | 10.1 Centralized store                            | Medium     | High — eliminates state bugs                          |
+| 8        | 4.1 Freshness-aware context levels                | Medium     | High — biggest token savings                          |
+| 9        | 7. Narrow interaction tools + execute_js fallback | Medium     | High — safer, more reliable actions                   |
+| 10       | 8. Self-healing strategies                        | Medium     | High — "it actually works on messy sites"             |
+| 11       | 4.3 Conversation compaction                       | Medium     | High — enables longer tasks                           |
+| 12       | 11. Structured decision cards                     | Small      | Medium — better clarify UX                            |
+| 13       | 18.3 Structured logging                           | Small      | Medium — improves debuggability                       |
+| 14       | 6. Structured task memory                         | Medium     | Medium — enables multi-page tasks                     |
+| 15       | 14.1 Recipe frontmatter                           | Medium     | Medium — better extensibility                         |
+| 16       | 14.2 Playbook sections in recipes                 | Small      | Medium — reusable task scripts                        |
+| 17       | 16. Browser memory                                | Medium     | Medium — personalization                              |
+| 18       | 13.1 Cached page context                          | Small      | Medium — performance                                  |
+| 19       | 5.4 Provider fallback                             | Small      | Low-Medium                                            |
+| 20       | 17. Page watchers                                 | Large      | Medium — product differentiator                       |
+| 21       | 13.2 Progressive HTML stripping                   | Medium     | Low-Medium                                            |
+| 22       | 12.1 Transcript recording                         | Small      | Low                                                   |
+| 23       | 15. Token counting                                | Small      | Low                                                   |
+| 24       | 9.2 Overlapping tool execution                    | Medium     | Low-Medium                                            |
+| 25       | 5.3 Streaming failure recovery                    | Medium     | Low                                                   |
+| 26       | 2.3 Concurrent tool execution                     | Medium     | Low                                                   |
+| 27       | 18.1-18.2 Tests                                   | Medium     | Low (quality investment)                              |
+| 28       | 12.2 Debounced session save                       | Small      | Low                                                   |
+| 29       | 4.4 Microcompaction                               | Small      | Low                                                   |
+| 30       | 18.4 Outcome analytics                            | Small      | Low                                                   |
+| 31       | 1.3 Deprecate legacy createEngine                 | Small      | Low (cleanup)                                         |
 
 ---
 
@@ -1144,24 +1014,18 @@ Log browser-task outcomes, not just model/provider stats:
                                 ├──→ 5. Error Recovery (retry in engine)
                                 ├──→ 6. Task Memory (engine updates it)
                                 ├──→ 9. Streaming Events (engine emits them)
-                                ├──→ 16. Cost Tracking (engine exposes usage)
-                                ├──→ 17. Plan Mode (engine query path)
-                                └──→ 22. Testing (engine is testable)
+                                └──→ 18. Testing (engine is testable)
 
 2. Tool Registry ───────────────┬──→ 7. Narrow Tools (implement BrowserTool)
                                 ├──→ 8. Self-Healing (tool-level fallback chains)
                                 └──→ 2.3 Concurrent Execution
 
-10. Centralized Store ──────────┬──→ 13.3 Widget Render Optimization
-                                ├──→ 18. Task Checklists (store tracks steps)
-                                └──→ 12.3 Debounced Session Save
+10. Centralized Store ──────────┬──→ 12.2 Debounced Session Save
+                                └──→ 11. Decision Cards (store pending decision)
 
-15. Provider Registry ──────────┬──→ 4.4 Context Budgeting
-                                ├──→ 16. Cost Tracking
-                                └──→ 5.3 Provider Fallback
+15. Token Counting ─────────────→ 4.3 Conversation Compaction
 
-6. Task Memory ─────────────────┬──→ 17. Plan Mode (plan stored as task)
-                                └──→ 18. Task Checklists (checklist from memory)
+6. Task Memory ─────────────────→ 16. Browser Memory (similar persistence pattern)
 ```
 
 ---
@@ -1176,7 +1040,9 @@ These are powerful in Claude Code, but wrong or premature for a browser copilot:
 - **LSP/git/project-aware context** — not a dev tool
 - **Giant command systems** — natural language is the interface
 - **Bun feature-flag dead-code elimination** — over-engineering at this scale
-- **Full memory consolidation/dreaming** — browser memory (section 19) is sufficient
+- **Full memory consolidation/dreaming** — browser memory (section 16) is sufficient
+- **Provider capability registry** — premature; hardcode what's needed until provider count grows
+- **Per-query cost display** — nice-to-have but not essential; focus on resource exhaustion handling instead
 
 The product risk is becoming an over-general agent framework instead of a precise website copilot.
 
