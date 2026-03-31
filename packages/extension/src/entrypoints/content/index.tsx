@@ -26,6 +26,7 @@ let _preloadedTabId: number | null = null;
 let _preloadedLocale: LocaleCode | null = null;
 let _preloadedSession: WidgetSession | null = null;
 let _preloadedAvatarPosition: { x: number; y: number } | null = null;
+let _preloadedExpression: string | null = null;
 
 const _preloadReady = chrome.runtime
   .sendMessage({ type: "gyozai_get_tab_id" })
@@ -63,16 +64,28 @@ const _preloadReady = chrome.runtime
           }
         })
         .catch(() => {}),
+      // Load persisted expression from local storage (survives browser restart)
+      chrome.storage.local
+        .get("gyozai_expression")
+        .then((r) => {
+          if (r.gyozai_expression) {
+            _preloadedExpression = r.gyozai_expression;
+          }
+        })
+        .catch(() => {}),
     ]);
     // Session avatar position takes precedence over local storage
     const avatarPos =
       _preloadedSession?.avatarPosition ?? _preloadedAvatarPosition;
+    // Session expression takes precedence over local storage
+    const expr = _preloadedSession?.expression ?? _preloadedExpression ?? null;
     // Share preloaded state with GyozaiWidget module
     setPreloadState({
       tabId: _preloadedTabId,
       locale: _preloadedLocale,
       session: _preloadedSession,
       avatarPosition: avatarPos,
+      expression: expr,
       ready: Promise.resolve(),
     });
   })

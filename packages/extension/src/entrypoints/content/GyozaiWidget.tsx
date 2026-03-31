@@ -57,6 +57,7 @@ export let _preloadedTabId: number | null = null;
 export let _preloadedLocale: LocaleCode | null = null;
 export let _preloadedSession: WidgetSession | null = null;
 export let _preloadedAvatarPosition: { x: number; y: number } | null = null;
+export let _preloadedExpression: string | null = null;
 export let _preloadReady: Promise<void> = Promise.resolve();
 
 export function setPreloadState(state: {
@@ -64,6 +65,7 @@ export function setPreloadState(state: {
   locale: LocaleCode | null;
   session: WidgetSession | null;
   avatarPosition?: { x: number; y: number } | null;
+  expression?: string | null;
   ready: Promise<void>;
 }) {
   _preloadedTabId = state.tabId;
@@ -71,6 +73,7 @@ export function setPreloadState(state: {
   _preloadedSession = state.session;
   if (state.avatarPosition !== undefined)
     _preloadedAvatarPosition = state.avatarPosition;
+  if (state.expression !== undefined) _preloadedExpression = state.expression;
   _preloadReady = state.ready;
 }
 
@@ -120,12 +123,13 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
-  const [expression, setExpression] = useState<Expression>(
-    _preloadedSession?.expression &&
-      EXPRESSIONS.includes(_preloadedSession.expression as Expression)
-      ? (_preloadedSession.expression as Expression)
-      : DEFAULT_EXPRESSION,
-  );
+  const [expression, setExpression] = useState<Expression>(() => {
+    // Session expression > preloaded local storage > default
+    const saved = _preloadedSession?.expression ?? _preloadedExpression ?? null;
+    return saved && EXPRESSIONS.includes(saved as Expression)
+      ? (saved as Expression)
+      : DEFAULT_EXPRESSION;
+  });
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
   const animatedMsgIdRef = useRef<string | null>(null);
@@ -965,6 +969,10 @@ export function GyozaiWidget() {
         case "expression":
           if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
             setExpression(evt.face as Expression);
+            // Persist to local storage (survives browser close)
+            chrome.storage.local
+              .set({ gyozai_expression: evt.face })
+              .catch(() => {});
           }
           break;
         case "clarify":
