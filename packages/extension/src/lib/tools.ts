@@ -294,29 +294,71 @@ export function createBrowserTools(
                 });
 
                 if (nearTxt) {
-                  // Find element whose ancestor contains near_text
-                  el =
-                    candidates.find((e) => {
-                      if (e.textContent?.trim() !== txt) return false;
-                      let node: HTMLElement | null = e.parentElement;
-                      for (let d = 0; node && d < 8; d++) {
-                        if (
-                          node.textContent
-                            ?.toLowerCase()
-                            .includes(nearTxt.toLowerCase())
-                        ) {
+                  // Find the element whose SMALLEST (most specific) ancestor
+                  // contains near_text. This avoids matching a top-level
+                  // container that holds all cards on the page.
+                  let bestMatch: HTMLElement | null = null;
+                  let bestAncestorLen = Infinity;
+
+                  for (const e of textMatches) {
+                    let node: HTMLElement | null = e.parentElement;
+                    for (let d = 0; node && d < 8; d++) {
+                      const nodeText = node.textContent || "";
+                      if (
+                        nodeText.toLowerCase().includes(nearTxt.toLowerCase())
+                      ) {
+                        // Prefer the ancestor with least text (most specific)
+                        if (nodeText.length < bestAncestorLen) {
+                          bestAncestorLen = nodeText.length;
+                          bestMatch = e;
                           console.log(
                             LOG,
                             S,
-                            `  ✓ near_text match found at depth ${d}: ancestor contains "${nearTxt}"`,
+                            `  ↳ near_text candidate: <${e.tagName.toLowerCase()}> at depth ${d}, ancestor size: ${nodeText.length} chars`,
                           );
-                          return true;
                         }
-                        node = node.parentElement;
+                        break; // found nearest ancestor for this candidate
                       }
-                      return false;
-                    }) || null;
-                  if (!el) {
+                      node = node.parentElement;
+                    }
+                  }
+
+                  if (bestMatch) {
+                    // If multiple types match (div + button), prefer interactive
+                    const interactiveTags = new Set([
+                      "BUTTON",
+                      "A",
+                      "INPUT",
+                      "SELECT",
+                    ]);
+                    if (!interactiveTags.has(bestMatch.tagName)) {
+                      const interactive = textMatches.find((e) => {
+                        if (!interactiveTags.has(e.tagName)) return false;
+                        // Must share the same parent card
+                        return (
+                          bestMatch!.closest("[class]") ===
+                            e.closest("[class]") ||
+                          bestMatch!.contains(e) ||
+                          e.contains(bestMatch!)
+                        );
+                      });
+                      if (interactive) {
+                        console.log(
+                          LOG,
+                          S,
+                          `  ↳ Upgraded from <${bestMatch.tagName.toLowerCase()}> to <${interactive.tagName.toLowerCase()}> (prefer interactive)`,
+                        );
+                        bestMatch = interactive;
+                      }
+                    }
+
+                    el = bestMatch;
+                    console.log(
+                      LOG,
+                      S,
+                      `  ✓ near_text best match: <${el.tagName.toLowerCase()}> (ancestor size: ${bestAncestorLen} chars)`,
+                    );
+                  } else {
                     console.log(
                       LOG,
                       S,
