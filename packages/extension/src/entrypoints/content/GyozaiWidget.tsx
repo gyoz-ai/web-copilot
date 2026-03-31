@@ -120,7 +120,12 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
-  const [expression, setExpression] = useState<Expression>(DEFAULT_EXPRESSION);
+  const [expression, setExpression] = useState<Expression>(
+    _preloadedSession?.expression &&
+      EXPRESSIONS.includes(_preloadedSession.expression as Expression)
+      ? (_preloadedSession.expression as Expression)
+      : DEFAULT_EXPRESSION,
+  );
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
   const animatedMsgIdRef = useRef<string | null>(null);
