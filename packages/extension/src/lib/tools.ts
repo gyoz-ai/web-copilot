@@ -305,23 +305,36 @@ export function createBrowserTools(
             },
           );
 
-          const error = await execInPage(
+          const result = await execInPage(
             ctx.tabId,
             ((jsCode: string) => {
               try {
-                new Function(jsCode)();
-                return null;
+                const ret = new Function(jsCode)();
+                // Return stringified result so the model can see what happened
+                return {
+                  error: null,
+                  result: ret === undefined ? null : String(ret).slice(0, 500),
+                };
               } catch (e) {
-                return e instanceof Error ? e.message : String(e);
+                return {
+                  error: e instanceof Error ? e.message : String(e),
+                  result: null,
+                };
               }
-            }) as (...args: never[]) => string | null,
+            }) as (...args: never[]) => {
+              error: string | null;
+              result: string | null;
+            },
             [fixedCode],
           );
 
-          if (error) {
-            return { success: false, error };
+          if (result?.error) {
+            return { success: false, error: result.error };
           }
-          return { success: true };
+          return {
+            success: true,
+            ...(result?.result != null ? { result: result.result } : {}),
+          };
         } catch (e) {
           return {
             success: false,
@@ -424,7 +437,19 @@ export function createBrowserTools(
           snapshotTypes: types,
         });
         if (result?.context) {
-          return { context: result.context as string };
+          const ctx_text = result.context as string;
+          console.log(
+            `%c  [gyoza] get_page_context(${types.join(",")})%c ${ctx_text.length} chars`,
+            "color: #a855f7; font-weight: bold",
+            "color: #9ca3af",
+          );
+          console.groupCollapsed(
+            "%c  [gyoza] page context preview",
+            "color: #9ca3af",
+          );
+          console.log(ctx_text.slice(0, 2000));
+          console.groupEnd();
+          return { context: ctx_text };
         }
         return { context: "No page context captured (page may be loading)." };
       } catch {

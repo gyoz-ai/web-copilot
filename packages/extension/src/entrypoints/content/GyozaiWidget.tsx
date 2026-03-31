@@ -1116,6 +1116,8 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      // Re-focus input so user can immediately type the next message
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -1139,6 +1141,7 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
