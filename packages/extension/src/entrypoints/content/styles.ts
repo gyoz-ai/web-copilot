@@ -331,6 +331,22 @@ export const WIDGET_STYLES = `
     box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
   }
 
+  /* ─── Status Pill ───────────────────────────────────────── */
+
+  .gyozai-status-pill {
+    display: inline-block;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--g-text-secondary);
+    background: oklch(0.18 0.015 50 / 0.9);
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    animation: gyozai-fade-in 0.3s ease-out;
+  }
+
   /* ─── Toast ─────────────────────────────────────────────── */
 
   .gyozai-toast {

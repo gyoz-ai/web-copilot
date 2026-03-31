@@ -102,6 +102,7 @@ export function GyozaiWidget() {
     useState<ExtensionSettings["agentSize"]>("medium");
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
@@ -191,6 +192,17 @@ export function GyozaiWidget() {
         activeConvIdRef.current = _preloadedSession.activeConvId;
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         log("Session restored from storage");
+      }
+      // If no avatar position from session, try local storage (persists across browser restart)
+      if (!_preloadedSession?.avatarPosition) {
+        chrome.storage.local
+          .get("gyozai_avatar_position")
+          .then((r) => {
+            if (r.gyozai_avatar_position) {
+              setAvatarPosition(r.gyozai_avatar_position);
+            }
+          })
+          .catch(() => {});
       }
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
@@ -1152,15 +1164,10 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
-      {/* Speech bubble — always shows last message (hidden when chatbox is open) */}
+      {/* Status pill / speech bubble — centered above avatar */}
       {!expanded &&
-        messages.length > 0 &&
+        !isDraggingAvatar &&
         (() => {
-          const lastMsg = messages[messages.length - 1];
-          // Only show thinking when actively loading — don't infer from
-          // lastMsg.role because after session restore the last msg may be
-          // "user" even though no query is in flight.
-          const isThinking = loading;
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
           const showAbove = rect ? rect.top > window.innerHeight / 2 : true;
           const bubbleWidth = 280;
@@ -1179,6 +1186,35 @@ export function GyozaiWidget() {
                   : { top: rect.bottom + 8 }),
               }
             : { right: 20, bottom: 100 };
+
+          // Find the last tool-status message (for status pill display)
+          const lastStatus = [...messages]
+            .reverse()
+            .find((m) => m.type === "tool-status");
+          const lastMsg =
+            messages.length > 0 ? messages[messages.length - 1] : null;
+          const isThinking = loading;
+
+          // Show status pill if loading with a tool-status message
+          if (isThinking && lastStatus) {
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  zIndex: 2147483647,
+                  pointerEvents: "none",
+                  display: "flex",
+                  justifyContent: "center",
+                  width: bubbleWidth,
+                  ...posStyle,
+                }}
+              >
+                <div className="gyozai-status-pill">{lastStatus.content}</div>
+              </div>
+            );
+          }
+
+          // Show speech bubble with last assistant message, or "Idling..." if none
           return (
             <div
               ref={speechBubbleRef}
@@ -1192,17 +1228,23 @@ export function GyozaiWidget() {
                 setExpanded(true);
               }}
             >
-              <SpeechBubble
-                text={isThinking ? "" : lastMsg.content}
-                isThinking={isThinking}
-                autoDismissMs={0}
-                soundEnabled={typingSound}
-                typewriterEnabled={animatedMsgIdRef.current !== lastMsg.id}
-                onTypingChange={(typing) => {
-                  setIsTypewriting(typing);
-                  if (!typing) animatedMsgIdRef.current = lastMsg.id;
-                }}
-              />
+              {lastMsg && lastMsg.role === "assistant" ? (
+                <SpeechBubble
+                  text={lastMsg.content}
+                  isThinking={false}
+                  autoDismissMs={0}
+                  soundEnabled={typingSound}
+                  typewriterEnabled={animatedMsgIdRef.current !== lastMsg.id}
+                  onTypingChange={(typing) => {
+                    setIsTypewriting(typing);
+                    if (!typing) animatedMsgIdRef.current = lastMsg.id;
+                  }}
+                />
+              ) : isThinking ? (
+                <div className="gyozai-status-pill">Thinking...</div>
+              ) : (
+                <div className="gyozai-status-pill">Idling...</div>
+              )}
             </div>
           );
         })()}
@@ -1214,16 +1256,23 @@ export function GyozaiWidget() {
         talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
         isTalking={isTypewriting}
         position={avatarPosition}
-        onDragEnd={(pos) => setAvatarPosition(pos)}
+        onDragEnd={(pos) => {
+          setAvatarPosition(pos);
+          // Persist to local storage (survives browser close)
+          chrome.storage.local
+            .set({ gyozai_avatar_position: pos })
+            .catch(() => {});
+        }}
         onClick={() => {}}
         wrapperRef={avatarWrapperRef}
+        onDragStateChange={setIsDraggingAvatar}
       />
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{
-          display: expanded ? "flex" : "none",
+          display: expanded && !isDraggingAvatar ? "flex" : "none",
           ...(avatarWrapperRef.current
             ? (() => {
                 const rect = avatarWrapperRef.current.getBoundingClientRect();

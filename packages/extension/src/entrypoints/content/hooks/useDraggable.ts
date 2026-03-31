@@ -26,8 +26,8 @@ function clampToViewport(pos: Position, size: number): Position {
 
 function defaultPosition(size: number): Position {
   return {
-    x: window.innerWidth - size - 20,
-    y: window.innerHeight - size - 20,
+    x: window.innerWidth - size - 60,
+    y: window.innerHeight - size - 100,
   };
 }
 
