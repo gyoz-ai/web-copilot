@@ -29,7 +29,7 @@ export async function handleQuery(
   const settings = await getSettings();
   const providerResult = createProvider(settings);
   const tabId = sender.tab?.id ?? null;
-  const convId = message.conversationId || "default";
+  const convId = message.conversationId;
   const queryId = message.queryId;
   const history = convId ? await getConversationLlmHistory(convId) : [];
 
@@ -154,7 +154,7 @@ export async function handleQuery(
       clarify: null,
       expression: null,
       navigated: false,
-      conversationId: convId || null,
+      conversationId: convId ?? null,
       originalQuery: message.query,
       onStreamEvent: sendStreamEvent,
     };
