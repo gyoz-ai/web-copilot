@@ -29,21 +29,23 @@ const PROVIDERS = [
 
 const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   claude: [
-    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
     { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
+    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
     { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5" },
-    { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5" },
-    { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
-    { id: "claude-opus-4-1-20250805", name: "Claude Opus 4.1" },
-    { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-    { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
   ],
   openai: [
-    { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
-    { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
+    { id: "gpt-5.4", name: "GPT-5.4" },
+    { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+    { id: "gpt-5.4-nano", name: "GPT-5.4 Nano" },
   ],
-  gemini: [{ id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" }],
+  gemini: [
+    { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
+    { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
+    {
+      id: "gemini-3.1-flash-lite-preview",
+      name: "Gemini 3.1 Flash Lite Preview",
+    },
+  ],
 };
 
 type Tab = "provider" | "recipes" | "settings";
