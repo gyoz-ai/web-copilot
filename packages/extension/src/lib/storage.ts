@@ -1,7 +1,9 @@
+export type ProviderKey = "claude" | "openai" | "gemini";
+
 export interface ExtensionSettings {
   mode: "byok" | "managed";
-  provider: "claude" | "openai" | "gemini";
-  apiKey: string;
+  provider: ProviderKey;
+  apiKeys: Record<ProviderKey, string>;
   model: string;
   managedToken?: string;
   yoloMode: boolean;
@@ -17,7 +19,7 @@ export interface ExtensionSettings {
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   mode: "byok",
   provider: "claude",
-  apiKey: "",
+  apiKeys: { claude: "", openai: "", gemini: "" },
   model: "claude-haiku-4-5-20251001",
   yoloMode: false,
   autoImportRecipes: true,
@@ -30,7 +32,23 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 
 export async function getSettings(): Promise<ExtensionSettings> {
   const result = await chrome.storage.local.get("gyozai_settings");
-  return { ...DEFAULT_SETTINGS, ...result.gyozai_settings };
+  const raw = result.gyozai_settings || {};
+  const settings = { ...DEFAULT_SETTINGS, ...raw };
+
+  // Migrate legacy single apiKey → per-provider apiKeys
+  if (raw.apiKey && !raw.apiKeys) {
+    const provider: ProviderKey = raw.provider || "claude";
+    settings.apiKeys = {
+      claude: "",
+      openai: "",
+      gemini: "",
+      [provider]: raw.apiKey,
+    };
+    delete (settings as Record<string, unknown>).apiKey;
+    await chrome.storage.local.set({ gyozai_settings: settings });
+  }
+
+  return settings;
 }
 
 export async function saveSettings(settings: ExtensionSettings): Promise<void> {

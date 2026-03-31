@@ -20,14 +20,15 @@ export function createProvider(settings: ExtensionSettings): ProviderResult {
   }
 
   // BYOK mode → Vercel AI SDK model
-  if (!settings.apiKey) {
+  const apiKey = settings.apiKeys[settings.provider];
+  if (!apiKey) {
     throw new Error("API key is required for BYOK mode");
   }
 
   switch (settings.provider) {
     case "claude": {
       const anthropic = createAnthropic({
-        apiKey: settings.apiKey,
+        apiKey,
         headers: {
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -36,13 +37,13 @@ export function createProvider(settings: ExtensionSettings): ProviderResult {
     }
     case "openai": {
       const openai = createOpenAI({
-        apiKey: settings.apiKey,
+        apiKey,
       });
       return { type: "model", model: openai(settings.model) };
     }
     case "gemini": {
       const google = createGoogleGenerativeAI({
-        apiKey: settings.apiKey,
+        apiKey,
       });
       return { type: "model", model: google(settings.model) };
     }

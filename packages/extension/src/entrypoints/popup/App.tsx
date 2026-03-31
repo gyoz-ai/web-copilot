@@ -39,13 +39,11 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
     { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
   ],
   openai: [
-    { id: "gpt-4o", name: "GPT-4o" },
-    { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+    { id: "gpt-4.1", name: "GPT-4.1" },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
+    { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
   ],
-  gemini: [
-    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-  ],
+  gemini: [{ id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" }],
 };
 
 type Tab = "provider" | "recipes" | "settings";
@@ -191,9 +189,15 @@ export function App() {
                 <input
                   type={showKey ? "text" : "password"}
                   className="form-input"
-                  value={settings.apiKey}
+                  value={settings.apiKeys[settings.provider]}
                   onChange={(e) =>
-                    setSettings({ ...settings, apiKey: e.target.value })
+                    setSettings({
+                      ...settings,
+                      apiKeys: {
+                        ...settings.apiKeys,
+                        [settings.provider]: e.target.value,
+                      },
+                    })
                   }
                   placeholder={t(tr, "popup_api_key_placeholder", {
                     provider:
