@@ -395,22 +395,6 @@ function getAncestorContext(el: Element): string {
   return "";
 }
 
-function buildParentSelector(el: Element): string | null {
-  if (el.id) return `#${el.id}`;
-  if (el.tagName === "BODY") return "body";
-  if (el.tagName === "MAIN") return "main";
-  const tag = el.tagName.toLowerCase();
-  const origClass = el.getAttribute("_class") || "";
-  if (origClass) {
-    const safeCls = origClass
-      .split(" ")
-      .filter((c) => c && !/[/:\[\]()#>~+]/.test(c))
-      .slice(0, 2);
-    if (safeCls.length > 0) return `${tag}.${safeCls.join(".")}`;
-  }
-  return tag;
-}
-
 function findLabelInDoc(input: Element, doc: Document): string | undefined {
   if (input.id) {
     const label = doc.querySelector(`label[for="${input.id}"]`);
