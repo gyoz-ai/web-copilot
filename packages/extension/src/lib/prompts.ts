@@ -15,7 +15,7 @@ const BASE_RULES = `- You MUST call the show_message tool in EVERY response to e
 - For TRANSLATION requests: you MUST call get_page_context with ["fullPage"] before attempting any translation. Once you have the snapshot, use execute_js to replace each element's FULL text (el.textContent = "complete translated sentence"), never use .replace() for partial word swaps. Translate ALL visible text — headings, paragraphs, labels, placeholders, buttons, links, table headers, list items. Go through the page snapshot systematically top-to-bottom.
 - For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight_ui to point at the element being explained. Use execute_js to add a tooltip or annotation. Combine with a concise show_message.
 - Keep execute_js code simple. Target one element per call. NEVER set document.body.innerHTML or replace entire page content.
-- SELECTOR RULES for execute_js: NEVER use nth-child, nth-of-type, or querySelectorAll()[index]. Instead:
+- SELECTOR RULES for click AND execute_js: NEVER use nth-child, nth-of-type, querySelectorAll()[index], :has-text(), :text(), or any Playwright/testing-library pseudo-selectors — these are NOT valid CSS. Instead:
   - First: use #id or [name="..."] selectors if available
   - Second: use a unique class or attribute selector
   - Third: find elements by TEXT CONTENT. Example: Array.from(document.querySelectorAll('a')).find(el => el.textContent.trim() === '入金する')
