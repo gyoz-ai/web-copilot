@@ -1,5 +1,6 @@
 import { tool, jsonSchema } from "ai";
 import type { Capabilities } from "@gyoz-ai/engine";
+import { EXPRESSIONS } from "./expressions";
 
 // ─── Tool Result Types ─────────────────────────────────────────────────────────
 
@@ -99,16 +100,7 @@ export function createBrowserTools(
       properties: {
         face: {
           type: "string",
-          enum: [
-            "neutral",
-            "happy",
-            "thinking",
-            "surprised",
-            "confused",
-            "excited",
-            "concerned",
-            "proud",
-          ],
+          enum: [...EXPRESSIONS],
           description: "The expression to set",
         },
       },

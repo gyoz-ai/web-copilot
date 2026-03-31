@@ -1,14 +1,20 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useDraggable } from "../hooks/useDraggable";
+import {
+  type Expression,
+  DEFAULT_EXPRESSION,
+  getAvatarUrl,
+} from "../../../lib/expressions";
 
 export const AVATAR_SIZES = { small: 48, medium: 72, big: 96 } as const;
 
 interface AvatarProps {
   size: "small" | "medium" | "big";
-  iconUrl: string;
-  /** Animated icon shown when the agent is talking/responding. */
-  talkingIconUrl?: string;
-  /** Whether the agent is currently talking (shows talking icon + pulse). */
+  /** Current avatar expression (determines which image set to use). */
+  expression?: Expression;
+  /** Avatar folder name (default: "gyoza"). */
+  avatar?: string;
+  /** Whether the agent is currently talking (shows talking gif + pulse). */
   isTalking?: boolean;
   position: { x: number; y: number } | null;
   onDragEnd: (pos: { x: number; y: number }) => void;
@@ -23,8 +29,8 @@ interface AvatarProps {
 
 export function Avatar({
   size,
-  iconUrl,
-  talkingIconUrl,
+  expression = DEFAULT_EXPRESSION,
+  avatar,
   isTalking = false,
   position,
   onDragEnd,
@@ -34,6 +40,16 @@ export function Avatar({
   onPositionChange,
 }: AvatarProps) {
   const px = AVATAR_SIZES[size];
+
+  const iconUrl = useMemo(
+    () => chrome.runtime.getURL(getAvatarUrl(expression, false, avatar)),
+    [expression, avatar],
+  );
+  const talkingIconUrl = useMemo(
+    () => chrome.runtime.getURL(getAvatarUrl(expression, true, avatar)),
+    [expression, avatar],
+  );
+
   const {
     position: pos,
     isDragging,
@@ -103,7 +119,7 @@ export function Avatar({
         }}
       >
         <img
-          src={isTalking && talkingIconUrl ? talkingIconUrl : iconUrl}
+          src={isTalking ? talkingIconUrl : iconUrl}
           alt="gyoza"
           style={{
             width: isTalking ? px : px * 0.6,

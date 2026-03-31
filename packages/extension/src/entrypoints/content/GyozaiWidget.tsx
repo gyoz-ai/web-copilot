@@ -8,6 +8,11 @@ import React, {
 import type { ExtensionSettings } from "../../lib/storage";
 import { Avatar, AVATAR_SIZES } from "./components/Avatar";
 import { SpeechBubble } from "./components/SpeechBubble";
+import {
+  type Expression,
+  DEFAULT_EXPRESSION,
+  EXPRESSIONS,
+} from "../../lib/expressions";
 import { TypewriterText } from "./components/TypewriterText";
 import { useProximity } from "./hooks/useProximity";
 import {
@@ -114,6 +119,7 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
+  const [expression, setExpression] = useState<Expression>(DEFAULT_EXPRESSION);
   // Track which message ID has already been animated — prevents
   // re-playing typewriter when toggling chatbox open/closed.
   const animatedMsgIdRef = useRef<string | null>(null);
@@ -471,6 +477,7 @@ export function GyozaiWidget() {
           setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
           setLoading(false);
+          setExpression(DEFAULT_EXPRESSION);
         }
       }
     });
@@ -913,7 +920,9 @@ export function GyozaiWidget() {
           addToolStatusMessage(evt.content);
           break;
         case "expression":
-          // Expression received via streaming — can be used for avatar mood later
+          if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
+            setExpression(evt.face as Expression);
+          }
           break;
         case "clarify":
           setClarify({ message: evt.message, options: evt.options });
@@ -1133,6 +1142,7 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      setExpression(DEFAULT_EXPRESSION);
       // Re-focus input so user can immediately type the next message
       setTimeout(() => inputRef.current?.focus(), 50);
     }
@@ -1158,6 +1168,7 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      setExpression(DEFAULT_EXPRESSION);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
@@ -1274,8 +1285,7 @@ export function GyozaiWidget() {
       {/* Avatar widget */}
       <Avatar
         size={agentSize}
-        iconUrl={chrome.runtime.getURL("/icon-128.png")}
-        talkingIconUrl={chrome.runtime.getURL("/icon-talking.gif")}
+        expression={expression}
         isTalking={isTypewriting}
         position={avatarPosition}
         onDragEnd={(pos) => {
