@@ -3,6 +3,7 @@
 > Synthesized from the [Claude Code reverse-engineering analysis](./claude-code-reverse-engineering.md) and the [extension improvement report](../CLAUDE_CODE_EXTENSION_IMPROVEMENT_REPORT.md).
 > Covers architecture, engineering, and product improvements.
 > Organized into phases with dependency tracking.
+> Excludes permission/policy system — not needed for now.
 
 ---
 
@@ -11,7 +12,7 @@
 ### Phase 1: Architectural Foundation
 
 1. [Extract Query Engine from Background Worker](#1-extract-query-engine-from-background-worker)
-2. [Tool System: Registry, Risk Metadata, and Policy](#2-tool-system-registry-risk-metadata-and-policy)
+2. [Tool System: Registry and Structured Outcomes](#2-tool-system-registry-and-structured-outcomes)
 3. [Move Prompt Rules into Runtime Code](#3-move-prompt-rules-into-runtime-code)
 
 ### Phase 2: Context, Memory, and Recovery
@@ -47,13 +48,12 @@
 17. [Plan Mode for Browser Tasks](#17-plan-mode-for-browser-tasks)
 18. [Task Checklists & Progress Tracking](#18-task-checklists--progress-tracking)
 19. [Browser Memory](#19-browser-memory)
-20. [Risk-Aware Domain Modes](#20-risk-aware-domain-modes)
-21. [Evidence-Backed Answers](#21-evidence-backed-answers)
-22. [Page Watchers](#22-page-watchers)
+20. [Evidence-Backed Answers](#20-evidence-backed-answers)
+21. [Page Watchers](#21-page-watchers)
 
 ### Phase 8: Testing & Observability
 
-23. [Testing & Observability](#23-testing--observability)
+22. [Testing & Observability](#22-testing--observability)
 
 ---
 
@@ -76,10 +76,9 @@ Create a unified `QueryEngine` that handles both legacy and BYOK paths:
 ```typescript
 interface QueryEngineConfig {
   provider: LLMProvider;
-  systemPromptBuilder: (mode: PromptMode, caps: Capabilities, policy: PolicyMode) => string;
+  systemPromptBuilder: (mode: PromptMode, caps: Capabilities, yolo: boolean) => string;
   userPromptBuilder: (params: UserPromptParams) => string;
   toolExecutor?: ToolExecutor;
-  toolPolicy?: ToolPolicyEvaluator;        // NEW: runtime policy checks (section 2)
   contextManager?: ContextManager;          // NEW: freshness-aware context (section 4)
   onStreamEvent?: (event: StreamEvent) => void;
   onError?: (error: QueryError) => void;
@@ -145,19 +144,19 @@ Keep `createEngine()` as a thin wrapper with `@deprecated` annotation. Remove du
 
 ### Why This Is Priority #1
 
-Every subsequent improvement plugs into QueryEngine: retry logic (5), context management (4), tool policy (2), streaming events (9), cost tracking (16), task memory (6), plan mode (17), and testability (23).
+Every subsequent improvement plugs into QueryEngine: retry logic (5), context management (4), streaming events (9), cost tracking (16), task memory (6), plan mode (17), and testability (22).
 
 ---
 
-## 2. Tool System: Registry, Risk Metadata, and Policy
+## 2. Tool System: Registry and Structured Outcomes
 
 ### Problem
 
-Tools are flat objects in `tools.ts` (~750 lines) with no shared interface, no risk classification, no runtime policy enforcement, and no concurrency awareness. Safety rules like "don't run tools after navigate" and "confirm before destructive submit" live only in the prompt — the model can ignore them.
+Tools are flat objects in `tools.ts` (~750 lines) with no shared interface, no concurrency awareness, and no structured outcome types. All tools execute serially. Tool failures return raw strings — the engine can't distinguish retryable from permanent errors.
 
 ### Improvements
 
-#### 2.1 Tool Registry with Risk Metadata
+#### 2.1 Tool Registry with Typed Interface
 
 **Where:** New file `packages/engine/src/tool.ts`
 
@@ -167,8 +166,7 @@ interface BrowserTool<Input extends z.ZodType, Output> {
   description: string;
   inputSchema: Input;
 
-  // Risk and policy metadata
-  risk: "safe" | "confirm" | "dangerous";
+  // Behavior metadata
   pageChange: boolean; // true = may cause navigation/reload
   mutatesPage: boolean; // true = modifies DOM
   requiresFreshContext: boolean; // true = stale context may cause failure
@@ -191,53 +189,23 @@ interface BrowserTool<Input extends z.ZodType, Output> {
 
 **Tool classification:**
 
-| Tool                          | Risk      | Page Change | Mutates        | Concurrency Safe |
-| ----------------------------- | --------- | ----------- | -------------- | ---------------- |
-| `get_page_context`            | safe      | no          | no             | yes              |
-| `show_message`                | safe      | no          | no             | yes              |
-| `set_expression`              | safe      | no          | no             | yes              |
-| `highlight_ui`                | safe      | no          | no (temporary) | yes              |
-| `fetch_url`                   | safe      | no          | no             | yes              |
-| `clarify`                     | safe      | no          | no             | yes              |
-| `click`                       | confirm\* | maybe       | yes            | no               |
-| `navigate`                    | safe      | yes         | no             | no               |
-| `execute_js`                  | confirm   | maybe       | yes            | no               |
-| `fill_input` (new, section 7) | safe      | no          | yes            | no               |
-| `select_option` (new)         | safe      | no          | yes            | no               |
-| `submit_form` (new)           | confirm   | maybe       | yes            | no               |
-| `scroll_to` (new)             | safe      | no          | no             | yes              |
+| Tool                          | Page Change | Mutates        | Concurrency Safe | Max Result |
+| ----------------------------- | ----------- | -------------- | ---------------- | ---------- |
+| `get_page_context`            | no          | no             | yes              | 30,000     |
+| `show_message`                | no          | no             | yes              | 500        |
+| `set_expression`              | no          | no             | yes              | 100        |
+| `highlight_ui`                | no          | no (temporary) | yes              | 500        |
+| `fetch_url`                   | no          | no             | yes              | 20,000     |
+| `clarify`                     | no          | no             | yes              | 1,000      |
+| `click`                       | maybe       | yes            | no               | 1,000      |
+| `navigate`                    | yes         | no             | no               | 500        |
+| `execute_js`                  | maybe       | yes            | no               | 10,000     |
+| `fill_input` (new, section 7) | no          | yes            | no               | 500        |
+| `select_option` (new)         | no          | yes            | no               | 500        |
+| `submit_form` (new)           | maybe       | yes            | no               | 500        |
+| `scroll_to` (new)             | no          | no             | yes              | 500        |
 
-\*`click` upgrades to `dangerous` when target text matches checkout/submit/delete patterns.
-
-#### 2.2 Runtime Tool Policy Evaluator
-
-**Where:** New file `packages/engine/src/tool-policy.ts`
-
-```typescript
-type PolicyMode = "ask" | "auto-safe" | "yolo" | "locked-down";
-
-interface ToolPolicyEvaluator {
-  evaluate(tool: BrowserTool, input: unknown, mode: PolicyMode): PolicyDecision;
-}
-
-type PolicyDecision =
-  | { action: "allow" }
-  | { action: "confirm"; reason: string } // UI shows confirmation card
-  | { action: "deny"; reason: string }; // blocked, error returned to model
-```
-
-**Behavior by mode:**
-
-| Mode          | safe tools      | confirm tools  | dangerous tools |
-| ------------- | --------------- | -------------- | --------------- |
-| `ask`         | allow           | confirm dialog | confirm dialog  |
-| `auto-safe`   | allow           | confirm dialog | deny            |
-| `yolo`        | allow           | allow          | confirm dialog  |
-| `locked-down` | allow read-only | deny           | deny            |
-
-Replaces the current boolean `yoloMode` with graduated control. The `locked-down` mode is explanation-only — no page mutations at all.
-
-#### 2.3 Structured Tool Outcomes
+#### 2.2 Structured Tool Outcomes
 
 Replace raw success/error strings with typed outcomes:
 
@@ -253,7 +221,7 @@ type ToolOutcome<T> =
 
 The query engine uses these to decide: retry? request fresh context? halt tool loop? ask user?
 
-#### 2.4 Concurrent Tool Execution
+#### 2.3 Concurrent Tool Execution
 
 Partition tool calls into batches based on `isConcurrencySafe`:
 
@@ -263,15 +231,17 @@ Partition tool calls into batches based on `isConcurrencySafe`:
 [get_page_context, highlight_ui] → Batch 3 (parallel)
 ```
 
+#### 2.4 Tool Result Budgeting
+
+Each tool declares `maxResultChars`. When exceeded, truncate with marker. For `get_page_context`, apply progressive HTML stripping until within budget.
+
 **Files to create:**
 
-- `packages/engine/src/tool.ts` — BrowserTool interface
-- `packages/engine/src/tool-policy.ts` — PolicyEvaluator + PolicyMode
+- `packages/engine/src/tool.ts` — BrowserTool interface + ToolOutcome types
 
 **Files to modify:**
 
 - `packages/extension/src/lib/tools.ts` — Refactor each tool to implement BrowserTool
-- `packages/extension/src/lib/storage.ts` — Replace `yoloMode: boolean` with `policyMode: PolicyMode`
 
 ---
 
@@ -287,14 +257,13 @@ The system prompt (`prompts.ts`) enforces operational rules that belong in code:
 
 **Rules to move to runtime:**
 
-| Current Prompt Rule                      | New Runtime Enforcement                                        |
-| ---------------------------------------- | -------------------------------------------------------------- |
-| "Always call show_message"               | QueryEngine appends show_message if response has none          |
-| "Stop tool execution after navigate"     | ToolOutcome `navigation_started` halts tool loop               |
-| "Use clarify before destructive actions" | Tool policy evaluator checks `risk: 'dangerous'`               |
-| "Never use nth-child selectors"          | `click` tool validates selector input, rejects unsafe patterns |
-| "Prefer text-based selectors"            | Selector resolver in `click` tool normalizes selectors         |
-| "Call get_page_context first"            | Context manager auto-attaches appropriate level (section 4)    |
+| Current Prompt Rule                  | New Runtime Enforcement                                        |
+| ------------------------------------ | -------------------------------------------------------------- |
+| "Always call show_message"           | QueryEngine appends show_message if response has none          |
+| "Stop tool execution after navigate" | ToolOutcome `navigation_started` halts tool loop               |
+| "Never use nth-child selectors"      | `click` tool validates selector input, rejects unsafe patterns |
+| "Prefer text-based selectors"        | Selector resolver in `click` tool normalizes selectors         |
+| "Call get_page_context first"        | Context manager auto-attaches appropriate level (section 4)    |
 
 #### 3.2 Task Templates for Special Modes
 
@@ -306,7 +275,6 @@ type TaskTemplate = {
   description: string;
   systemPromptAddition: string;    // Short, focused
   defaultCapabilities: Capabilities;
-  defaultPolicyMode: PolicyMode;
 };
 
 const TEMPLATES: Record<string, TaskTemplate> = {
@@ -465,7 +433,7 @@ type RetryState = {
 
 #### 5.4 Tool Failure Recovery
 
-Leverage structured `ToolOutcome` (section 2.3):
+Leverage structured `ToolOutcome` (section 2.2):
 
 - `soft_failure` → engine retries automatically (max 2)
 - `stale_context` → re-capture page context, retry
@@ -496,7 +464,7 @@ type TaskMemory = {
   pagesVisited: { url: string; title: string; summary: string }[];
   factsFound: { key: string; value: string; source: string }[];
   formsTouched: { selector: string; field: string; value: string }[];
-  pendingConfirmation: string | null;
+  pendingClarification: string | null;
   previousFailures: { action: string; error: string; strategy: string }[];
   navigationChain: string[]; // URL breadcrumb
 };
@@ -525,28 +493,28 @@ This is a browser-specific version of Claude Code's memory system — focused on
 
 ### Problem
 
-`execute_js` is an escape hatch that lets the model run arbitrary JavaScript. This is powerful but risky, hard to audit, and difficult to assign policies to. The model overuses it for tasks that should have dedicated tools.
+`execute_js` is an escape hatch that lets the model run arbitrary JavaScript. This is powerful but hard to audit, and the model overuses it for tasks that should have dedicated tools with clear semantics.
 
 ### Improvements
 
-Add focused tools with clear semantics and risk levels:
+Add focused tools replacing common `execute_js` patterns:
 
-| New Tool          | What It Does                                     | Risk    | Replaces                              |
-| ----------------- | ------------------------------------------------ | ------- | ------------------------------------- |
-| `fill_input`      | Set value on input/textarea by selector or label | safe    | `execute_js` with `.value = ...`      |
-| `select_option`   | Choose option in `<select>` by value or text     | safe    | `execute_js` with `.selectedIndex`    |
-| `toggle_checkbox` | Check/uncheck a checkbox or radio                | safe    | `execute_js` with `.checked = ...`    |
-| `submit_form`     | Submit a form by selector                        | confirm | `execute_js` with `.submit()`         |
-| `scroll_to`       | Scroll element into view                         | safe    | `execute_js` with `.scrollIntoView()` |
-| `find_text`       | Search for text on page, return location         | safe    | `get_page_context` + model reasoning  |
-| `extract_table`   | Extract table data as structured JSON            | safe    | `execute_js` with DOM traversal       |
+| New Tool          | What It Does                                     | Replaces                              |
+| ----------------- | ------------------------------------------------ | ------------------------------------- |
+| `fill_input`      | Set value on input/textarea by selector or label | `execute_js` with `.value = ...`      |
+| `select_option`   | Choose option in `<select>` by value or text     | `execute_js` with `.selectedIndex`    |
+| `toggle_checkbox` | Check/uncheck a checkbox or radio                | `execute_js` with `.checked = ...`    |
+| `submit_form`     | Submit a form by selector                        | `execute_js` with `.submit()`         |
+| `scroll_to`       | Scroll element into view                         | `execute_js` with `.scrollIntoView()` |
+| `find_text`       | Search for text on page, return location         | `get_page_context` + model reasoning  |
+| `extract_table`   | Extract table data as structured JSON            | `execute_js` with DOM traversal       |
 
 **Implementation per tool:**
 
 - Each uses `chrome.scripting.executeScript` with a focused, auditable function
 - Each has typed Zod input schemas (not arbitrary code strings)
 - Each returns structured `ToolOutcome` with clear success/failure semantics
-- `execute_js` remains available but only in `yolo` policy mode
+- `execute_js` remains available for edge cases the narrow tools don't cover
 
 **Files to modify:**
 
@@ -614,7 +582,6 @@ type StreamEvent =
   | { type: "context_capture_finished"; elements: number }
   | { type: "tool_running"; tool: string; description: string }
   | { type: "tool_finished"; tool: string; status: string }
-  | { type: "policy_waiting"; tool: string; reason: string } // Awaiting user confirmation
   | { type: "recovery_retry"; attempt: number; reason: string }
   | { type: "navigation_resume_pending" }
   | { type: "complete"; finalText: string }
@@ -625,7 +592,7 @@ type StreamEvent =
 
 - `text_delta` → Typewriter animation
 - `tool_running` → Status pill: "Clicking button..."
-- `policy_waiting` → Confirmation card (section 11)
+- `tool_finished` → Flash pill green, then fade
 - `recovery_retry` → "Retrying..." toast
 - `error` with `retrying: true` → Suppress error, show retry indicator
 
@@ -670,8 +637,9 @@ type WidgetState = {
   messages: Message[];
   loading: boolean;
   error: string | null;
-  // Clarify / Confirmation
-  pendingDecision: PendingDecision | null; // For policy confirmations too
+  // Clarify
+  clarifyQuestion: string | null;
+  clarifyOptions: string[];
   // Avatar
   expression: Expression;
   avatarPosition: AvatarPosition;
@@ -690,7 +658,6 @@ Split `GyozaiWidget` into sub-components:
 - `<InputBar>` — input, loading
 - `<HistoryView>` — viewMode
 - `<TaskProgress>` — taskChecklist, taskProgress (section 18)
-- `<DecisionCard>` — pendingDecision (section 11)
 
 **Files to create:**
 
@@ -706,7 +673,7 @@ Split `GyozaiWidget` into sub-components:
 
 ### Problem
 
-The current `clarify` flow shows plain text bubbles with clickable options. This is functional but doesn't communicate risk, context, or trade-offs. Policy confirmations (section 2) also need a UI surface.
+The current `clarify` flow shows plain text bubbles with clickable options. This is functional but doesn't communicate context or trade-offs well.
 
 ### Improvements
 
@@ -714,14 +681,13 @@ Replace plain clarify bubbles with structured decision cards:
 
 ```typescript
 type DecisionCard = {
-  type: "clarify" | "policy_confirm" | "ambiguity";
+  type: "clarify" | "ambiguity";
   title: string;
   description: string;
   options: {
     label: string;
     description?: string;
     recommended?: boolean;
-    risk?: "safe" | "caution" | "warning";
   }[];
   context?: {
     element?: string; // What element triggered this
@@ -734,8 +700,8 @@ type DecisionCard = {
 **Examples:**
 
 - "I found 3 matching Install buttons" → card with element previews
-- "This looks like a final checkout action" → card with caution styling
 - "I can translate only visible content or the whole page" → card with trade-off descriptions
+- "This form has 2 submit buttons — which one?" → card with location context
 
 **Files to create:**
 
@@ -828,13 +794,12 @@ version: 1.0.0
 domain: github.com
 routes: ["/*/pull/*"]
 capabilities: [click, executeJs, navigate]
-policyMode: auto-safe
 model: claude-haiku-4-5-20251001
 maxSteps: 5
 ---
 ```
 
-Route-specific activation, capability restriction, model hints, policy mode override.
+Route-specific activation, capability restriction, model hints.
 
 #### 14.2 Site Playbooks
 
@@ -945,7 +910,7 @@ A "plan first" interaction mode where Gyozai inspects the site, proposes steps, 
 - In plan mode, the model only proposes actions (returns a checklist), doesn't execute them
 - User reviews and approves/edits the plan
 - On approval, execute the plan step by step with the task checklist UI (section 18)
-- Activated automatically for `dangerous` policy mode sites, or manually via UI toggle
+- Activated manually via UI toggle
 
 **Files to modify:**
 
@@ -970,7 +935,7 @@ type TaskStep = {
 
 **Examples:**
 
-- Find pricing page → Compare annual vs monthly → Open billing settings → Confirm cancellation
+- Find pricing page → Compare annual vs monthly → Open billing settings → Complete cancellation
 
 **Implementation:**
 
@@ -995,7 +960,6 @@ type BrowserMemory = {
   // Examples:
   // { key: 'language', value: 'en', source: 'user-stated' }
   // { key: 'shipping_country', value: 'JP', source: 'inferred-from-usage' }
-  // { key: 'form_auto_submit', value: 'never', source: 'user-stated' }
   // { key: 'price_comparison', value: 'always_annual_vs_monthly', source: 'pattern' }
 };
 ```
@@ -1016,36 +980,7 @@ type BrowserMemory = {
 
 ---
 
-## 20. Risk-Aware Domain Modes
-
-Different policy presets per site/domain category:
-
-| Category        | Policy        | Behavior                           |
-| --------------- | ------------- | ---------------------------------- |
-| Banking/Finance | `locked-down` | Plan-first, never auto-submit      |
-| Ecommerce       | `auto-safe`   | Allow navigation, confirm checkout |
-| Docs/Help       | `auto-safe`   | Mostly read-only, summarize        |
-| Admin tools     | `ask`         | Require explicit confirmations     |
-| Social media    | `auto-safe`   | Allow navigation, confirm posting  |
-
-**Implementation:**
-
-- Maintain a domain → category mapping (user-editable + community defaults)
-- On page load, resolve category and set policy mode
-- Override via per-site settings in popup
-- More sophisticated than global YOLO toggle
-
-**Files to create:**
-
-- `packages/extension/src/lib/domain-modes.ts`
-
-**Files to modify:**
-
-- `packages/extension/src/lib/storage.ts` — Domain mode settings
-
----
-
-## 21. Evidence-Backed Answers
+## 20. Evidence-Backed Answers
 
 Every significant answer cites what it relied on:
 
@@ -1070,7 +1005,7 @@ type Evidence = {
 
 ---
 
-## 22. Page Watchers
+## 21. Page Watchers
 
 Ask Gyozai to watch for a condition and notify when it changes:
 
@@ -1099,24 +1034,23 @@ Ask Gyozai to watch for a condition and notify when it changes:
 
 # Phase 8: Testing & Observability
 
-## 23. Testing & Observability
+## 22. Testing & Observability
 
 ### Improvements
 
-#### 23.1 Tool Execution Tests
+#### 22.1 Tool Execution Tests
 
-Test each tool in isolation with mock `chrome.scripting.executeScript`. Test success/failure paths, risk classification, concurrency flags, result truncation.
+Test each tool in isolation with mock `chrome.scripting.executeScript`. Test success/failure paths, concurrency flags, result truncation.
 
-#### 23.2 QueryEngine Unit Tests
+#### 22.2 QueryEngine Unit Tests
 
 With QueryEngine extracted, test without Chrome APIs:
 
 - Mock provider returns controlled responses
 - Test retry logic, compaction triggers, tool outcome handling
 - Test plan mode, task memory updates
-- Test policy evaluation
 
-#### 23.3 Structured Error Logging
+#### 22.3 Structured Error Logging
 
 Replace scattered `console.log` with structured logger:
 
@@ -1129,22 +1063,21 @@ const logger = {
 };
 ```
 
-- Categories: `query`, `tool`, `storage`, `provider`, `session`, `policy`
+- Categories: `query`, `tool`, `storage`, `provider`, `session`
 - Store last 100 errors in `chrome.storage.local`
 - Hidden debug panel (triple-tap avatar) showing recent logs + tool traces + prompt snapshots
 
-#### 23.4 Outcome-Oriented Analytics
+#### 22.4 Outcome-Oriented Analytics
 
 Log browser-task outcomes, not just model/provider stats:
 
-| Metric                     | What it tells you          |
-| -------------------------- | -------------------------- |
-| `task_completed`           | Success rate               |
-| `task_blocked_ambiguity`   | Needs better clarify UI    |
-| `task_blocked_permissions` | Policy too strict          |
-| `recovered_after_failure`  | Self-healing effectiveness |
-| `required_clarification`   | Model confidence issues    |
-| `user_abandoned`           | UX friction                |
+| Metric                    | What it tells you          |
+| ------------------------- | -------------------------- |
+| `task_completed`          | Success rate               |
+| `task_blocked_ambiguity`  | Needs better clarify UI    |
+| `recovered_after_failure` | Self-healing effectiveness |
+| `required_clarification`  | Model confidence issues    |
+| `user_abandoned`          | UX friction                |
 
 **Files to create:**
 
@@ -1157,56 +1090,55 @@ Log browser-task outcomes, not just model/provider stats:
 
 ## Implementation Priority
 
-| Priority | Section                              | Effort     | Impact                                                |
-| -------- | ------------------------------------ | ---------- | ----------------------------------------------------- |
-| **1**    | **1. Extract QueryEngine**           | **Medium** | **Critical — prerequisite for everything**            |
-| **2**    | **2. Tool registry + risk metadata** | **Medium** | **High — enables policy, narrow tools, self-healing** |
-| **3**    | **3. Prompt rules → runtime code**   | **Small**  | **High — reduces prompt bloat, improves reliability** |
-| 4        | 5.1 Retry state machine              | Small      | High — eliminates user-visible errors                 |
-| 5        | 9.1 Granular streaming events        | Medium     | High — dramatically better UX                         |
-| 6        | 10.1 Centralized store               | Medium     | High — eliminates state bugs                          |
-| 7        | 4.1 Freshness-aware context levels   | Medium     | High — biggest token savings                          |
-| 8        | 7. Narrow interaction tools          | Medium     | High — safer, more reliable actions                   |
-| 9        | 8. Self-healing strategies           | Medium     | High — "it actually works on messy sites"             |
-| 10       | 4.3 Conversation compaction          | Medium     | High — enables longer tasks                           |
-| 11       | 11. Structured decision cards        | Small      | Medium — better trust UX                              |
-| 12       | 17. Plan mode                        | Medium     | Medium — high-value for risky tasks                   |
-| 13       | 18. Task checklists                  | Small      | Medium — makes multi-step tasks legible               |
-| 14       | 16.1 Cost tracking                   | Small      | Medium — critical for BYOK                            |
-| 15       | 23.3 Structured logging              | Small      | Medium — improves debuggability                       |
-| 16       | 6. Structured task memory            | Medium     | Medium — enables multi-page tasks                     |
-| 17       | 15.1 Provider capability registry    | Small      | Medium — enables budgeting + cost                     |
-| 18       | 14.1 Recipe frontmatter              | Medium     | Medium — better extensibility                         |
-| 19       | 21. Evidence-backed answers          | Small      | Medium — improves trust                               |
-| 20       | 12.2 Paginated history               | Small      | Medium — fixes slow history                           |
-| 21       | 20. Risk-aware domain modes          | Medium     | Medium — graduated safety                             |
-| 22       | 19. Browser memory                   | Medium     | Medium — personalization                              |
-| 23       | 13.1 Cached page context             | Small      | Medium — performance                                  |
-| 24       | 5.3 Provider fallback                | Small      | Low-Medium                                            |
-| 25       | 14.2 Site playbooks                  | Medium     | Medium — product differentiator                       |
-| 26       | 22. Page watchers                    | Large      | Medium — product differentiator                       |
-| 27       | 13.2 Progressive HTML stripping      | Medium     | Low-Medium                                            |
-| 28       | 12.1 Transcript recording            | Small      | Low                                                   |
-| 29       | 4.4 Smart context budgeting          | Medium     | Low-Medium                                            |
-| 30       | 9.2 Overlapping tool execution       | Medium     | Low-Medium                                            |
-| 31       | 15.2 Token counting                  | Small      | Low                                                   |
-| 32       | 16.2 Budget alerts                   | Small      | Low                                                   |
-| 33       | 14.3 Recipe auto-update              | Small      | Low                                                   |
-| 34       | 5.2 Streaming failure recovery       | Medium     | Low                                                   |
-| 35       | 2.4 Concurrent tool execution        | Medium     | Low                                                   |
-| 36       | 23.1-23.2 Tests                      | Medium     | Low (quality investment)                              |
-| 37       | 12.3 Debounced session save          | Small      | Low                                                   |
-| 38       | 4.5 Microcompaction                  | Small      | Low                                                   |
-| 39       | 13.3 Widget render optimization      | Small      | Low                                                   |
-| 40       | 23.4 Outcome analytics               | Small      | Low                                                   |
-| 41       | 1.3 Deprecate legacy createEngine    | Small      | Low (cleanup)                                         |
+| Priority | Section                                    | Effort     | Impact                                                |
+| -------- | ------------------------------------------ | ---------- | ----------------------------------------------------- |
+| **1**    | **1. Extract QueryEngine**                 | **Medium** | **Critical — prerequisite for everything**            |
+| **2**    | **2. Tool registry + structured outcomes** | **Medium** | **High — enables narrow tools, self-healing**         |
+| **3**    | **3. Prompt rules → runtime code**         | **Small**  | **High — reduces prompt bloat, improves reliability** |
+| 4        | 5.1 Retry state machine                    | Small      | High — eliminates user-visible errors                 |
+| 5        | 9.1 Granular streaming events              | Medium     | High — dramatically better UX                         |
+| 6        | 10.1 Centralized store                     | Medium     | High — eliminates state bugs                          |
+| 7        | 4.1 Freshness-aware context levels         | Medium     | High — biggest token savings                          |
+| 8        | 7. Narrow interaction tools                | Medium     | High — safer, more reliable actions                   |
+| 9        | 8. Self-healing strategies                 | Medium     | High — "it actually works on messy sites"             |
+| 10       | 4.3 Conversation compaction                | Medium     | High — enables longer tasks                           |
+| 11       | 11. Structured decision cards              | Small      | Medium — better clarify UX                            |
+| 12       | 17. Plan mode                              | Medium     | Medium — high-value for multi-step tasks              |
+| 13       | 18. Task checklists                        | Small      | Medium — makes multi-step tasks legible               |
+| 14       | 16.1 Cost tracking                         | Small      | Medium — critical for BYOK                            |
+| 15       | 22.3 Structured logging                    | Small      | Medium — improves debuggability                       |
+| 16       | 6. Structured task memory                  | Medium     | Medium — enables multi-page tasks                     |
+| 17       | 15.1 Provider capability registry          | Small      | Medium — enables budgeting + cost                     |
+| 18       | 14.1 Recipe frontmatter                    | Medium     | Medium — better extensibility                         |
+| 19       | 20. Evidence-backed answers                | Small      | Medium — improves trust                               |
+| 20       | 12.2 Paginated history                     | Small      | Medium — fixes slow history                           |
+| 21       | 19. Browser memory                         | Medium     | Medium — personalization                              |
+| 22       | 13.1 Cached page context                   | Small      | Medium — performance                                  |
+| 23       | 5.3 Provider fallback                      | Small      | Low-Medium                                            |
+| 24       | 14.2 Site playbooks                        | Medium     | Medium — product differentiator                       |
+| 25       | 21. Page watchers                          | Large      | Medium — product differentiator                       |
+| 26       | 13.2 Progressive HTML stripping            | Medium     | Low-Medium                                            |
+| 27       | 12.1 Transcript recording                  | Small      | Low                                                   |
+| 28       | 4.4 Smart context budgeting                | Medium     | Low-Medium                                            |
+| 29       | 9.2 Overlapping tool execution             | Medium     | Low-Medium                                            |
+| 30       | 15.2 Token counting                        | Small      | Low                                                   |
+| 31       | 16.2 Budget alerts                         | Small      | Low                                                   |
+| 32       | 14.3 Recipe auto-update                    | Small      | Low                                                   |
+| 33       | 5.2 Streaming failure recovery             | Medium     | Low                                                   |
+| 34       | 2.3 Concurrent tool execution              | Medium     | Low                                                   |
+| 35       | 22.1-22.2 Tests                            | Medium     | Low (quality investment)                              |
+| 36       | 12.3 Debounced session save                | Small      | Low                                                   |
+| 37       | 4.5 Microcompaction                        | Small      | Low                                                   |
+| 38       | 13.3 Widget render optimization            | Small      | Low                                                   |
+| 39       | 22.4 Outcome analytics                     | Small      | Low                                                   |
+| 40       | 1.3 Deprecate legacy createEngine          | Small      | Low (cleanup)                                         |
 
 ---
 
 ## Dependencies
 
 ```
-1. QueryEngine ─────────────────┬──→ 2. Tool Registry (policy evaluator)
+1. QueryEngine ─────────────────┬──→ 2. Tool Registry (structured outcomes)
 (FOUNDATION)                    ├──→ 3. Prompt-to-Code (engine post-processing)
                                 ├──→ 4. Context Management (context manager)
                                 ├──→ 5. Error Recovery (retry in engine)
@@ -1214,13 +1146,11 @@ Log browser-task outcomes, not just model/provider stats:
                                 ├──→ 9. Streaming Events (engine emits them)
                                 ├──→ 16. Cost Tracking (engine exposes usage)
                                 ├──→ 17. Plan Mode (engine query path)
-                                └──→ 23. Testing (engine is testable)
+                                └──→ 22. Testing (engine is testable)
 
 2. Tool Registry ───────────────┬──→ 7. Narrow Tools (implement BrowserTool)
                                 ├──→ 8. Self-Healing (tool-level fallback chains)
-                                ├──→ 11. Decision Cards (policy_confirm UI)
-                                ├──→ 20. Domain Modes (sets PolicyMode)
-                                └──→ 2.4 Concurrent Execution
+                                └──→ 2.3 Concurrent Execution
 
 10. Centralized Store ──────────┬──→ 13.3 Widget Render Optimization
                                 ├──→ 18. Task Checklists (store tracks steps)
@@ -1240,6 +1170,7 @@ Log browser-task outcomes, not just model/provider stats:
 
 These are powerful in Claude Code, but wrong or premature for a browser copilot:
 
+- **Permission/policy system** — not needed now; keep the existing `yoloMode` boolean
 - **MCP as an integration surface** — stay browser-native
 - **Multi-agent swarms** — one agent per tab is correct
 - **LSP/git/project-aware context** — not a dev tool
