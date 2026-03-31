@@ -744,9 +744,14 @@ export function GyozaiWidget() {
 
     const manifestMode = !!recipe?.content;
 
-    // Always include the page snapshot — use the pre-captured eager snapshot
-    // if available, otherwise capture on-demand.
-    const pageSnapshot = _eagerHtmlSnapshot || captureCleanHtml();
+    // Always capture a fresh page snapshot at query time so it reflects the
+    // latest DOM state. The eager cache is only a fallback if capture fails.
+    let pageSnapshot: string;
+    try {
+      pageSnapshot = captureCleanHtml();
+    } catch {
+      pageSnapshot = _eagerHtmlSnapshot || "";
+    }
 
     // Generate a queryId for streaming event correlation
     const queryId = crypto.randomUUID();
@@ -779,12 +784,9 @@ export function GyozaiWidget() {
       },
     };
 
-    // Always include structured page context — use extra context from
-    // pending navigation if available, otherwise use eager cache or capture.
-    payload.pageContext =
-      extraPageContext ||
-      _eagerPageContext ||
-      formatPageContext(capturePageContext(["all"]));
+    if (extraPageContext) {
+      payload.pageContext = extraPageContext;
+    }
 
     // ─── Log request ───────────────────
     queryCounter++;
