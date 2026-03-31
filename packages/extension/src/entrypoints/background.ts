@@ -344,6 +344,22 @@ async function handleQuery(
   console.log("  Conversation ID:", conversationId ?? "none");
   console.log("  Conversation history:", history.length, "messages");
 
+  // Raw context sent to the model
+  console.groupCollapsed("%c  [gyoza] System prompt", "color: #9ca3af");
+  console.log(systemPrompt);
+  console.groupEnd();
+  console.groupCollapsed("%c  [gyoza] User prompt", "color: #9ca3af");
+  console.log(userPrompt);
+  console.groupEnd();
+  if (history.length > 0) {
+    console.groupCollapsed(
+      "%c  [gyoza] Conversation history (" + history.length + " messages)",
+      "color: #9ca3af",
+    );
+    console.log(history);
+    console.groupEnd();
+  }
+
   const start = Date.now();
 
   // ─── Managed mode: legacy structured output path ───────────────────────
