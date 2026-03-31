@@ -1,16 +1,22 @@
 {
   "name": "@gyoz-ai/engine",
   "version": "0.0.1",
-  "description": "gyoza engine — action schemas, page context extractor, action dispatch",
-  "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "html-screen-capture-js": "2.0.8",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "typescript": "^5"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
+  "description": "gyoza engine — action schemas, page context extractor, action dispatch",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -18,16 +24,6 @@
     "test": "bun test",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "turndown": "^7.2.0",
-    "zod": "^4.3.6"
-  },
-  "peerDependencies": {
-    "@types/turndown": "^5.0.5"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.3.11",
-    "@types/turndown": "^5.0.5",
-    "typescript": "^5"
-  }
+  "type": "module",
+  "types": "./dist/index.d.ts"
 }

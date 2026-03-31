@@ -326,116 +326,113 @@ function findLabel(input: HTMLInputElement): string | undefined {
   return input.getAttribute("aria-label") || undefined;
 }
 
-// ─── Clean Page Snapshot (HTML → Markdown via Turndown) ──────────────────────
-// Converts the page to Markdown for LLM context using Turndown.
-// Much more token-efficient than raw HTML. Preserves:
-// - Headings, links, lists, bold/italic, images, forms
-// Strips all scripts, styles, SVGs, CSS noise.
-// LLMs understand Markdown natively — trained on tons of it.
+// ─── Clean Page Snapshot (via html-screen-capture-js) ────────────────────────
+// Uses html-screen-capture-js to produce a self-contained HTML snapshot with
+// computed styles inlined, then post-processes for AI consumption:
+//   1. Strips base64 data-URL images (huge, useless for text-based AI)
+//   2. Removes elements that are visually hidden (display:none etc.)
+//   3. Strips the generated style classes to keep output compact
+// The result is clean, semantic HTML with only visible content — much better
+// than a raw outerHTML dump.
 
-import TurndownService from "turndown";
+import { capture, OutputType, LogLevel } from "html-screen-capture-js";
 
-export function captureCleanHtml(maxLength: number = 30000): string {
+export function captureCleanHtml(maxLength: number = 60000): string {
   if (typeof document === "undefined") return "";
 
-  // Clone body and strip noise before converting
-  const clone = document.body.cloneNode(true) as HTMLElement;
-  clone
-    .querySelectorAll(
-      "script, style, noscript, svg, link, meta, template, iframe, #gyozai-extension-root",
-    )
-    .forEach((el) => el.remove());
+  // Bake current form values into DOM attributes so the capture reflects
+  // what the user has typed, not just the initial HTML.
+  bakeFormValues();
 
-  // Remove all inline styles and class attributes to reduce noise
-  clone.querySelectorAll("*").forEach((el) => {
+  const raw = capture(OutputType.STRING, document, {
+    cssSelectorsOfIgnoredElements: [
+      "#gyozai-extension-root",
+      "noscript",
+      "iframe",
+      "template",
+    ],
+    imageQualityForDataUrl: 0.01,
+    logLevel: LogLevel.OFF,
+  }) as string;
+
+  // Parse the captured HTML so we can clean it up
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(raw, "text/html");
+  const body = doc.body;
+
+  // Remove the generated <style> block the library injects in <head>
+  doc.querySelectorAll("style").forEach((el) => el.remove());
+
+  // Strip hidden elements — the library inlined computed styles, so we
+  // can detect display:none / visibility:hidden / opacity:0 from them.
+  body.querySelectorAll("*").forEach((el) => {
+    const inlineStyle = el.getAttribute("style") || "";
+    if (
+      /display\s*:\s*none/i.test(inlineStyle) ||
+      /visibility\s*:\s*hidden/i.test(inlineStyle) ||
+      /opacity\s*:\s*0(?:[;\s]|$)/.test(inlineStyle)
+    ) {
+      el.remove();
+      return;
+    }
+    // Strip inline styles (too verbose for AI)
     el.removeAttribute("style");
+    // Strip the generated classes the library adds
     el.removeAttribute("class");
-    // Remove data-* attributes
-    const attrs = Array.from(el.attributes);
-    for (const attr of attrs) {
+    // Strip data-* attributes (except our own)
+    for (const attr of Array.from(el.attributes)) {
       if (attr.name.startsWith("data-") && attr.name !== "data-gyozai") {
         el.removeAttribute(attr.name);
       }
     }
   });
 
-  const turndown = new TurndownService({
-    headingStyle: "atx",
-    bulletListMarker: "-",
-    codeBlockStyle: "fenced",
-  });
-
-  // Add custom rules for form elements (turndown ignores them by default)
-  turndown.addRule("input", {
-    filter: ["input", "textarea", "select"],
-    replacement: (_content, node) => {
-      const el = node as HTMLElement;
-      const type = el.getAttribute("type") || el.tagName.toLowerCase();
-      const id = el.getAttribute("id") || "";
-      const name = el.getAttribute("name") || "";
-      const placeholder = el.getAttribute("placeholder") || "";
-      const parts = [`[${type}`];
-      if (id) parts.push(`id="${id}"`);
-      if (name) parts.push(`name="${name}"`);
-      if (placeholder) parts.push(`placeholder="${placeholder}"`);
-      return parts.join(" ") + "]\n";
-    },
-  });
-
-  turndown.addRule("button", {
-    filter: "button",
-    replacement: (content, node) => {
-      const el = node as HTMLElement;
-      const id = el.getAttribute("id") || "";
-      const type = el.getAttribute("type") || "button";
-      return `[button${id ? ` id="${id}"` : ""} type="${type}"]: ${content.trim()}\n`;
-    },
-  });
-
-  turndown.addRule("form", {
-    filter: "form",
-    replacement: (content, node) => {
-      const el = node as HTMLElement;
-      const id = el.getAttribute("id") || "";
-      const action = el.getAttribute("action") || "";
-      return `\n---form${id ? ` id="${id}"` : ""}${action ? ` action="${action}"` : ""}---\n${content}\n---/form---\n`;
-    },
-  });
-
-  // Annotate elements with id/name so the AI knows how to target them
-  // Before turndown, add data attributes that survive conversion
-  clone.querySelectorAll("[id], [name], [role], [aria-label]").forEach((el) => {
-    const id = el.getAttribute("id");
-    const name = el.getAttribute("name");
-    const role = el.getAttribute("role");
-    const ariaLabel = el.getAttribute("aria-label");
-    const tag = el.tagName.toLowerCase();
-
-    // Skip if already handled by custom rules (input, button, form)
-    if (["INPUT", "TEXTAREA", "SELECT", "BUTTON", "FORM"].includes(el.tagName))
-      return;
-
-    // Prepend a marker the AI can use
-    const markers: string[] = [];
-    if (id) markers.push(`#${id}`);
-    if (name) markers.push(`name="${name}"`);
-    if (role) markers.push(`role="${role}"`);
-    if (ariaLabel) markers.push(`"${ariaLabel}"`);
-    if (markers.length > 0) {
-      const marker = document.createTextNode(`{${tag} ${markers.join(" ")}} `);
-      el.insertBefore(marker, el.firstChild);
+  // Replace base64 data-URL images with a lightweight marker
+  body.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src") || "";
+    if (src.startsWith("data:")) {
+      img.setAttribute("src", img.alt ? `[image: ${img.alt}]` : "[image]");
     }
   });
 
-  let markdown = turndown.turndown(clone.innerHTML);
+  // Remove noise tags the library kept
+  body.querySelectorAll("script, svg, link, meta").forEach((el) => el.remove());
 
-  // Clean up excessive whitespace
-  markdown = markdown.replace(/\n{3,}/g, "\n\n").trim();
+  // Serialise to string
+  let html = body.innerHTML;
 
-  // Truncate if needed
-  if (markdown.length > maxLength) {
-    markdown = markdown.slice(0, maxLength) + "\n\n[truncated]";
+  // Collapse whitespace runs
+  html = html.replace(/\n{3,}/g, "\n\n").trim();
+
+  if (html.length > maxLength) {
+    html = html.slice(0, maxLength) + "\n<!-- truncated -->";
   }
 
-  return markdown;
+  return html;
+}
+
+/** Bake current form values into the DOM before capture so the snapshot
+ *  reflects what the user actually sees / typed. */
+function bakeFormValues(): void {
+  document.querySelectorAll("input, textarea, select").forEach((el) => {
+    if (el.tagName === "SELECT") {
+      const sel = el as HTMLSelectElement;
+      for (const opt of Array.from(sel.options)) {
+        if (opt.selected) opt.setAttribute("selected", "selected");
+        else opt.removeAttribute("selected");
+      }
+    } else if (el.tagName === "TEXTAREA") {
+      (el as HTMLTextAreaElement).textContent = (
+        el as HTMLTextAreaElement
+      ).value;
+    } else {
+      const inp = el as HTMLInputElement;
+      if (inp.type === "checkbox" || inp.type === "radio") {
+        if (inp.checked) inp.setAttribute("checked", "checked");
+        else inp.removeAttribute("checked");
+      } else {
+        inp.setAttribute("value", inp.value);
+      }
+    }
+  });
 }
