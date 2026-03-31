@@ -16,6 +16,7 @@ export interface WidgetSession {
   viewMode: "chat" | "history";
   avatarPosition: { x: number; y: number } | null;
   scrollTop?: number;
+  expression?: string;
 }
 
 const SESSION_PREFIX = "gyozai_tab_";

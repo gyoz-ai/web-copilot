@@ -230,6 +230,12 @@ export function GyozaiWidget() {
         setMessages(_preloadedSession.messages);
         setViewMode(_preloadedSession.viewMode);
         setAvatarPosition(_preloadedSession.avatarPosition ?? null);
+        if (
+          _preloadedSession.expression &&
+          EXPRESSIONS.includes(_preloadedSession.expression as Expression)
+        ) {
+          setExpression(_preloadedSession.expression as Expression);
+        }
         activeConvIdRef.current = _preloadedSession.activeConvId;
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         lastKnownScrollTopRef.current = _preloadedSession.scrollTop ?? 0;
@@ -263,6 +269,7 @@ export function GyozaiWidget() {
       viewMode,
       avatarPosition,
       scrollTop: lastKnownScrollTopRef.current,
+      expression,
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
@@ -284,7 +291,7 @@ export function GyozaiWidget() {
         }
       })
       .catch((err) => log("Session save FAILED:", err));
-  }, [expanded, messages, input, viewMode, avatarPosition]);
+  }, [expanded, messages, input, viewMode, avatarPosition, expression]);
 
   // ─── Flush session on page unload (cross-origin nav) ───
   // Uses both direct storage write AND background worker message
