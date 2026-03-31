@@ -376,21 +376,8 @@ function resolveLiveSelector(capturedEl: Element, fallback: string): string {
     }
   }
 
-  // Fallback: nth-child path from captured DOM (best effort)
-  const parent = capturedEl.parentElement;
-  if (parent) {
-    const parentSel = buildParentSelector(parent);
-    const siblings = Array.from(parent.children).filter(
-      (c) => c.tagName === capturedEl.tagName,
-    );
-    if (siblings.length === 1 && parentSel) {
-      return `${parentSel} > ${tag}`;
-    } else if (parentSel) {
-      const idx = siblings.indexOf(capturedEl) + 1;
-      return `${parentSel} > ${tag}:nth-child(${idx})`;
-    }
-  }
-
+  // No live DOM match found — return an unmatched selector so click
+  // fails safely rather than hitting the wrong element.
   return `[data-gyozai="${fallback}"]`;
 }
 
