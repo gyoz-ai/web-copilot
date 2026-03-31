@@ -471,7 +471,7 @@ export const WIDGET_STYLES = `
   /* ─── Speech Bubble (out-of-proximity) ─────────────────── */
 
   .gyozai-speech-bubble {
-    max-width: 340px;
+    max-width: 280px;
     width: max-content;
     position: relative;
     margin-bottom: 8px;
@@ -486,10 +486,10 @@ export const WIDGET_STYLES = `
     font-size: 13px;
     line-height: 1.5;
     word-break: break-word;
-    max-height: 200px;
+    max-height: 120px;
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 8;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
     backdrop-filter: blur(8px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
