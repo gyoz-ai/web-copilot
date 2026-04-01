@@ -146,6 +146,8 @@ export function GyozaiWidget() {
 
   // Active conversation tracking — null means fresh/new conversation
   const activeConvIdRef = useRef<string | null>(null);
+  // Tracks the last user-submitted query text for legacy navigation path
+  const lastUserQueryRef = useRef<string>("");
   // Streaming: tracks the current query's ID to correlate streaming events
   const currentQueryIdRef = useRef<string | null>(null);
   const latestLlmHistoryRef = useRef<Array<{ role: string; content: string }>>(
@@ -506,11 +508,11 @@ export function GyozaiWidget() {
         // Tell it to only provide NEW information about this page,
         // not repeat what it already said.
         const followUpQuery =
-          `Navigation complete — now on ${window.location.pathname}. ` +
-          `You already told the user you were navigating. ` +
-          `Do NOT repeat that. If the original request ("${pendingNav.originalQuery}") ` +
-          `needs info from THIS page, briefly provide it. ` +
-          `Otherwise just confirm arrival in one short sentence.`;
+          `Navigation complete — now on ${window.location.href}. ` +
+          `Original user request: "${pendingNav.originalQuery}". ` +
+          `Continue executing this task. Use get_page_context to understand the current page, ` +
+          `then take the next actions to fulfill the original request. ` +
+          `Do NOT repeat that you navigated here — just keep working.`;
         log("Follow-up query:", followUpQuery);
 
         try {
@@ -749,6 +751,7 @@ export function GyozaiWidget() {
     query: string,
     extraPageContext?: string,
   ): Promise<AgentResult> {
+    lastUserQueryRef.current = query;
     const currentRoute = window.location.pathname;
 
     const [recipe, extSettings] = await Promise.all([
@@ -1120,7 +1123,7 @@ export function GyozaiWidget() {
       if (hasPageChange) {
         await savePendingNav({
           snapshotTypes,
-          originalQuery: "",
+          originalQuery: lastUserQueryRef.current,
           conversationId: activeConvIdRef.current || "",
           tabId: tabIdRef.current ?? 0,
           timestamp: Date.now(),

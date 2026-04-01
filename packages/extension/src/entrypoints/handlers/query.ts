@@ -156,6 +156,14 @@ export async function handleQuery(
       { role: "user" as const, content: userPrompt },
     ];
 
+    // Save user query to history BEFORE streaming so that if a navigate tool
+    // triggers a page reload, the new page's auto-continue will find the full
+    // conversation history (including this query) already persisted.
+    history.push({ role: "user", content: message.query });
+    if (convId) {
+      await saveConversationLlmHistory(convId, history);
+    }
+
     const allToolCalls: Array<{
       tool: string;
       args: Record<string, unknown>;
@@ -228,8 +236,8 @@ export async function handleQuery(
     // Ensure all streaming events have been delivered before returning
     await Promise.all(pendingSends);
 
-    // Update conversation history — include tool summary so AI has context
-    history.push({ role: "user", content: message.query });
+    // Update conversation history — append assistant response
+    // (user message was already pushed before streaming to survive navigation)
     const toolSummary = allToolCalls
       .filter(
         (tc) => tc.tool !== "show_message" && tc.tool !== "set_expression",
