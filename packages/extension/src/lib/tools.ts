@@ -213,7 +213,9 @@ async function execIsolated<T>(
   return results?.[0]?.result as T;
 }
 
-// ─── Diff helpers for post-action verification ───────────────────────────────
+// ─── Post-action verification wrapper ─────────────────────────────────────────
+// Wraps any mutating tool's execute function with before/after page capture.
+// Captures page state BEFORE, runs the tool, then polls for changes AFTER.
 
 function countTag(text: string, tag: string): number {
   return (text.match(new RegExp(tag, "g")) || []).length;
@@ -227,6 +229,200 @@ function findNewLines(before: string, after: string): string {
     .filter((l) => l && !beforeSet.has(l))
     .slice(0, 20)
     .join("\n");
+}
+
+async function capturePageState(tabId: number): Promise<string> {
+  try {
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: "gyozai_tool_capture_context",
+      snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
+    });
+    return (result?.context as string) || "";
+  } catch {
+    return "";
+  }
+}
+
+async function waitForPageLoad(tabId: number): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: () => {
+        if (document.readyState === "complete") return;
+        return new Promise<void>((resolve) => {
+          const check = () => {
+            if (document.readyState === "complete") return resolve();
+            setTimeout(check, 200);
+          };
+          check();
+          setTimeout(resolve, 5000);
+        });
+      },
+    });
+  } catch {
+    /* page may have unloaded */
+  }
+}
+
+async function getPageUrl(tabId: number): Promise<string | null> {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: () => window.location.href,
+    });
+    return (results?.[0]?.result as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+interface VerifyResult {
+  navigated?: boolean;
+  newUrl?: string;
+  actionIncomplete?: boolean;
+  pageState?: string;
+  verification?: string;
+}
+
+async function verifyPostAction(
+  tabId: number,
+  beforeText: string,
+  preUrl: string,
+): Promise<VerifyResult> {
+  const MAX_POLLS = 5;
+  const POLL_INTERVAL = 500;
+
+  console.log(
+    "%c  [gyoza:verify] Polling for changes (before: %d chars)...",
+    "color: #f59e0b; font-weight: bold",
+    beforeText.length,
+  );
+
+  for (let poll = 0; poll < MAX_POLLS; poll++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    await waitForPageLoad(tabId);
+
+    // Check URL change
+    const currentUrl = await getPageUrl(tabId);
+    if (!currentUrl) break;
+
+    if (currentUrl !== preUrl) {
+      console.log(
+        `%c  [gyoza:verify] Poll ${poll}: navigation → ${currentUrl}`,
+        "color: #22c55e; font-weight: bold",
+      );
+      return { navigated: true, newUrl: currentUrl };
+    }
+
+    // Capture current state
+    const afterText = await capturePageState(tabId);
+    if (!afterText) break;
+
+    if (afterText === beforeText) {
+      console.log(
+        `%c  [gyoza:verify] Poll ${poll}: no change`,
+        "color: #9ca3af",
+      );
+      continue;
+    }
+
+    // Something changed — analyze
+    console.log(
+      `%c  [gyoza:verify] Poll ${poll}: changed (${beforeText.length} → ${afterText.length} chars)`,
+      "color: #f59e0b; font-weight: bold",
+    );
+
+    const newForms =
+      countTag(afterText, "<form") - countTag(beforeText, "<form");
+    const newFields =
+      countTag(afterText, "<field") - countTag(beforeText, "<field");
+    const newInputs =
+      countTag(afterText, "<input") - countTag(beforeText, "<input");
+
+    console.log(
+      `%c  [gyoza:verify] Diff: ${newForms} forms, ${newFields} fields, ${newInputs} inputs`,
+      "color: #f59e0b",
+    );
+
+    if (newForms > 0 || newFields > 2 || newInputs > 2) {
+      console.log(
+        "%c  [gyoza:verify] → Action incomplete (new form/dialog)",
+        "color: #ef4444; font-weight: bold",
+      );
+      return {
+        actionIncomplete: true,
+        pageState: afterText.slice(0, 1500),
+      };
+    }
+
+    const successPattern =
+      /added to cart|カートに追加|追加しました|success|完了|confirmed/i;
+    if (successPattern.test(afterText) && !successPattern.test(beforeText)) {
+      const match = afterText.match(successPattern)?.[0] || "";
+      console.log(
+        `%c  [gyoza:verify] → Success: "${match}"`,
+        "color: #22c55e; font-weight: bold",
+      );
+      return { verification: `Action confirmed — "${match}" appeared.` };
+    }
+
+    const newLines = findNewLines(beforeText, afterText);
+    return {
+      verification: `Page changed after action. New content:\n${newLines.slice(0, 800)}`,
+    };
+  }
+
+  console.log("%c  [gyoza:verify] → No change after polling", "color: #f59e0b");
+  return { verification: "No visible page change detected after action." };
+}
+
+/**
+ * Wrap a tool's execute function with before/after page verification.
+ * Only runs verification for tools that mutate the page or cause navigation.
+ */
+function withVerification<TArgs, TResult extends Record<string, unknown>>(
+  ctx: ToolExecContext,
+  executeFn: (args: TArgs) => Promise<TResult>,
+): (args: TArgs) => Promise<TResult> {
+  return async (args: TArgs) => {
+    // Capture before state
+    const beforeText = await capturePageState(ctx.tabId);
+    const preUrl = (await getPageUrl(ctx.tabId)) || "";
+
+    // Run the original tool
+    const result = await executeFn(args);
+
+    // If the tool already failed, skip verification
+    if ("success" in result && result.success === false) {
+      return result;
+    }
+
+    // Poll for changes
+    const verify = await verifyPostAction(ctx.tabId, beforeText, preUrl);
+
+    if (verify.navigated) {
+      ctx.navigated = true;
+      return {
+        ...result,
+        verification: `Page navigated to ${verify.newUrl} after action.`,
+      };
+    }
+
+    if (verify.actionIncomplete) {
+      return {
+        success: false,
+        error: `Action opened a form/dialog that requires attention. ${countTag(verify.pageState || "", "<form")} forms, new fields appeared. Page state:\n${verify.pageState}\nYou must handle these before the action succeeds.`,
+      } as unknown as TResult;
+    }
+
+    if (verify.verification) {
+      return { ...result, verification: verify.verification };
+    }
+
+    return result;
+  };
 }
 
 // ─── Tool Factory ──────────────────────────────────────────────────────────────
@@ -429,18 +625,6 @@ export function createBrowserTools(
           }
         }
         try {
-          // Capture BEFORE state for post-click diff
-          let beforeText = "";
-          try {
-            const beforeCapture = await chrome.tabs.sendMessage(ctx.tabId, {
-              type: "gyozai_tool_capture_context",
-              snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
-            });
-            beforeText = (beforeCapture?.context as string) || "";
-          } catch {
-            /* content script unavailable */
-          }
-
           const result = await execIsolated(
             ctx.tabId,
             ((
@@ -680,166 +864,10 @@ export function createBrowserTools(
             kind: "tool-status",
             content: "Clicked element",
           });
-
-          // ─── Post-click polling verification ───────────────────────
-          // Poll the page until something changes, comparing before/after
-          // snapshots using html-screen-capture-js via content script.
-          const preClickUrl = result.preClickUrl || "";
-          const MAX_POLLS = 5;
-          const POLL_INTERVAL = 500;
-
-          console.log(
-            "%c  [gyoza:click-verify] Starting polling verification (before: %d chars)...",
-            "color: #f59e0b; font-weight: bold",
-            beforeText.length,
-          );
-
-          for (let poll = 0; poll < MAX_POLLS; poll++) {
-            await new Promise((r) => setTimeout(r, POLL_INTERVAL));
-
-            // Wait for page to finish loading
-            try {
-              await execInPage(ctx.tabId, (() => {
-                if (document.readyState === "complete") return;
-                return new Promise<void>((resolve) => {
-                  const check = () => {
-                    if (document.readyState === "complete") return resolve();
-                    setTimeout(check, 200);
-                  };
-                  check();
-                  setTimeout(resolve, 5000);
-                });
-              }) as (...args: never[]) => void);
-            } catch {
-              console.log(
-                `%c  [gyoza:click-verify] Poll ${poll}: page unloaded`,
-                "color: #f59e0b",
-              );
-              break;
-            }
-
-            // Check URL change
-            let currentUrl: string;
-            try {
-              currentUrl = await execInPage(
-                ctx.tabId,
-                (() => window.location.href) as (...args: never[]) => string,
-              );
-            } catch {
-              break;
-            }
-
-            if (currentUrl !== preClickUrl) {
-              ctx.navigated = true;
-              console.log(
-                `%c  [gyoza:click-verify] Poll ${poll}: navigation detected → ${currentUrl}`,
-                "color: #22c55e; font-weight: bold",
-              );
-              return {
-                success: true as const,
-                element: `<${result.tagName}> "${result.text}"`,
-                context: result.context || "",
-                verification: `Page navigated to ${currentUrl} after click.`,
-              };
-            }
-
-            // Capture current page state (fresh — cache is 50ms)
-            let afterText = "";
-            try {
-              const afterCapture = await chrome.tabs.sendMessage(ctx.tabId, {
-                type: "gyozai_tool_capture_context",
-                snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
-              });
-              afterText = (afterCapture?.context as string) || "";
-            } catch {
-              break;
-            }
-
-            // Nothing changed yet — keep polling
-            if (afterText === beforeText) {
-              console.log(
-                `%c  [gyoza:click-verify] Poll ${poll}: no change yet`,
-                "color: #9ca3af",
-              );
-              continue;
-            }
-
-            // Something changed — analyze the diff
-            console.log(
-              `%c  [gyoza:click-verify] Poll ${poll}: page changed (before: ${beforeText.length}, after: ${afterText.length} chars)`,
-              "color: #f59e0b; font-weight: bold",
-            );
-
-            const newForms =
-              countTag(afterText, "<form") - countTag(beforeText, "<form");
-            const newFields =
-              countTag(afterText, "<field") - countTag(beforeText, "<field");
-            const newInputs =
-              countTag(afterText, "<input") - countTag(beforeText, "<input");
-
-            console.log(
-              `%c  [gyoza:click-verify] Diff: ${newForms} new forms, ${newFields} new fields, ${newInputs} new inputs`,
-              "color: #f59e0b",
-            );
-
-            // New forms/inputs → modal/dialog appeared → action incomplete
-            if (newForms > 0 || newFields > 2 || newInputs > 2) {
-              console.log(
-                "%c  [gyoza:click-verify] → Returning success:false — new form/dialog detected",
-                "color: #ef4444; font-weight: bold",
-              );
-              return {
-                success: false as const,
-                error: `Click opened a form/dialog (${newForms} new forms, ${newFields + newInputs} new fields appeared). You must handle these before the action succeeds. Current page:\n${afterText.slice(0, 1500)}`,
-              };
-            }
-
-            // Check for success indicators that appeared after click
-            const successPattern =
-              /added to cart|カートに追加|追加しました|success|完了|confirmed/i;
-            if (
-              successPattern.test(afterText) &&
-              !successPattern.test(beforeText)
-            ) {
-              const match = afterText.match(successPattern)?.[0] || "";
-              console.log(
-                `%c  [gyoza:click-verify] → Success indicator detected: "${match}"`,
-                "color: #22c55e; font-weight: bold",
-              );
-              return {
-                success: true as const,
-                element: `<${result.tagName}> "${result.text}"`,
-                context: result.context || "",
-                verification: `Action confirmed — "${match}" appeared on page.`,
-              };
-            }
-
-            // Something changed but unclear — give AI the new content
-            const newLines = findNewLines(beforeText, afterText);
-            console.log(
-              "%c  [gyoza:click-verify] → Page changed, returning diff",
-              "color: #f59e0b",
-            );
-            return {
-              success: true as const,
-              element: `<${result.tagName}> "${result.text}"`,
-              context: result.context || "",
-              verification: `Page changed after click. New content:\n${newLines.slice(0, 800)}`,
-            };
-          }
-
-          // Nothing changed after polling
-          console.log(
-            "%c  [gyoza:click-verify] → No change after %d polls",
-            "color: #f59e0b",
-            MAX_POLLS,
-          );
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
             context: result.context || "",
-            verification:
-              "No visible page change detected after clicking. The action may have had no effect.",
           };
         } catch (e) {
           return {
@@ -849,6 +877,8 @@ export function createBrowserTools(
         }
       },
     });
+    // Wrap click execute with post-action verification
+    tools.click.execute = withVerification(ctx, tools.click.execute);
   }
 
   // ── execute_js ──────────────────────────────────────────────────────────
@@ -944,6 +974,7 @@ export function createBrowserTools(
         }
       },
     });
+    tools.execute_js.execute = withVerification(ctx, tools.execute_js.execute);
   }
 
   // ── highlight_ui ────────────────────────────────────────────────────────
@@ -1269,33 +1300,6 @@ export function createBrowserTools(
             };
           }
 
-          // Verification: read value back after a short delay
-          if (result.verifySelector) {
-            await new Promise((r) => setTimeout(r, 50));
-            const verify = await execInPage(
-              ctx.tabId,
-              ((sel: string, expectedValue: string) => {
-                const el = document.querySelector(
-                  sel,
-                ) as HTMLInputElement | null;
-                if (!el) return { verified: true };
-                return {
-                  verified: el.value === expectedValue,
-                  actualValue: el.value.slice(0, 100),
-                };
-              }) as (...args: never[]) => {
-                verified: boolean;
-                actualValue?: string;
-              },
-              [result.verifySelector, value],
-            );
-            if (verify && !verify.verified) {
-              return {
-                success: false,
-                error: `Value was set but the input reverted to "${verify.actualValue || "(empty)"}". This is likely a React controlled input — try using execute_js with native value setter and React's synthetic events.`,
-              };
-            }
-          }
           return { success: true, filled: result.element, name: result.name };
         } catch (e) {
           return {
@@ -1305,6 +1309,7 @@ export function createBrowserTools(
         }
       },
     });
+    tools.fill_input.execute = withVerification(ctx, tools.fill_input.execute);
   }
 
   // ── select_option ─────────────────────────────────────────────────────
@@ -1436,33 +1441,6 @@ export function createBrowserTools(
               error: result.error || "Option not found",
             };
 
-          // Verification: read value back after a short delay
-          await new Promise((r) => setTimeout(r, 50));
-          const verify = await execInPage(
-            ctx.tabId,
-            ((sel: string | null, expectedValue: string) => {
-              const el = sel
-                ? (document.querySelector(sel) as HTMLSelectElement | null)
-                : (document.querySelector(
-                    "select",
-                  ) as HTMLSelectElement | null);
-              if (!el) return { verified: true };
-              return {
-                verified: el.value === expectedValue,
-                actualValue: el.value,
-              };
-            }) as (...args: never[]) => {
-              verified: boolean;
-              actualValue?: string;
-            },
-            [selector || null, result.value || ""],
-          );
-          if (verify && !verify.verified) {
-            return {
-              success: false,
-              error: `Selected "${result.text}" but the value reverted to "${verify.actualValue || "(empty)"}". The select may be controlled by JavaScript.`,
-            };
-          }
           return { success: true, selected: result.text, value: result.value };
         } catch (e) {
           return {
@@ -1472,6 +1450,10 @@ export function createBrowserTools(
         }
       },
     });
+    tools.select_option.execute = withVerification(
+      ctx,
+      tools.select_option.execute,
+    );
   }
 
   // ── toggle_checkbox ───────────────────────────────────────────────────
@@ -1570,6 +1552,10 @@ export function createBrowserTools(
         }
       },
     });
+    tools.toggle_checkbox.execute = withVerification(
+      ctx,
+      tools.toggle_checkbox.execute,
+    );
   }
 
   // ── submit_form ───────────────────────────────────────────────────────
@@ -1659,6 +1645,10 @@ export function createBrowserTools(
         }
       },
     });
+    tools.submit_form.execute = withVerification(
+      ctx,
+      tools.submit_form.execute,
+    );
   }
 
   // ── scroll_to ─────────────────────────────────────────────────────────
