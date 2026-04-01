@@ -393,11 +393,27 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     const beforeText = await capturePageState(ctx.tabId);
     const preUrl = (await getPageUrl(ctx.tabId)) || "";
 
+    // Pre-save pending-nav BEFORE the action — in case it triggers navigation,
+    // the new page's widget will find this immediately on mount.
+    // If no navigation occurs, we delete it after verification.
+    const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+    await chrome.storage.local.set({
+      [pendingNavKey]: {
+        snapshotTypes: ["all"],
+        originalQuery: ctx.originalQuery,
+        conversationId: ctx.conversationId || "",
+        tabId: ctx.tabId,
+        timestamp: Date.now(),
+        preNavMessageCount: ctx.messages.length,
+      },
+    });
+
     // Run the original tool
     const result = await executeFn(args);
 
-    // If the tool already failed, skip verification
+    // If the tool already failed, clean up pending-nav and skip verification
     if ("success" in result && result.success === false) {
+      await chrome.storage.local.remove(pendingNavKey);
       return result;
     }
 
@@ -407,21 +423,9 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     if (verify.navigated) {
       ctx.navigated = true;
 
-      // Save pending-nav so the widget auto-resumes on the new page
-      const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-      await chrome.storage.local.set({
-        [pendingNavKey]: {
-          snapshotTypes: ["all"],
-          originalQuery: ctx.originalQuery,
-          conversationId: ctx.conversationId || "",
-          tabId: ctx.tabId,
-          timestamp: Date.now(),
-          preNavMessageCount: ctx.messages.length,
-        },
-      });
-
+      // pending-nav already saved — just log and abort
       console.log(
-        "%c  [gyoza:verify] Navigation detected — aborting stream, saved pending-nav",
+        "%c  [gyoza:verify] Navigation detected — aborting stream (pending-nav was pre-saved)",
         "color: #ef4444; font-weight: bold",
       );
 
@@ -433,6 +437,9 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
         verification: `Page navigated to ${verify.newUrl}. Execution stopped — the widget will resume on the new page.`,
       };
     }
+
+    // No navigation occurred — clean up the pre-saved pending-nav
+    await chrome.storage.local.remove(pendingNavKey);
 
     if (verify.actionIncomplete) {
       return {
