@@ -816,8 +816,16 @@ export function GyozaiWidget() {
     console.groupEnd();
 
     const start = Date.now();
+    console.log(
+      `%c[gyoza:query] Sending to background (queryId: ${queryId.slice(0, 8)}, convId: ${activeConvIdRef.current?.slice(0, 8) || "none"})`,
+      "color: #3b82f6",
+    );
     const result = (await chrome.runtime.sendMessage(payload)) as AgentResult;
     const ms = Date.now() - start;
+    console.log(
+      `%c[gyoza:query] Response received in ${ms}ms (messages: ${result?.messages?.length || 0}, tools: ${result?.toolCalls?.length || 0}, error: ${result?.error || "none"})`,
+      result?.error ? "color: #ef4444" : "color: #22c55e",
+    );
 
     // ─── Log response ──────────────────
     console.group(`%c[gyoza] ━━━ RESPONSE #${qn} (${ms}ms) ━━━`, S.res);
@@ -958,13 +966,27 @@ export function GyozaiWidget() {
   // ─── Listen for streaming events from background worker ───
   useEffect(() => {
     const handler = (msg: StreamEventMessage) => {
-      if (
-        msg.type !== "gyozai_stream_event" ||
-        msg.queryId !== currentQueryIdRef.current
-      )
+      if (msg.type !== "gyozai_stream_event") return;
+
+      const myQueryId = currentQueryIdRef.current;
+      if (msg.queryId !== myQueryId) {
+        console.log(
+          "%c[gyoza:stream] REJECTED event (queryId mismatch: got %s, expected %s)",
+          "color: #ef4444",
+          msg.queryId?.slice(0, 8),
+          myQueryId?.slice(0, 8),
+          msg.event,
+        );
         return;
+      }
 
       const evt = msg.event;
+      console.log(
+        `%c[gyoza:stream] ${evt.kind}`,
+        "color: #a855f7; font-weight: bold",
+        "content" in evt ? (evt.content as string)?.slice(0, 80) : evt,
+      );
+
       switch (evt.kind) {
         case "message":
           addAssistantMessage(evt.content);
@@ -975,7 +997,6 @@ export function GyozaiWidget() {
         case "expression":
           if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
             setExpression(evt.face as Expression);
-            // Persist via background worker (reliable local storage write)
             chrome.runtime
               .sendMessage({
                 type: "gyozai_save_expression",
@@ -995,6 +1016,20 @@ export function GyozaiWidget() {
 
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
+    console.log(
+      "%c[gyoza:result] processAgentResult called",
+      "color: #3b82f6; font-weight: bold",
+      {
+        messages: result.messages?.length || 0,
+        toolCalls: result.toolCalls?.length || 0,
+        error: result.error || null,
+        navigated: result.navigated || false,
+        streamed: result.streamed || false,
+        hasLlmHistory: (result.llmHistory?.length || 0) > 0,
+        clarify: result.clarify ? "yes" : "no",
+      },
+    );
+
     // Stash LLM history so saveCurrentConversation can seed it
     if (result.llmHistory && result.llmHistory.length > 0) {
       latestLlmHistoryRef.current = result.llmHistory;
@@ -1200,14 +1235,31 @@ export function GyozaiWidget() {
 
     try {
       autoFollowUpUsed = false;
+      console.log(
+        "%c[gyoza:submit] handleSubmit → sendQuery",
+        "color: #3b82f6; font-weight: bold",
+        trimmed.slice(0, 60),
+      );
       const result = await sendQuery(trimmed, pendingExtraContext || undefined);
       pendingExtraContext = null;
+      console.log(
+        "%c[gyoza:submit] sendQuery returned → calling processAgentResult",
+        "color: #3b82f6",
+      );
       await processAgentResult(result);
+      console.log(
+        "%c[gyoza:submit] processAgentResult completed",
+        "color: #22c55e",
+      );
     } catch (err) {
+      console.log(
+        "%c[gyoza:submit] ERROR in handleSubmit:",
+        "color: #ef4444; font-weight: bold",
+        err,
+      );
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
-      // Re-focus input so user can immediately type the next message
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
