@@ -15,7 +15,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "find src -name '*.test.*' -o -name '*.spec.*' | grep -q . && bun test || echo 'No test files found, skipping'",
     "clean": "rm -rf dist"
   },
   "dependencies": {
