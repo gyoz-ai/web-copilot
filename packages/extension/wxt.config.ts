@@ -19,10 +19,6 @@ export default defineConfig({
       // Generate source maps as separate files (not inlined)
       // Stripped from the zip but uploaded to GitHub Release as artifacts
       sourcemap: "hidden",
-      minify: "terser",
-      terserOptions: {
-        compress: { drop_console: false },
-      },
     },
   }),
   dev: {
