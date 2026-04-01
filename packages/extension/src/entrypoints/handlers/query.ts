@@ -65,7 +65,30 @@ export async function handleQuery(
   console.log("  Query:", message.query.slice(0, 100));
   console.log("  Manifest mode:", message.manifestMode);
   console.log("  Conversation ID:", convId ?? "none");
-  console.log("  Conversation history:", history.length, "messages");
+  console.log(
+    "  Conversation history:",
+    history.length,
+    "messages |",
+    history.reduce((sum, m) => sum + m.content.length, 0),
+    "chars (~",
+    Math.round(history.reduce((sum, m) => sum + m.content.length, 0) / 4),
+    "tokens)",
+  );
+  if (history.length > 0) {
+    // Show each history entry role + preview (always visible)
+    for (let i = 0; i < history.length; i++) {
+      const m = history[i];
+      const preview = m.content.slice(0, 120).replace(/\n/g, " ");
+      console.log(
+        `%c  [${i}] ${m.role}:%c ${preview}${m.content.length > 120 ? "…" : ""} %c(${m.content.length} chars)`,
+        m.role === "user"
+          ? "color: #3b82f6; font-weight: bold"
+          : "color: #22c55e; font-weight: bold",
+        "color: #9ca3af",
+        "color: #6b7280; font-style: italic",
+      );
+    }
+  }
 
   console.groupCollapsed("%c  [gyoza] System prompt", "color: #9ca3af");
   console.log(systemPrompt);
@@ -75,7 +98,7 @@ export async function handleQuery(
   console.groupEnd();
   if (history.length > 0) {
     console.groupCollapsed(
-      "%c  [gyoza] Conversation history (" + history.length + " messages)",
+      "%c  [gyoza] Full conversation history",
       "color: #9ca3af",
     );
     console.log(history);
