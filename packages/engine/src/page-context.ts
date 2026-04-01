@@ -120,11 +120,11 @@ export function stripToFit(
 }
 
 // ─── Shared capture cache ───────────────────────────────────────────────────────
-// Both captureCleanHtml and capturePageContext feed from the same capture.
-// The cache lives for 2 seconds to avoid redundant captures in the same turn.
+// Dedup only — prevents double capture when captureCleanHtml and capturePageContext
+// are called in the same turn. 50ms is enough to dedup without returning stale data.
 
 let _cache: { doc: Document; ts: number } | null = null;
-const CACHE_TTL = 2000;
+const CACHE_TTL = 50;
 
 function getCapturedDoc(): Document {
   const now = Date.now();
