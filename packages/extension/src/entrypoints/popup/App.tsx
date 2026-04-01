@@ -23,7 +23,7 @@ import {
 
 const PROVIDERS = [
   { id: "claude", name: "Claude (Anthropic)" },
-  { id: "openai", name: "OpenAI" },
+  { id: "openai", name: "ChatGPT (OpenAI)" },
   { id: "gemini", name: "Gemini (Google)" },
 ] as const;
 
@@ -60,9 +60,8 @@ interface ManagedUsageInfo {
   plan: string;
   tier: string;
   weeklyLimit: number;
-  usage: { requestCount: number };
+  usage: { requestCount: number; totalCredits: number };
   remaining: number;
-  overflowEnabled: boolean;
 }
 
 type Tab = "provider" | "recipes" | "settings";
@@ -315,9 +314,9 @@ export function App() {
                           opacity: 0.7,
                         }}
                       >
-                        <span>Weekly requests</span>
+                        <span>Weekly usage</span>
                         <span>
-                          {managedUsage.usage.requestCount} /{" "}
+                          {managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount} /{" "}
                           {managedUsage.weeklyLimit}
                         </span>
                       </div>
@@ -333,9 +332,9 @@ export function App() {
                           style={{
                             height: "100%",
                             borderRadius: 3,
-                            width: `${Math.min(100, (managedUsage.usage.requestCount / managedUsage.weeklyLimit) * 100)}%`,
+                            width: `${Math.min(100, ((managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount) / managedUsage.weeklyLimit) * 100)}%`,
                             background:
-                              managedUsage.usage.requestCount >=
+                              (managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount) >=
                               managedUsage.weeklyLimit
                                 ? "#ef4444"
                                 : "#E8950A",
@@ -349,7 +348,7 @@ export function App() {
                     <div
                       style={{ fontSize: 11, opacity: 0.7, margin: "8px 0" }}
                     >
-                      Unlimited requests ({managedUsage.usage.requestCount} used
+                      Generous usage ({managedUsage.usage.requestCount} requests
                       this week)
                     </div>
                   )}
