@@ -1,0 +1,175 @@
+name: Release Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Release & Publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # ─── Version bump ─────────────────────────────────────────
+      - name: Bump version
+        id: version
+        run: |
+          # Read current version from wxt.config.ts
+          CURRENT=$(grep -oP 'version:\s*"\K[^"]+' packages/extension/wxt.config.ts)
+          echo "Current version: $CURRENT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+
+          # Update version in wxt.config.ts
+          sed -i "s/version: \"$CURRENT\"/version: \"$NEW\"/" packages/extension/wxt.config.ts
+
+          # Update version in extension package.json
+          sed -i "s/\"version\": \"$CURRENT\"/\"version\": \"$NEW\"/" packages/extension/package.json
+
+      # ─── Typecheck & test ──────────────────────────────────────
+      - name: Typecheck & Test
+        run: |
+          bun turbo build --filter=@gyoz-ai/engine
+          bun turbo typecheck
+          bun turbo test --filter=@gyoz-ai/engine --filter=@gyoz-ai/extension
+
+      # ─── Build Chrome ──────────────────────────────────────────
+      - name: Build Chrome extension
+        run: cd packages/extension && bunx wxt zip
+
+      # ─── Build Firefox ─────────────────────────────────────────
+      - name: Build Firefox extension
+        run: cd packages/extension && bunx wxt zip --browser firefox
+
+      # ─── Collect source maps ───────────────────────────────────
+      - name: Collect source maps
+        run: |
+          mkdir -p packages/extension/.output/sourcemaps
+          find packages/extension/.output -name "*.map" -exec cp {} packages/extension/.output/sourcemaps/ \;
+          cd packages/extension/.output/sourcemaps
+          if [ "$(ls -A)" ]; then
+            tar -czf ../sourcemaps.tar.gz *
+            echo "SOURCEMAPS=true" >> "$GITHUB_ENV"
+          else
+            echo "SOURCEMAPS=false" >> "$GITHUB_ENV"
+          fi
+
+      # ─── Strip source maps from zips ───────────────────────────
+      - name: Strip source maps from distribution zips
+        run: |
+          cd packages/extension/.output
+          for zip in *.zip; do
+            [ -f "$zip" ] && zip -d "$zip" "*.map" 2>/dev/null || true
+          done
+
+      # ─── Commit version bump ───────────────────────────────────
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/extension/wxt.config.ts packages/extension/package.json
+          git commit -m "release: v${{ steps.version.outputs.version }}"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin main --tags
+
+      # ─── GitHub Release ────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "v${{ steps.version.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            packages/extension/.output/*.zip
+            packages/extension/.output/sourcemaps.tar.gz
+
+      # ─── Publish to Chrome Web Store ───────────────────────────
+      - name: Upload to Chrome Web Store
+        if: env.CHROME_EXTENSION_ID != ''
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: packages/extension/.output/*-chrome.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+
+      # ─── Publish to Firefox Add-ons ────────────────────────────
+      - name: Upload to Firefox Add-ons
+        if: env.FIREFOX_JWT_ISSUER != ''
+        uses: yayuyokitano/firefox-addon@v1.0.4
+        with:
+          api_key: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          api_secret: ${{ secrets.FIREFOX_JWT_SECRET }}
+          guid: ${{ secrets.FIREFOX_EXTENSION_GUID }}
+          xpi_path: packages/extension/.output/*-firefox.zip
+          src_path: packages/extension/src/
+        env:
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+
+      # ─── Verify Chrome Web Store (post-publish) ────────────────
+      - name: Verify Chrome Web Store listing
+        if: env.CHROME_EXTENSION_ID != ''
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://chrome.google.com/webstore/detail/${{ secrets.CHROME_EXTENSION_ID }}")
+          echo "Chrome Web Store status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ Chrome listing is live"
+          else
+            echo "⚠ Chrome listing returned $STATUS (may still be in review)"
+          fi
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+
+      # ─── Verify Firefox Add-ons (post-publish) ─────────────────
+      - name: Verify Firefox Add-ons listing
+        if: env.FIREFOX_EXTENSION_GUID != ''
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://addons.mozilla.org/api/v5/addons/addon/${{ secrets.FIREFOX_EXTENSION_GUID }}/")
+          echo "Firefox Add-ons API status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ Firefox listing is live"
+          else
+            echo "⚠ Firefox listing returned $STATUS (may still be in review)"
+          fi
+        env:
+          FIREFOX_EXTENSION_GUID: ${{ secrets.FIREFOX_EXTENSION_GUID }}
