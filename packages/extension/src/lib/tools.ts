@@ -213,6 +213,22 @@ async function execIsolated<T>(
   return results?.[0]?.result as T;
 }
 
+// ─── Diff helpers for post-action verification ───────────────────────────────
+
+function countTag(text: string, tag: string): number {
+  return (text.match(new RegExp(tag, "g")) || []).length;
+}
+
+function findNewLines(before: string, after: string): string {
+  const beforeSet = new Set(before.split("\n").map((l) => l.trim()));
+  return after
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !beforeSet.has(l))
+    .slice(0, 20)
+    .join("\n");
+}
+
 // ─── Tool Factory ──────────────────────────────────────────────────────────────
 
 export function createBrowserTools(
@@ -413,6 +429,18 @@ export function createBrowserTools(
           }
         }
         try {
+          // Capture BEFORE state for post-click diff
+          let beforeText = "";
+          try {
+            const beforeCapture = await chrome.tabs.sendMessage(ctx.tabId, {
+              type: "gyozai_tool_capture_context",
+              snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
+            });
+            beforeText = (beforeCapture?.context as string) || "";
+          } catch {
+            /* content script unavailable */
+          }
+
           const result = await execIsolated(
             ctx.tabId,
             ((
@@ -653,188 +681,165 @@ export function createBrowserTools(
             content: "Clicked element",
           });
 
-          // Post-click: wait for page to settle, then capture what changed
+          // ─── Post-click polling verification ───────────────────────
+          // Poll the page until something changes, comparing before/after
+          // snapshots using html-screen-capture-js via content script.
+          const preClickUrl = result.preClickUrl || "";
+          const MAX_POLLS = 5;
+          const POLL_INTERVAL = 500;
+
           console.log(
-            "%c  [gyoza:click-verify] Starting post-click verification...",
+            "%c  [gyoza:click-verify] Starting polling verification (before: %d chars)...",
             "color: #f59e0b; font-weight: bold",
-          );
-          await new Promise((r) => setTimeout(r, 500));
-
-          // Check if URL changed
-          const postUrl = await execInPage(
-            ctx.tabId,
-            (() => window.location.href) as (...args: never[]) => string,
-          );
-          const urlChanged = postUrl !== (result.preClickUrl || "");
-          console.log(
-            `%c  [gyoza:click-verify] URL check: ${result.preClickUrl} → ${postUrl} (changed: ${urlChanged})`,
-            "color: #f59e0b",
+            beforeText.length,
           );
 
-          if (urlChanged) {
-            ctx.navigated = true;
+          for (let poll = 0; poll < MAX_POLLS; poll++) {
+            await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+
+            // Wait for page to finish loading
+            try {
+              await execInPage(ctx.tabId, (() => {
+                if (document.readyState === "complete") return;
+                return new Promise<void>((resolve) => {
+                  const check = () => {
+                    if (document.readyState === "complete") return resolve();
+                    setTimeout(check, 200);
+                  };
+                  check();
+                  setTimeout(resolve, 5000);
+                });
+              }) as (...args: never[]) => void);
+            } catch {
+              console.log(
+                `%c  [gyoza:click-verify] Poll ${poll}: page unloaded`,
+                "color: #f59e0b",
+              );
+              break;
+            }
+
+            // Check URL change
+            let currentUrl: string;
+            try {
+              currentUrl = await execInPage(
+                ctx.tabId,
+                (() => window.location.href) as (...args: never[]) => string,
+              );
+            } catch {
+              break;
+            }
+
+            if (currentUrl !== preClickUrl) {
+              ctx.navigated = true;
+              console.log(
+                `%c  [gyoza:click-verify] Poll ${poll}: navigation detected → ${currentUrl}`,
+                "color: #22c55e; font-weight: bold",
+              );
+              return {
+                success: true as const,
+                element: `<${result.tagName}> "${result.text}"`,
+                context: result.context || "",
+                verification: `Page navigated to ${currentUrl} after click.`,
+              };
+            }
+
+            // Capture current page state (fresh — cache is 50ms)
+            let afterText = "";
+            try {
+              const afterCapture = await chrome.tabs.sendMessage(ctx.tabId, {
+                type: "gyozai_tool_capture_context",
+                snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
+              });
+              afterText = (afterCapture?.context as string) || "";
+            } catch {
+              break;
+            }
+
+            // Nothing changed yet — keep polling
+            if (afterText === beforeText) {
+              console.log(
+                `%c  [gyoza:click-verify] Poll ${poll}: no change yet`,
+                "color: #9ca3af",
+              );
+              continue;
+            }
+
+            // Something changed — analyze the diff
             console.log(
-              "%c  [gyoza:click-verify] → Navigation detected, returning success",
-              "color: #22c55e",
+              `%c  [gyoza:click-verify] Poll ${poll}: page changed (before: ${beforeText.length}, after: ${afterText.length} chars)`,
+              "color: #f59e0b; font-weight: bold",
+            );
+
+            const newForms =
+              countTag(afterText, "<form") - countTag(beforeText, "<form");
+            const newFields =
+              countTag(afterText, "<field") - countTag(beforeText, "<field");
+            const newInputs =
+              countTag(afterText, "<input") - countTag(beforeText, "<input");
+
+            console.log(
+              `%c  [gyoza:click-verify] Diff: ${newForms} new forms, ${newFields} new fields, ${newInputs} new inputs`,
+              "color: #f59e0b",
+            );
+
+            // New forms/inputs → modal/dialog appeared → action incomplete
+            if (newForms > 0 || newFields > 2 || newInputs > 2) {
+              console.log(
+                "%c  [gyoza:click-verify] → Returning success:false — new form/dialog detected",
+                "color: #ef4444; font-weight: bold",
+              );
+              return {
+                success: false as const,
+                error: `Click opened a form/dialog (${newForms} new forms, ${newFields + newInputs} new fields appeared). You must handle these before the action succeeds. Current page:\n${afterText.slice(0, 1500)}`,
+              };
+            }
+
+            // Check for success indicators that appeared after click
+            const successPattern =
+              /added to cart|カートに追加|追加しました|success|完了|confirmed/i;
+            if (
+              successPattern.test(afterText) &&
+              !successPattern.test(beforeText)
+            ) {
+              const match = afterText.match(successPattern)?.[0] || "";
+              console.log(
+                `%c  [gyoza:click-verify] → Success indicator detected: "${match}"`,
+                "color: #22c55e; font-weight: bold",
+              );
+              return {
+                success: true as const,
+                element: `<${result.tagName}> "${result.text}"`,
+                context: result.context || "",
+                verification: `Action confirmed — "${match}" appeared on page.`,
+              };
+            }
+
+            // Something changed but unclear — give AI the new content
+            const newLines = findNewLines(beforeText, afterText);
+            console.log(
+              "%c  [gyoza:click-verify] → Page changed, returning diff",
+              "color: #f59e0b",
             );
             return {
               success: true as const,
               element: `<${result.tagName}> "${result.text}"`,
               context: result.context || "",
-              verification: `Page navigated to ${postUrl} after click.`,
+              verification: `Page changed after click. New content:\n${newLines.slice(0, 800)}`,
             };
           }
 
-          // No navigation — capture LIVE page state directly (no cache)
+          // Nothing changed after polling
           console.log(
-            "%c  [gyoza:click-verify] Capturing live page state via execInPage...",
+            "%c  [gyoza:click-verify] → No change after %d polls",
             "color: #f59e0b",
+            MAX_POLLS,
           );
-          let pageSnapshot: string | null = null;
-          try {
-            pageSnapshot = await execInPage(ctx.tabId, (() => {
-              // Get visible text, focusing on what's on top (overlays, modals)
-              const parts: string[] = [];
-
-              // 1. Find topmost overlay/modal by z-index
-              const allEls = document.body.querySelectorAll("*");
-              let topOverlay: HTMLElement | null = null;
-              let topZ = 0;
-              for (const el of Array.from(allEls)) {
-                const style = window.getComputedStyle(el);
-                const z = parseInt(style.zIndex || "0");
-                const pos = style.position;
-                const w = (el as HTMLElement).offsetWidth;
-                const h = (el as HTMLElement).offsetHeight;
-                if (
-                  z > 100 &&
-                  z > topZ &&
-                  (pos === "fixed" || pos === "absolute") &&
-                  w > 200 &&
-                  h > 200 &&
-                  style.display !== "none" &&
-                  style.visibility !== "hidden"
-                ) {
-                  topZ = z;
-                  topOverlay = el as HTMLElement;
-                }
-              }
-
-              if (topOverlay) {
-                // Extract structured info from overlay
-                const title =
-                  topOverlay
-                    .querySelector("h1,h2,h3,h4,h5,h6")
-                    ?.textContent?.trim() || "";
-                const buttons = Array.from(
-                  topOverlay.querySelectorAll(
-                    "button, [role='button'], a.btn, input[type='submit']",
-                  ),
-                )
-                  .map((b) => (b as HTMLElement).textContent?.trim())
-                  .filter((t) => t && t.length < 80)
-                  .slice(0, 10);
-                const selects = Array.from(
-                  topOverlay.querySelectorAll("select"),
-                ).map((s) => {
-                  const sel = s as HTMLSelectElement;
-                  const label =
-                    sel.getAttribute("aria-label") || sel.name || "";
-                  const selected = sel.options[sel.selectedIndex]?.text || "";
-                  return `${label}: ${selected}`;
-                });
-                const inputs = Array.from(
-                  topOverlay.querySelectorAll(
-                    "input:not([type='hidden']), textarea",
-                  ),
-                ).map((inp) => {
-                  const i = inp as HTMLInputElement;
-                  return `${i.name || i.placeholder || i.type}: "${i.value}"`;
-                });
-                const text = (topOverlay.textContent || "")
-                  .replace(/\s+/g, " ")
-                  .trim()
-                  .slice(0, 800);
-
-                parts.push(`[OVERLAY/MODAL DETECTED (z-index: ${topZ})]`);
-                if (title) parts.push(`Title: "${title}"`);
-                parts.push(`Content: "${text}"`);
-                if (buttons.length)
-                  parts.push(`Buttons: [${buttons.join(", ")}]`);
-                if (selects.length)
-                  parts.push(`Selects: [${selects.join(", ")}]`);
-                if (inputs.length) parts.push(`Inputs: [${inputs.join(", ")}]`);
-              } else {
-                // No overlay — just get the main page text
-                const text = (document.body.textContent || "")
-                  .replace(/\s+/g, " ")
-                  .trim()
-                  .slice(0, 500);
-                parts.push(`Page text: "${text}"`);
-              }
-
-              return parts.join("\n");
-            }) as (...args: never[]) => string);
-            console.log(
-              `%c  [gyoza:click-verify] Captured ${pageSnapshot?.length || 0} chars`,
-              "color: #f59e0b",
-            );
-            console.log(
-              "%c  [gyoza:click-verify] Snapshot:",
-              "color: #9ca3af",
-              pageSnapshot?.slice(0, 500),
-            );
-          } catch (captureErr) {
-            console.log(
-              "%c  [gyoza:click-verify] Capture failed:",
-              "color: #ef4444",
-              captureErr,
-            );
-          }
-
-          // If an overlay/modal was detected, the action needs attention
-          const hasOverlay = pageSnapshot
-            ? pageSnapshot.includes("[OVERLAY/MODAL DETECTED")
-            : false;
-          // Also check for incomplete form patterns
-          const incompletePattern =
-            /未選択|required|選択してください|エラー|error|please select|choose|select an option|商品詳細を選択/i;
-          const hasIncompleteForm = pageSnapshot
-            ? incompletePattern.test(pageSnapshot)
-            : false;
-          const actionIncomplete = hasOverlay || hasIncompleteForm;
-          console.log(
-            `%c  [gyoza:click-verify] Overlay: ${hasOverlay}, Incomplete form: ${hasIncompleteForm}, Action incomplete: ${actionIncomplete}`,
-            actionIncomplete
-              ? "color: #ef4444; font-weight: bold"
-              : "color: #22c55e",
-          );
-
-          if (actionIncomplete) {
-            console.log(
-              "%c  [gyoza:click-verify] → Returning success:false — form/dialog needs attention",
-              "color: #ef4444; font-weight: bold",
-            );
-            return {
-              success: false as const,
-              error: `Click opened a form/dialog that requires selections before the action can complete. Current page state:\n${pageSnapshot}\nYou must fill the required fields or make selections before the action succeeds.`,
-            };
-          }
-
-          console.log(
-            "%c  [gyoza:click-verify] → Returning success:true",
-            "color: #22c55e",
-          );
-
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
             context: result.context || "",
-            ...(pageSnapshot
-              ? {
-                  verification: `Page state after click:\n${pageSnapshot}`,
-                }
-              : {}),
+            verification:
+              "No visible page change detected after clicking. The action may have had no effect.",
           };
         } catch (e) {
           return {
