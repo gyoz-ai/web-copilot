@@ -486,7 +486,7 @@ export function createBrowserTools(
       | { success: false; error: string }
     >({
       description:
-        "Navigate to a URL path on the current site. This causes a full page load — after calling this tool, you CANNOT interact with the page further. Do not call any more tools after navigate.",
+        "Navigate to any URL — same site or cross-site (e.g. 'https://amazon.co.jp'). This causes a full page load — after calling this tool, you CANNOT interact with the page further. Do not call any more tools after navigate.",
       inputSchema: jsonSchema<{ url: string }>({
         type: "object" as const,
         properties: {

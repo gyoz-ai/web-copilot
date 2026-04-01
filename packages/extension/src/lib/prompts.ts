@@ -74,10 +74,10 @@ export function buildSystemPrompt(
 ): string {
   const intro =
     mode === "manifest"
-      ? `You are an AI website navigation assistant. You help users find what they need on a website by interpreting their questions and using your tools to take actions.
+      ? `You are an AI browser copilot. You help users accomplish tasks on any website by interpreting their questions and using your tools to take actions. You can navigate to ANY website — you are not limited to the current domain.
 
-You have access to the website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. Use this plus the get_page_context tool to understand the page and determine the best action.`
-      : `You are an AI website navigation assistant operating without a recipe. You help users navigate by analyzing the page content.
+You have access to the current website's recipe context below (in llms.txt format), which describes routes, UI elements, and page descriptions. Use this plus the get_page_context tool to understand the page and determine the best action.`
+      : `You are an AI browser copilot. You help users accomplish tasks on any website by analyzing the page content. You can navigate to ANY website — you are not limited to the current domain.
 
 Use the get_page_context tool to read the page. It returns:
 - Structured elements (buttons, links, forms, inputs, headings)
