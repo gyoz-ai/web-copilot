@@ -685,34 +685,105 @@ export function createBrowserTools(
             };
           }
 
-          // No navigation — capture page state to see what happened
+          // No navigation — capture LIVE page state directly (no cache)
+          console.log(
+            "%c  [gyoza:click-verify] Capturing live page state via execInPage...",
+            "color: #f59e0b",
+          );
           let pageSnapshot: string | null = null;
           try {
+            pageSnapshot = await execInPage(ctx.tabId, (() => {
+              // Get visible text, focusing on what's on top (overlays, modals)
+              const parts: string[] = [];
+
+              // 1. Find topmost overlay/modal by z-index
+              const allEls = document.body.querySelectorAll("*");
+              let topOverlay: HTMLElement | null = null;
+              let topZ = 0;
+              for (const el of Array.from(allEls)) {
+                const style = window.getComputedStyle(el);
+                const z = parseInt(style.zIndex || "0");
+                const pos = style.position;
+                const w = (el as HTMLElement).offsetWidth;
+                const h = (el as HTMLElement).offsetHeight;
+                if (
+                  z > 100 &&
+                  z > topZ &&
+                  (pos === "fixed" || pos === "absolute") &&
+                  w > 200 &&
+                  h > 200 &&
+                  style.display !== "none" &&
+                  style.visibility !== "hidden"
+                ) {
+                  topZ = z;
+                  topOverlay = el as HTMLElement;
+                }
+              }
+
+              if (topOverlay) {
+                // Extract structured info from overlay
+                const title =
+                  topOverlay
+                    .querySelector("h1,h2,h3,h4,h5,h6")
+                    ?.textContent?.trim() || "";
+                const buttons = Array.from(
+                  topOverlay.querySelectorAll(
+                    "button, [role='button'], a.btn, input[type='submit']",
+                  ),
+                )
+                  .map((b) => (b as HTMLElement).textContent?.trim())
+                  .filter((t) => t && t.length < 80)
+                  .slice(0, 10);
+                const selects = Array.from(
+                  topOverlay.querySelectorAll("select"),
+                ).map((s) => {
+                  const sel = s as HTMLSelectElement;
+                  const label =
+                    sel.getAttribute("aria-label") || sel.name || "";
+                  const selected = sel.options[sel.selectedIndex]?.text || "";
+                  return `${label}: ${selected}`;
+                });
+                const inputs = Array.from(
+                  topOverlay.querySelectorAll(
+                    "input:not([type='hidden']), textarea",
+                  ),
+                ).map((inp) => {
+                  const i = inp as HTMLInputElement;
+                  return `${i.name || i.placeholder || i.type}: "${i.value}"`;
+                });
+                const text = (topOverlay.textContent || "")
+                  .replace(/\s+/g, " ")
+                  .trim()
+                  .slice(0, 800);
+
+                parts.push(`[OVERLAY/MODAL DETECTED (z-index: ${topZ})]`);
+                if (title) parts.push(`Title: "${title}"`);
+                parts.push(`Content: "${text}"`);
+                if (buttons.length)
+                  parts.push(`Buttons: [${buttons.join(", ")}]`);
+                if (selects.length)
+                  parts.push(`Selects: [${selects.join(", ")}]`);
+                if (inputs.length) parts.push(`Inputs: [${inputs.join(", ")}]`);
+              } else {
+                // No overlay — just get the main page text
+                const text = (document.body.textContent || "")
+                  .replace(/\s+/g, " ")
+                  .trim()
+                  .slice(0, 500);
+                parts.push(`Page text: "${text}"`);
+              }
+
+              return parts.join("\n");
+            }) as (...args: never[]) => string);
             console.log(
-              "%c  [gyoza:click-verify] Capturing page state via content script...",
+              `%c  [gyoza:click-verify] Captured ${pageSnapshot?.length || 0} chars`,
               "color: #f59e0b",
             );
-            const captureResult = await chrome.tabs.sendMessage(ctx.tabId, {
-              type: "gyozai_tool_capture_context",
-              snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
-            });
-            if (captureResult?.context) {
-              pageSnapshot = (captureResult.context as string).slice(0, 2000);
-              console.log(
-                `%c  [gyoza:click-verify] Captured ${pageSnapshot.length} chars`,
-                "color: #f59e0b",
-              );
-              console.log(
-                "%c  [gyoza:click-verify] Snapshot preview:",
-                "color: #9ca3af",
-                pageSnapshot.slice(0, 500),
-              );
-            } else {
-              console.log(
-                "%c  [gyoza:click-verify] No context returned from capture",
-                "color: #ef4444",
-              );
-            }
+            console.log(
+              "%c  [gyoza:click-verify] Snapshot:",
+              "color: #9ca3af",
+              pageSnapshot?.slice(0, 500),
+            );
           } catch (captureErr) {
             console.log(
               "%c  [gyoza:click-verify] Capture failed:",
@@ -721,14 +792,19 @@ export function createBrowserTools(
             );
           }
 
-          // Detect if the click opened a form/modal that needs user action
+          // If an overlay/modal was detected, the action needs attention
+          const hasOverlay = pageSnapshot
+            ? pageSnapshot.includes("[OVERLAY/MODAL DETECTED")
+            : false;
+          // Also check for incomplete form patterns
           const incompletePattern =
-            /未選択|required|選択してください|エラー|error|please select|choose|select an option/i;
-          const actionIncomplete = pageSnapshot
+            /未選択|required|選択してください|エラー|error|please select|choose|select an option|商品詳細を選択/i;
+          const hasIncompleteForm = pageSnapshot
             ? incompletePattern.test(pageSnapshot)
             : false;
+          const actionIncomplete = hasOverlay || hasIncompleteForm;
           console.log(
-            `%c  [gyoza:click-verify] Action incomplete check: ${actionIncomplete}${actionIncomplete ? " (matched: " + (pageSnapshot?.match(incompletePattern)?.[0] || "") + ")" : ""}`,
+            `%c  [gyoza:click-verify] Overlay: ${hasOverlay}, Incomplete form: ${hasIncompleteForm}, Action incomplete: ${actionIncomplete}`,
             actionIncomplete
               ? "color: #ef4444; font-weight: bold"
               : "color: #22c55e",
