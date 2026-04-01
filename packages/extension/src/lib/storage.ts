@@ -162,14 +162,24 @@ export async function saveConversationLlmHistory(
   if (!conv) return;
 
   // Keep at most 50 messages
+  const beforeCount = history.length;
   let trimmed = history.slice(-50);
 
   // If total estimated tokens exceed budget, drop oldest pairs until under limit
+  let droppedPairs = 0;
   while (
     trimmed.length > 2 &&
     estimateTokens(trimmed.map((m) => m.content).join("")) > MAX_HISTORY_TOKENS
   ) {
     trimmed = trimmed.slice(2); // drop oldest user+assistant pair
+    droppedPairs++;
+  }
+
+  if (beforeCount > trimmed.length) {
+    console.log(
+      `%c[gyoza:storage] LLM history trimmed: ${beforeCount} → ${trimmed.length} messages (dropped ${droppedPairs} pairs, ~${estimateTokens(history.map((m) => m.content).join(""))} → ~${estimateTokens(trimmed.map((m) => m.content).join(""))} tokens)`,
+      "color: #f59e0b",
+    );
   }
 
   conv.llmHistory = trimmed;

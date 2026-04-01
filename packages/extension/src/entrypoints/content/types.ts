@@ -24,6 +24,8 @@ export interface AgentResult {
   }>;
   /** True when streaming events were sent — content script should not duplicate UI updates */
   streamed?: boolean;
+  /** LLM conversation history returned by handler — used to seed new conversations */
+  llmHistory?: Array<{ role: string; content: string }>;
   // Legacy fields (managed mode only — content script dispatches these)
   actions?: Array<{
     type: string;

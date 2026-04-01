@@ -141,7 +141,7 @@ export async function handleQuery(
 
       // Convert legacy ActionResponse to AgentResult
       const result = convertLegacyToAgentResult(legacyResult);
-      sendResponse(result);
+      sendResponse({ ...result, llmHistory: history });
       return;
     }
 
@@ -287,6 +287,8 @@ export async function handleQuery(
       navigated: ctx.navigated,
       toolCalls: allToolCalls,
       streamed: !!queryId,
+      // Return updated history so the widget can seed it into new conversations
+      llmHistory: history,
     });
   } catch (err) {
     console.error("[gyoza] Query error:", err);

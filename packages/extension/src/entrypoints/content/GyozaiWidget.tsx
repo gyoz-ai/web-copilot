@@ -148,6 +148,9 @@ export function GyozaiWidget() {
   const activeConvIdRef = useRef<string | null>(null);
   // Streaming: tracks the current query's ID to correlate streaming events
   const currentQueryIdRef = useRef<string | null>(null);
+  const latestLlmHistoryRef = useRef<Array<{ role: string; content: string }>>(
+    [],
+  );
   const tabIdRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -683,7 +686,10 @@ export function GyozaiWidget() {
         updatedAt: now,
         domain: existing?.domain || window.location.host,
         messages: msgs,
-        llmHistory: existing?.llmHistory || [],
+        llmHistory:
+          existing?.llmHistory && existing.llmHistory.length > 0
+            ? existing.llmHistory
+            : latestLlmHistoryRef.current,
         pendingClarify: currentClarify,
       };
 
@@ -989,6 +995,11 @@ export function GyozaiWidget() {
 
   // Process the agent result from the background worker
   async function processAgentResult(result: AgentResult): Promise<void> {
+    // Stash LLM history so saveCurrentConversation can seed it
+    if (result.llmHistory && result.llmHistory.length > 0) {
+      latestLlmHistoryRef.current = result.llmHistory;
+    }
+
     // Clear the streaming queryId — no more events expected
     currentQueryIdRef.current = null;
 
