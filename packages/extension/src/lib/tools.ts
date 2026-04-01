@@ -654,6 +654,10 @@ export function createBrowserTools(
           });
 
           // Post-click: wait for page to settle, then capture what changed
+          console.log(
+            "%c  [gyoza:click-verify] Starting post-click verification...",
+            "color: #f59e0b; font-weight: bold",
+          );
           await new Promise((r) => setTimeout(r, 500));
 
           // Check if URL changed
@@ -662,9 +666,17 @@ export function createBrowserTools(
             (() => window.location.href) as (...args: never[]) => string,
           );
           const urlChanged = postUrl !== (result.preClickUrl || "");
+          console.log(
+            `%c  [gyoza:click-verify] URL check: ${result.preClickUrl} → ${postUrl} (changed: ${urlChanged})`,
+            "color: #f59e0b",
+          );
 
           if (urlChanged) {
             ctx.navigated = true;
+            console.log(
+              "%c  [gyoza:click-verify] → Navigation detected, returning success",
+              "color: #22c55e",
+            );
             return {
               success: true as const,
               element: `<${result.tagName}> "${result.text}"`,
@@ -676,31 +688,67 @@ export function createBrowserTools(
           // No navigation — capture page state to see what happened
           let pageSnapshot: string | null = null;
           try {
+            console.log(
+              "%c  [gyoza:click-verify] Capturing page state via content script...",
+              "color: #f59e0b",
+            );
             const captureResult = await chrome.tabs.sendMessage(ctx.tabId, {
               type: "gyozai_tool_capture_context",
               snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
             });
             if (captureResult?.context) {
               pageSnapshot = (captureResult.context as string).slice(0, 2000);
+              console.log(
+                `%c  [gyoza:click-verify] Captured ${pageSnapshot.length} chars`,
+                "color: #f59e0b",
+              );
+              console.log(
+                "%c  [gyoza:click-verify] Snapshot preview:",
+                "color: #9ca3af",
+                pageSnapshot.slice(0, 500),
+              );
+            } else {
+              console.log(
+                "%c  [gyoza:click-verify] No context returned from capture",
+                "color: #ef4444",
+              );
             }
-          } catch {
-            // Content script may have disconnected
+          } catch (captureErr) {
+            console.log(
+              "%c  [gyoza:click-verify] Capture failed:",
+              "color: #ef4444",
+              captureErr,
+            );
           }
 
           // Detect if the click opened a form/modal that needs user action
-          // by checking for unresolved required fields, selection prompts, etc.
+          const incompletePattern =
+            /未選択|required|選択してください|エラー|error|please select|choose|select an option/i;
           const actionIncomplete = pageSnapshot
-            ? /未選択|required|選択してください|エラー|error|please select|choose|select an option/i.test(
-                pageSnapshot,
-              )
+            ? incompletePattern.test(pageSnapshot)
             : false;
+          console.log(
+            `%c  [gyoza:click-verify] Action incomplete check: ${actionIncomplete}${actionIncomplete ? " (matched: " + (pageSnapshot?.match(incompletePattern)?.[0] || "") + ")" : ""}`,
+            actionIncomplete
+              ? "color: #ef4444; font-weight: bold"
+              : "color: #22c55e",
+          );
 
           if (actionIncomplete) {
+            console.log(
+              "%c  [gyoza:click-verify] → Returning success:false — form/dialog needs attention",
+              "color: #ef4444; font-weight: bold",
+            );
             return {
               success: false as const,
               error: `Click opened a form/dialog that requires selections before the action can complete. Current page state:\n${pageSnapshot}\nYou must fill the required fields or make selections before the action succeeds.`,
             };
           }
+
+          console.log(
+            "%c  [gyoza:click-verify] → Returning success:true",
+            "color: #22c55e",
+          );
 
           return {
             success: true as const,
