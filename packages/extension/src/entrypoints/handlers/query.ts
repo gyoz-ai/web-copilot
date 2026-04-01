@@ -257,8 +257,10 @@ export async function handleQuery(
     }
     console.groupEnd();
 
-    // If the model also produced text (outside of tool calls), include it as a message
-    if (finalText && finalText.trim()) {
+    // If the model produced text outside of tool calls AND didn't already
+    // send messages via show_message, include it. Skip if show_message was
+    // used — the finalText is just the model rephrasing what it already said.
+    if (finalText && finalText.trim() && ctx.messages.length === 0) {
       ctx.messages.push(finalText.trim());
       sendStreamEvent({ kind: "message", content: finalText.trim() });
     }
