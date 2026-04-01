@@ -110,7 +110,7 @@ ${contextSection}
 
 Rules:
 ${BASE_RULES}
-${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, use show_message to suggest alternatives." : "- Derive your understanding from the HTML provided."}${yoloSection}`;
+${mode === "manifest" ? "- If the user's query doesn't match anything in the recipe, help them anyway using get_page_context and your general browsing capabilities. The recipe is a hint, not a limitation — you can assist with ANY task on ANY website." : "- Derive your understanding from the HTML provided."}${yoloSection}`;
 }
 
 export function buildUserPrompt(opts: {
