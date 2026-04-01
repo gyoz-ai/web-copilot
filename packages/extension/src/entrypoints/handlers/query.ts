@@ -1,10 +1,8 @@
-import { z } from "zod/v4";
 import { streamText, stepCountIs } from "ai";
 import {
   QueryEngine,
   type QueryInput,
   type QueryResult,
-  ActionResponseSchema,
 } from "@gyoz-ai/engine";
 import {
   getSettings,
@@ -14,11 +12,6 @@ import {
 import { createProvider } from "../../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../../lib/prompts";
 import { createBrowserTools, type ToolExecContext } from "../../lib/tools";
-
-// Pre-compute JSON schema for legacy structured output (managed mode only)
-const actionJsonSchema = z.toJSONSchema(ActionResponseSchema, {
-  target: "jsonSchema7",
-});
 
 export async function handleQuery(
   message: QueryInput & { conversationId?: string; queryId?: string },
@@ -112,44 +105,7 @@ export async function handleQuery(
   const start = Date.now();
 
   try {
-    // ─── Managed mode: legacy structured output path ───────────────
-    if (providerResult.type === "legacy") {
-      const messages = [
-        ...history.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        { role: "user" as const, content: userPrompt },
-      ];
-
-      const legacyResult = await providerResult.provider.query(
-        systemPrompt,
-        messages,
-        actionJsonSchema as Record<string, unknown>,
-      );
-      const ms = Date.now() - start;
-      console.log(`  ⏱ Response in ${ms}ms (legacy/managed)`);
-      console.groupEnd();
-
-      // Update conversation history
-      history.push({ role: "user", content: message.query });
-      const firstMsg = legacyResult.actions.find(
-        (a) => a.type === "show-message" && a.message,
-      )?.message;
-      if (firstMsg) {
-        history.push({ role: "assistant", content: firstMsg.slice(0, 300) });
-      }
-      if (convId) {
-        await saveConversationLlmHistory(convId, history);
-      }
-
-      // Convert legacy ActionResponse to AgentResult
-      const result = convertLegacyToAgentResult(legacyResult);
-      sendResponse({ ...result, llmHistory: history });
-      return;
-    }
-
-    // ─── BYOK mode: Vercel AI SDK with streaming tool calling ──────
+    // ─── Streaming mode (BYOK + Managed both use streamText) ─────
     if (tabId == null) {
       throw new Error("No tab ID available for tool execution");
     }
@@ -368,40 +324,4 @@ export async function handleQuery(
       provider: settings.provider,
     });
   }
-}
-
-// ─── Legacy conversion (managed mode) ───────────────────────────────────────
-
-function convertLegacyToAgentResult(
-  legacyResult: import("@gyoz-ai/engine").ActionResponse,
-) {
-  const messages: string[] = [];
-  let clarify: { message: string; options: string[] } | null = null;
-  let navigated = false;
-  const toolCalls: Array<{ tool: string; args: Record<string, unknown> }> = [];
-
-  for (const action of legacyResult.actions) {
-    if (action.type === "show-message" && action.message) {
-      messages.push(action.message);
-    }
-    if (action.type === "clarify" && action.message) {
-      messages.push(action.message);
-      clarify = { message: action.message, options: action.options || [] };
-    }
-    if (action.type === "navigate") {
-      navigated = true;
-    }
-    toolCalls.push({
-      tool: action.type,
-      args: action as unknown as Record<string, unknown>,
-    });
-  }
-
-  return {
-    messages,
-    clarify,
-    navigated,
-    toolCalls,
-    ...(legacyResult as unknown as Record<string, unknown>),
-  };
 }

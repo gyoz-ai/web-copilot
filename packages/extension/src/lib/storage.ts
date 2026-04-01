@@ -1,11 +1,19 @@
 export type ProviderKey = "claude" | "openai" | "gemini";
 
+export interface ManagedUsage {
+  used: number;
+  limit: number;
+  week: string;
+}
+
 export interface ExtensionSettings {
   mode: "byok" | "managed";
   provider: ProviderKey;
   apiKeys: Record<ProviderKey, string>;
   model: string;
   managedToken?: string;
+  managedPlan?: string;
+  managedUsage?: ManagedUsage;
   yoloMode: boolean;
   autoImportRecipes: boolean;
   theme: "dark" | "light";
