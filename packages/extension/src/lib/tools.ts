@@ -539,17 +539,33 @@ export function createBrowserTools(
                 }
 
                 if (!el) {
+                  const INTERACTIVE = new Set([
+                    "A",
+                    "BUTTON",
+                    "INPUT",
+                    "SELECT",
+                    "SUMMARY",
+                  ]);
+                  const exactMatches = candidates.filter(
+                    (e) => e.textContent?.trim() === txt,
+                  );
+                  const partialMatches = candidates.filter((e) =>
+                    e.textContent?.trim().includes(txt),
+                  );
+                  const pool =
+                    exactMatches.length > 0 ? exactMatches : partialMatches;
+
+                  // Prefer interactive elements (a, button) over wrappers (div, span, h2)
                   el =
-                    candidates.find((e) => e.textContent?.trim() === txt) ||
-                    candidates.find((e) =>
-                      e.textContent?.trim().includes(txt),
-                    ) ||
+                    pool.find((e) => INTERACTIVE.has(e.tagName)) ||
+                    pool.find((e) => e.closest("a") !== null) ||
+                    pool[0] ||
                     null;
                   if (el) {
                     console.log(
                       LOG,
                       S,
-                      `  Fell back to first text match (no near_text or near_text failed)`,
+                      `  Picked <${el.tagName.toLowerCase()}> from ${pool.length} matches (prefer interactive)`,
                     );
                   }
                 }
