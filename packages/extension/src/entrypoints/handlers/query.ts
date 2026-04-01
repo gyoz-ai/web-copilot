@@ -323,10 +323,49 @@ export async function handleQuery(
   } catch (err) {
     console.error("[gyoza] Query error:", err);
     console.groupEnd();
+
+    // Extract the real error from Vercel AI SDK's error chain
+    // (AI_NoOutputGeneratedError wraps AI_APICallError which has the real message)
+    let errorMessage = err instanceof Error ? err.message : "Unknown error";
+    let errorType: string | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let cause = err instanceof Error ? (err as any).cause : undefined;
+    while (cause) {
+      if (cause.message) errorMessage = cause.message;
+      cause = cause.cause;
+    }
+
+    // Detect billing/credit/quota errors and make them user-friendly
+    const msgLower = errorMessage.toLowerCase();
+    if (
+      msgLower.includes("credit") ||
+      msgLower.includes("balance") ||
+      msgLower.includes("billing") ||
+      msgLower.includes("quota") ||
+      msgLower.includes("exceeded")
+    ) {
+      errorType = "resource_exhausted";
+      const DASHBOARD_URLS: Record<string, string> = {
+        claude: "https://console.anthropic.com/settings/billing",
+        openai: "https://platform.openai.com/account/billing",
+        gemini: "https://aistudio.google.com/billing",
+      };
+      const url = DASHBOARD_URLS[settings.provider] || "";
+      errorMessage = `Your ${settings.provider} API key has run out of credits. Top up at: ${url}`;
+    } else if (msgLower.includes("invalid") && msgLower.includes("key")) {
+      errorType = "auth";
+      errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
+    } else if (msgLower.includes("no output generated")) {
+      errorMessage =
+        "The AI failed to generate a response. This may be a temporary issue — try again.";
+    }
+
     sendResponse({
       messages: [],
       toolCalls: [],
-      error: err instanceof Error ? err.message : "Unknown error",
+      error: errorMessage,
+      errorType,
+      provider: settings.provider,
     });
   }
 }
