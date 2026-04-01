@@ -179,6 +179,8 @@ export interface ToolExecContext {
     face?: string;
     options?: string[];
   }) => void;
+  /** Abort the AI stream — called when navigation occurs mid-execution */
+  abortStream?: () => void;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -404,9 +406,31 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
 
     if (verify.navigated) {
       ctx.navigated = true;
+
+      // Save pending-nav so the widget auto-resumes on the new page
+      const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+      await chrome.storage.local.set({
+        [pendingNavKey]: {
+          snapshotTypes: ["all"],
+          originalQuery: ctx.originalQuery,
+          conversationId: ctx.conversationId || "",
+          tabId: ctx.tabId,
+          timestamp: Date.now(),
+          preNavMessageCount: ctx.messages.length,
+        },
+      });
+
+      console.log(
+        "%c  [gyoza:verify] Navigation detected — aborting stream, saved pending-nav",
+        "color: #ef4444; font-weight: bold",
+      );
+
+      // Abort the AI stream so it doesn't keep calling tools on a dead page
+      ctx.abortStream?.();
+
       return {
         ...result,
-        verification: `Page navigated to ${verify.newUrl} after action.`,
+        verification: `Page navigated to ${verify.newUrl}. Execution stopped — the widget will resume on the new page.`,
       };
     }
 

@@ -171,6 +171,9 @@ export async function handleQuery(
       );
     };
 
+    // AbortController — tools can abort the stream when navigation occurs
+    const abortController = new AbortController();
+
     const ctx: ToolExecContext = {
       tabId,
       messages: [],
@@ -180,6 +183,7 @@ export async function handleQuery(
       conversationId: convId ?? null,
       originalQuery: message.query,
       onStreamEvent: sendStreamEvent,
+      abortStream: () => abortController.abort(),
     };
 
     const tools = createBrowserTools(ctx, caps, settings.yoloMode);
@@ -202,6 +206,7 @@ export async function handleQuery(
       system: systemPrompt,
       messages: aiMessages,
       tools,
+      abortSignal: abortController.signal,
       stopWhen: stepCountIs(10),
       onStepFinish: ({ toolCalls }) => {
         if (toolCalls?.length) {
@@ -222,11 +227,30 @@ export async function handleQuery(
     });
 
     // Consume the stream — tools execute as their blocks arrive
-    const finalText = await stream.text;
+    let finalText = "";
+    let aborted = false;
+    try {
+      finalText = await stream.text;
+    } catch (streamErr) {
+      // AbortError means a tool detected navigation and killed the stream
+      if (
+        streamErr instanceof Error &&
+        (streamErr.name === "AbortError" || abortController.signal.aborted)
+      ) {
+        aborted = true;
+        console.log(
+          "%c  [gyoza] Stream aborted (navigation detected by tool verification)",
+          "color: #f59e0b; font-weight: bold",
+        );
+      } else {
+        throw streamErr;
+      }
+    }
 
     const ms = Date.now() - start;
-    const steps = await stream.steps;
-    console.log(`  ⏱ Response in ${ms}ms (${steps.length} steps)`);
+    console.log(
+      `  ⏱ Response in ${ms}ms${aborted ? " (ABORTED — navigation)" : ""}`,
+    );
     console.log("  Tool calls:", allToolCalls.length);
     for (const tc of allToolCalls) {
       console.log(`    → ${tc.tool}:`, JSON.stringify(tc.args).slice(0, 100));
