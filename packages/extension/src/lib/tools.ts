@@ -653,120 +653,42 @@ export function createBrowserTools(
             content: "Clicked element",
           });
 
-          // Post-click: wait for page to settle, then snapshot what changed
-          await new Promise((r) => setTimeout(r, 400));
-          // Wait for page load if navigating
-          await execInPage(ctx.tabId, (() => {
-            if (document.readyState !== "complete") {
-              return new Promise<void>((resolve) => {
-                window.addEventListener("load", () => resolve(), {
-                  once: true,
-                });
-                setTimeout(resolve, 3000); // max 3s wait
-              });
-            }
-          }) as (...args: never[]) => void);
+          // Post-click: wait for page to settle, then capture what changed
+          await new Promise((r) => setTimeout(r, 500));
 
-          const postClickState = await execInPage(
+          // Check if URL changed
+          const postUrl = await execInPage(
             ctx.tabId,
-            ((preUrl: string) => {
-              const postUrl = window.location.href;
-              const urlChanged = postUrl !== preUrl;
-
-              // Capture visible page state: what does the user see NOW?
-              // Focus on interactive elements, headings, and alerts
-              const snapshot: string[] = [];
-
-              // Any visible alerts, toasts, or notification text
-              const alertEls = document.querySelectorAll(
-                '[role="alert"], [role="status"], .alert, .toast, .notification',
-              );
-              alertEls.forEach((el) => {
-                const t = (el as HTMLElement).textContent?.trim();
-                if (t && (el as HTMLElement).offsetParent !== null) {
-                  snapshot.push(`[Alert] ${t.slice(0, 150)}`);
-                }
-              });
-
-              // Any overlays/modals/dialogs visible (by z-index or role)
-              const overlays = Array.from(
-                document.querySelectorAll("*"),
-              ).filter((el) => {
-                const style = window.getComputedStyle(el);
-                const z = parseInt(style.zIndex || "0");
-                const isVisible =
-                  (el as HTMLElement).offsetParent !== null &&
-                  (el as HTMLElement).offsetWidth > 150;
-                const isOverlay =
-                  style.position === "fixed" || style.position === "absolute";
-                return z > 999 && isVisible && isOverlay;
-              }) as HTMLElement[];
-              if (overlays.length > 0) {
-                // Get the topmost overlay's text
-                const top = overlays.sort((a, b) => {
-                  const za = parseInt(window.getComputedStyle(a).zIndex || "0");
-                  const zb = parseInt(window.getComputedStyle(b).zIndex || "0");
-                  return zb - za;
-                })[0];
-                const headings = top.querySelectorAll("h1,h2,h3,h4,h5,h6");
-                const title =
-                  headings.length > 0
-                    ? (headings[0].textContent || "").trim()
-                    : "";
-                const buttons = Array.from(
-                  top.querySelectorAll(
-                    "button, a, [role='button'], input[type='submit']",
-                  ),
-                )
-                  .map((b) => (b.textContent || "").trim())
-                  .filter((t) => t.length > 0 && t.length < 50)
-                  .slice(0, 8);
-                const selects = Array.from(
-                  top.querySelectorAll("select, input, textarea"),
-                )
-                  .map((el) => {
-                    const label =
-                      (el as HTMLElement).getAttribute("aria-label") ||
-                      (el as HTMLElement).getAttribute("placeholder") ||
-                      (el as HTMLElement).getAttribute("name") ||
-                      "";
-                    return label;
-                  })
-                  .filter(Boolean)
-                  .slice(0, 8);
-                const text = (top.textContent || "").trim().slice(0, 500);
-                snapshot.push(
-                  `[Overlay/Modal visible] Title: "${title}". Content: "${text}". Buttons: [${buttons.join(", ")}]. Inputs: [${selects.join(", ")}]`,
-                );
-              }
-
-              return {
-                postUrl,
-                urlChanged,
-                pageSnapshot: snapshot.length > 0 ? snapshot.join("\n") : null,
-              };
-            }) as (...args: never[]) => {
-              postUrl: string;
-              urlChanged: boolean;
-              pageSnapshot: string | null;
-            },
-            [result.preClickUrl || ""],
+            (() => window.location.href) as (...args: never[]) => string,
           );
+          const urlChanged = postUrl !== (result.preClickUrl || "");
+
+          // Capture page state using existing content script mechanism
+          let pageSnapshot: string | null = null;
+          try {
+            const captureResult = await chrome.tabs.sendMessage(ctx.tabId, {
+              type: "gyozai_tool_capture_context",
+              snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
+            });
+            if (captureResult?.context) {
+              pageSnapshot = (captureResult.context as string).slice(0, 2000);
+            }
+          } catch {
+            // Content script may have disconnected during navigation
+          }
 
           const notes: string[] = [];
-          if (postClickState?.urlChanged) {
-            notes.push(
-              `Page navigated to ${postClickState.postUrl} after click.`,
-            );
+          if (urlChanged) {
+            notes.push(`Page navigated to ${postUrl} after click.`);
             ctx.navigated = true;
           } else if (result.isLink && result.linkHref) {
             notes.push(
               `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
             );
           }
-          if (postClickState?.pageSnapshot) {
+          if (pageSnapshot) {
             notes.push(
-              `After clicking, the page now shows:\n${postClickState.pageSnapshot}\nDo NOT assume the action succeeded — check this state and respond accordingly.`,
+              `Page state after clicking:\n${pageSnapshot}\nVerify the action succeeded by checking this state. If a modal, form, or selection appeared, handle it — do NOT assume success.`,
             );
           }
           if (result.stillVisible === false) {
