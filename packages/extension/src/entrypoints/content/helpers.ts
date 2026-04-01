@@ -40,9 +40,17 @@ export async function savePendingNav(state: PendingNavState) {
   await chrome.storage.local.set({ [pendingNavKey(state.tabId)]: state });
 }
 
+// Guard against duplicate content script instances racing to consume the same pending-nav
+let _pendingNavConsumed = false;
+
 export async function loadAndClearPendingNav(
   tabId: number,
 ): Promise<PendingNavState | null> {
+  // Synchronous check — prevents the second content script instance
+  // from reading the same pending-nav before the first one deletes it
+  if (_pendingNavConsumed) return null;
+  _pendingNavConsumed = true;
+
   const key = pendingNavKey(tabId);
   try {
     const result = await chrome.storage.local.get(key);
@@ -53,8 +61,10 @@ export async function loadAndClearPendingNav(
       if (Date.now() - state.timestamp > 30000) return null;
       return state;
     }
+    _pendingNavConsumed = false; // Reset if nothing was found
     return null;
   } catch {
+    _pendingNavConsumed = false;
     return null;
   }
 }
