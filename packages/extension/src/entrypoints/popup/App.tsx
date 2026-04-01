@@ -48,6 +48,23 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
+const PLATFORM_URL = "https://api.gyoz.ai";
+
+interface ManagedModels {
+  plan: string;
+  modelSelection: boolean;
+  models: Array<{ id: string; provider: string }>;
+}
+
+interface ManagedUsageInfo {
+  plan: string;
+  tier: string;
+  weeklyLimit: number;
+  usage: { requestCount: number };
+  remaining: number;
+  overflowEnabled: boolean;
+}
+
 type Tab = "provider" | "recipes" | "settings";
 
 export function App() {
@@ -58,9 +75,29 @@ export function App() {
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<Tab>("provider");
+  const [managedModels, setManagedModels] = useState<ManagedModels | null>(
+    null,
+  );
+  const [managedUsage, setManagedUsage] = useState<ManagedUsageInfo | null>(
+    null,
+  );
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    getSettings().then((s) => {
+      setSettings(s);
+      // Fetch managed info if signed in
+      if (s.managedToken) {
+        const headers = { Authorization: `Bearer ${s.managedToken}` };
+        fetch(`${PLATFORM_URL}/v1/ai/models`, { headers })
+          .then((r) => r.json())
+          .then(setManagedModels)
+          .catch(() => {});
+        fetch(`${PLATFORM_URL}/v1/ai/usage`, { headers })
+          .then((r) => r.json())
+          .then(setManagedUsage)
+          .catch(() => {});
+      }
+    });
     getRecipes().then(setRecipes);
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
@@ -244,20 +281,141 @@ export function App() {
             <div className="popup-section">
               {settings.managedToken ? (
                 <div>
+                  {/* Plan badge + status */}
                   <div className="status-row">
                     <span className="status-dot" />
                     <span>{tr.popup_managed_connected}</span>
+                    {managedUsage?.tier && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          background: "rgba(232,149,10,0.2)",
+                          color: "#E8950A",
+                        }}
+                      >
+                        {managedUsage.tier}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      const updated = { ...settings, managedToken: undefined };
-                      setSettings(updated);
-                      saveSettings(updated);
-                    }}
-                  >
-                    {tr.popup_managed_sign_out}
-                  </button>
+
+                  {/* Usage progress bar */}
+                  {managedUsage && managedUsage.weeklyLimit > 0 && (
+                    <div style={{ margin: "10px 0" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 11,
+                          marginBottom: 4,
+                          opacity: 0.7,
+                        }}
+                      >
+                        <span>Weekly requests</span>
+                        <span>
+                          {managedUsage.usage.requestCount} /{" "}
+                          {managedUsage.weeklyLimit}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 6,
+                          borderRadius: 3,
+                          background: "rgba(255,255,255,0.1)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            borderRadius: 3,
+                            width: `${Math.min(100, (managedUsage.usage.requestCount / managedUsage.weeklyLimit) * 100)}%`,
+                            background:
+                              managedUsage.usage.requestCount >=
+                              managedUsage.weeklyLimit
+                                ? "#ef4444"
+                                : "#E8950A",
+                            transition: "width 0.3s",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {managedUsage && managedUsage.weeklyLimit === -1 && (
+                    <div
+                      style={{ fontSize: 11, opacity: 0.7, margin: "8px 0" }}
+                    >
+                      Unlimited requests ({managedUsage.usage.requestCount} used
+                      this week)
+                    </div>
+                  )}
+
+                  {/* Model selector (pro+ only) */}
+                  {managedModels?.modelSelection && (
+                    <div style={{ margin: "10px 0" }}>
+                      <label className="form-label">{tr.popup_model}</label>
+                      <select
+                        className="form-select"
+                        value={settings.model}
+                        onChange={(e) => {
+                          const updated = {
+                            ...settings,
+                            model: e.target.value,
+                          };
+                          setSettings(updated);
+                          saveSettings(updated);
+                        }}
+                      >
+                        {managedModels.models.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.id} ({m.provider})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {managedModels && !managedModels.modelSelection && (
+                    <div
+                      style={{ fontSize: 11, opacity: 0.5, margin: "8px 0" }}
+                    >
+                      Model auto-selected (Starter plan)
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button
+                      className="btn-secondary"
+                      style={{ flex: 1 }}
+                      onClick={() =>
+                        chrome.tabs.create({ url: "https://gyoz.ai/account" })
+                      }
+                    >
+                      Manage Plan
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        const updated = {
+                          ...settings,
+                          managedToken: undefined,
+                          managedPlan: undefined,
+                          managedUsage: undefined,
+                        };
+                        setSettings(updated);
+                        saveSettings(updated);
+                        setManagedModels(null);
+                        setManagedUsage(null);
+                      }}
+                    >
+                      {tr.popup_managed_sign_out}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -265,7 +423,7 @@ export function App() {
                   <button
                     className="btn-primary"
                     onClick={() =>
-                      chrome.tabs.create({ url: "https://gyoz.ai/subscribe" })
+                      chrome.tabs.create({ url: "https://gyoz.ai/pricing" })
                     }
                   >
                     {tr.popup_managed_subscribe_btn}

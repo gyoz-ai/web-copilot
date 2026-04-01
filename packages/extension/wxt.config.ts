@@ -41,7 +41,15 @@ export default defineConfig({
       48: "/icon-48.png",
       128: "/icon-128.png",
     },
-    permissions: ["activeTab", "tabs", "storage", "scripting", "notifications"],
+    permissions: [
+      "activeTab",
+      "tabs",
+      "storage",
+      "scripting",
+      "notifications",
+      "cookies",
+    ],
+    host_permissions: ["https://gyoz.ai/*"],
     web_accessible_resources: [
       {
         resources: [

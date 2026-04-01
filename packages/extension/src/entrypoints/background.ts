@@ -14,11 +14,91 @@ import {
 import { handleGetSettings, handleGetTabId } from "./handlers/settings";
 import { handlePatchHistory, handleLegacyExec } from "./handlers/navigation";
 import { clearWidgetSession } from "../lib/session";
+import { getSettings, saveSettings } from "../lib/storage";
+
+const PLATFORM_DOMAIN = "gyoz.ai";
+const SESSION_COOKIE = "gyozai_session";
+const PLATFORM_URL = "https://api.gyoz.ai";
 
 export default defineBackground(() => {
   console.log("[gyoza] Background worker started");
 
   const engines = new Map<string, QueryEngine>();
+
+  // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
+  // When user logs in/out on gyoz.ai, the extension picks it up instantly.
+  chrome.cookies.onChanged.addListener(async (changeInfo) => {
+    if (
+      changeInfo.cookie.domain.replace(/^\./, "") !== PLATFORM_DOMAIN ||
+      changeInfo.cookie.name !== SESSION_COOKIE
+    )
+      return;
+
+    const settings = await getSettings();
+
+    if (changeInfo.removed) {
+      // Cookie deleted (logout or expiry)
+      if (settings.managedToken) {
+        console.log("[gyoza] Session cookie removed — clearing managed token");
+        await saveSettings({
+          ...settings,
+          managedToken: undefined,
+          managedPlan: undefined,
+          managedUsage: undefined,
+        });
+      }
+    } else {
+      // Cookie set or updated (login)
+      const token = changeInfo.cookie.value;
+      if (token && token !== settings.managedToken) {
+        console.log("[gyoza] Session cookie detected — syncing managed token");
+        // Fetch plan info from platform
+        let managedPlan: string | undefined;
+        try {
+          const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            managedPlan = data.plan;
+          }
+        } catch {
+          // Platform unreachable — still store the token
+        }
+        await saveSettings({
+          ...settings,
+          managedToken: token,
+          managedPlan,
+        });
+      }
+    }
+  });
+
+  // On startup, check if cookie already exists (e.g. extension reloaded while logged in)
+  chrome.cookies.get(
+    { url: `https://${PLATFORM_DOMAIN}`, name: SESSION_COOKIE },
+    async (cookie) => {
+      if (!cookie) return;
+      const settings = await getSettings();
+      if (settings.managedToken === cookie.value) return; // already synced
+      console.log("[gyoza] Startup: syncing existing session cookie");
+      let managedPlan: string | undefined;
+      try {
+        const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
+          headers: { Authorization: `Bearer ${cookie.value}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          managedPlan = data.plan;
+        }
+      } catch {}
+      await saveSettings({
+        ...settings,
+        managedToken: cookie.value,
+        managedPlan,
+      });
+    },
+  );
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
