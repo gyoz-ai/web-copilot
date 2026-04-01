@@ -809,6 +809,11 @@ export function GyozaiWidget() {
       S.req,
       "",
     );
+    console.log(
+      `%cModel:%c ${extSettings?.provider || "?"} / ${extSettings?.model || "?"}`,
+      S.req,
+      "",
+    );
     console.log(`%cRoute:%c ${currentRoute}`, S.req, "");
     if (manifestMode && recipe?.content) {
       console.log(`%cRecipe:%c ${recipe.content.length} chars`, S.req, "");

@@ -54,11 +54,15 @@ export async function handleQuery(
     `%c[gyoza] BACKGROUND → LLM`,
     "color: #E8950A; font-weight: bold",
   );
+  const modelId =
+    providerResult.type === "model"
+      ? (providerResult.model as { modelId?: string }).modelId || settings.model
+      : `managed (${settings.model})`;
   console.log(
     "  Provider:",
     settings.provider,
     "| Model:",
-    settings.model,
+    modelId,
     "| Mode:",
     settings.mode,
   );
