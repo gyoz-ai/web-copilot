@@ -1270,9 +1270,20 @@ export function GyozaiWidget() {
             ? { bottom: window.innerHeight - rect.top + 8 }
             : { top: rect.bottom + 8 };
 
-          const lastStatus = [...messages]
-            .reverse()
-            .find((m) => m.type === "tool-status");
+          // Find tool-status from the current turn only (after the last user message)
+          let lastUserIdx = -1;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+              lastUserIdx = i;
+              break;
+            }
+          }
+          const currentTurnMsgs =
+            lastUserIdx >= 0 ? messages.slice(lastUserIdx) : messages;
+          const lastStatus =
+            [...currentTurnMsgs]
+              .reverse()
+              .find((m) => m.type === "tool-status") || null;
           // Always use the last ASSISTANT message for the speech bubble,
           // even if the user sent a message after it.
           const lastAssistantMsg = [...messages]
