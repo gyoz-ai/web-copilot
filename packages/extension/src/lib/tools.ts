@@ -653,23 +653,75 @@ export function createBrowserTools(
             content: "Clicked element",
           });
 
-          // Post-click verification: check if URL changed (SPA navigation)
+          // Post-click verification: check URL, modals, page changes
+          await new Promise((r) => setTimeout(r, 300));
+          const postClick = await execInPage(
+            ctx.tabId,
+            ((preUrl: string) => {
+              const postUrl = window.location.href;
+              const urlChanged = postUrl !== preUrl;
+
+              // Detect new modals/overlays/dialogs that appeared
+              const modalSelectors = [
+                '[role="dialog"]',
+                '[role="alertdialog"]',
+                "[aria-modal='true']",
+                "dialog[open]",
+                ".modal.show",
+                ".modal.active",
+                ".overlay:not([style*='display: none'])",
+              ];
+              let modalText: string | null = null;
+              for (const sel of modalSelectors) {
+                const modal = document.querySelector(sel) as HTMLElement | null;
+                if (modal && modal.offsetParent !== null) {
+                  modalText = (modal.textContent || "").trim().slice(0, 300);
+                  break;
+                }
+              }
+              // Also check for high z-index overlays that appeared
+              if (!modalText) {
+                const highZ = Array.from(
+                  document.querySelectorAll(
+                    "div[style*='z-index'], div[style*='position: fixed'], div[style*='position:fixed']",
+                  ),
+                ).filter((el) => {
+                  const style = window.getComputedStyle(el);
+                  const z = parseInt(style.zIndex || "0");
+                  return (
+                    z > 1000 &&
+                    (el as HTMLElement).offsetParent !== null &&
+                    (el as HTMLElement).offsetWidth > 100 &&
+                    (el as HTMLElement).offsetHeight > 100
+                  );
+                }) as HTMLElement[];
+                if (highZ.length > 0) {
+                  modalText = (highZ[0].textContent || "").trim().slice(0, 300);
+                }
+              }
+
+              return { postUrl, urlChanged, modalText };
+            }) as (...args: never[]) => {
+              postUrl: string;
+              urlChanged: boolean;
+              modalText: string | null;
+            },
+            [result.preClickUrl || ""],
+          );
+
           const notes: string[] = [];
-          if (result.preClickUrl) {
-            await new Promise((r) => setTimeout(r, 150));
-            const postUrl = await execInPage(
-              ctx.tabId,
-              (() => window.location.href) as (...args: never[]) => string,
+          if (postClick?.urlChanged) {
+            notes.push(`Page navigated to ${postClick.postUrl} after click.`);
+            ctx.navigated = true;
+          } else if (result.isLink && result.linkHref) {
+            notes.push(
+              `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
             );
-            const urlChanged = postUrl !== result.preClickUrl;
-            if (urlChanged) {
-              notes.push(`Page navigated to ${postUrl} after click.`);
-              ctx.navigated = true;
-            } else if (result.isLink && result.linkHref) {
-              notes.push(
-                `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
-              );
-            }
+          }
+          if (postClick?.modalText) {
+            notes.push(
+              `A dialog/modal appeared after clicking with content: "${postClick.modalText}". You should read this and respond to it (e.g. select options, confirm, or dismiss) before assuming the action succeeded.`,
+            );
           }
           if (result.stillVisible === false) {
             notes.push(
