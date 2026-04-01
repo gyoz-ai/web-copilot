@@ -663,7 +663,17 @@ export function createBrowserTools(
           );
           const urlChanged = postUrl !== (result.preClickUrl || "");
 
-          // Capture page state using existing content script mechanism
+          if (urlChanged) {
+            ctx.navigated = true;
+            return {
+              success: true as const,
+              element: `<${result.tagName}> "${result.text}"`,
+              context: result.context || "",
+              verification: `Page navigated to ${postUrl} after click.`,
+            };
+          }
+
+          // No navigation — capture page state to see what happened
           let pageSnapshot: string | null = null;
           try {
             const captureResult = await chrome.tabs.sendMessage(ctx.tabId, {
@@ -674,32 +684,33 @@ export function createBrowserTools(
               pageSnapshot = (captureResult.context as string).slice(0, 2000);
             }
           } catch {
-            // Content script may have disconnected during navigation
+            // Content script may have disconnected
           }
 
-          const notes: string[] = [];
-          if (urlChanged) {
-            notes.push(`Page navigated to ${postUrl} after click.`);
-            ctx.navigated = true;
-          } else if (result.isLink && result.linkHref) {
-            notes.push(
-              `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
-            );
-          }
-          if (pageSnapshot) {
-            notes.push(
-              `Page state after clicking:\n${pageSnapshot}\nVerify the action succeeded by checking this state. If a modal, form, or selection appeared, handle it — do NOT assume success.`,
-            );
-          }
-          if (result.stillVisible === false) {
-            notes.push("Element disappeared after click (content updated).");
+          // Detect if the click opened a form/modal that needs user action
+          // by checking for unresolved required fields, selection prompts, etc.
+          const actionIncomplete = pageSnapshot
+            ? /未選択|required|選択してください|エラー|error|please select|choose|select an option/i.test(
+                pageSnapshot,
+              )
+            : false;
+
+          if (actionIncomplete) {
+            return {
+              success: false as const,
+              error: `Click opened a form/dialog that requires selections before the action can complete. Current page state:\n${pageSnapshot}\nYou must fill the required fields or make selections before the action succeeds.`,
+            };
           }
 
           return {
             success: true as const,
             element: `<${result.tagName}> "${result.text}"`,
             context: result.context || "",
-            ...(notes.length > 0 ? { verification: notes.join(" ") } : {}),
+            ...(pageSnapshot
+              ? {
+                  verification: `Page state after click:\n${pageSnapshot}`,
+                }
+              : {}),
           };
         } catch (e) {
           return {
