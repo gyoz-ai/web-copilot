@@ -653,80 +653,124 @@ export function createBrowserTools(
             content: "Clicked element",
           });
 
-          // Post-click verification: check URL, modals, page changes
-          await new Promise((r) => setTimeout(r, 300));
-          const postClick = await execInPage(
+          // Post-click: wait for page to settle, then snapshot what changed
+          await new Promise((r) => setTimeout(r, 400));
+          // Wait for page load if navigating
+          await execInPage(ctx.tabId, (() => {
+            if (document.readyState !== "complete") {
+              return new Promise<void>((resolve) => {
+                window.addEventListener("load", () => resolve(), {
+                  once: true,
+                });
+                setTimeout(resolve, 3000); // max 3s wait
+              });
+            }
+          }) as (...args: never[]) => void);
+
+          const postClickState = await execInPage(
             ctx.tabId,
             ((preUrl: string) => {
               const postUrl = window.location.href;
               const urlChanged = postUrl !== preUrl;
 
-              // Detect new modals/overlays/dialogs that appeared
-              const modalSelectors = [
-                '[role="dialog"]',
-                '[role="alertdialog"]',
-                "[aria-modal='true']",
-                "dialog[open]",
-                ".modal.show",
-                ".modal.active",
-                ".overlay:not([style*='display: none'])",
-              ];
-              let modalText: string | null = null;
-              for (const sel of modalSelectors) {
-                const modal = document.querySelector(sel) as HTMLElement | null;
-                if (modal && modal.offsetParent !== null) {
-                  modalText = (modal.textContent || "").trim().slice(0, 300);
-                  break;
+              // Capture visible page state: what does the user see NOW?
+              // Focus on interactive elements, headings, and alerts
+              const snapshot: string[] = [];
+
+              // Any visible alerts, toasts, or notification text
+              const alertEls = document.querySelectorAll(
+                '[role="alert"], [role="status"], .alert, .toast, .notification',
+              );
+              alertEls.forEach((el) => {
+                const t = (el as HTMLElement).textContent?.trim();
+                if (t && (el as HTMLElement).offsetParent !== null) {
+                  snapshot.push(`[Alert] ${t.slice(0, 150)}`);
                 }
-              }
-              // Also check for high z-index overlays that appeared
-              if (!modalText) {
-                const highZ = Array.from(
-                  document.querySelectorAll(
-                    "div[style*='z-index'], div[style*='position: fixed'], div[style*='position:fixed']",
+              });
+
+              // Any overlays/modals/dialogs visible (by z-index or role)
+              const overlays = Array.from(
+                document.querySelectorAll("*"),
+              ).filter((el) => {
+                const style = window.getComputedStyle(el);
+                const z = parseInt(style.zIndex || "0");
+                const isVisible =
+                  (el as HTMLElement).offsetParent !== null &&
+                  (el as HTMLElement).offsetWidth > 150;
+                const isOverlay =
+                  style.position === "fixed" || style.position === "absolute";
+                return z > 999 && isVisible && isOverlay;
+              }) as HTMLElement[];
+              if (overlays.length > 0) {
+                // Get the topmost overlay's text
+                const top = overlays.sort((a, b) => {
+                  const za = parseInt(window.getComputedStyle(a).zIndex || "0");
+                  const zb = parseInt(window.getComputedStyle(b).zIndex || "0");
+                  return zb - za;
+                })[0];
+                const headings = top.querySelectorAll("h1,h2,h3,h4,h5,h6");
+                const title =
+                  headings.length > 0
+                    ? (headings[0].textContent || "").trim()
+                    : "";
+                const buttons = Array.from(
+                  top.querySelectorAll(
+                    "button, a, [role='button'], input[type='submit']",
                   ),
-                ).filter((el) => {
-                  const style = window.getComputedStyle(el);
-                  const z = parseInt(style.zIndex || "0");
-                  return (
-                    z > 1000 &&
-                    (el as HTMLElement).offsetParent !== null &&
-                    (el as HTMLElement).offsetWidth > 100 &&
-                    (el as HTMLElement).offsetHeight > 100
-                  );
-                }) as HTMLElement[];
-                if (highZ.length > 0) {
-                  modalText = (highZ[0].textContent || "").trim().slice(0, 300);
-                }
+                )
+                  .map((b) => (b.textContent || "").trim())
+                  .filter((t) => t.length > 0 && t.length < 50)
+                  .slice(0, 8);
+                const selects = Array.from(
+                  top.querySelectorAll("select, input, textarea"),
+                )
+                  .map((el) => {
+                    const label =
+                      (el as HTMLElement).getAttribute("aria-label") ||
+                      (el as HTMLElement).getAttribute("placeholder") ||
+                      (el as HTMLElement).getAttribute("name") ||
+                      "";
+                    return label;
+                  })
+                  .filter(Boolean)
+                  .slice(0, 8);
+                const text = (top.textContent || "").trim().slice(0, 500);
+                snapshot.push(
+                  `[Overlay/Modal visible] Title: "${title}". Content: "${text}". Buttons: [${buttons.join(", ")}]. Inputs: [${selects.join(", ")}]`,
+                );
               }
 
-              return { postUrl, urlChanged, modalText };
+              return {
+                postUrl,
+                urlChanged,
+                pageSnapshot: snapshot.length > 0 ? snapshot.join("\n") : null,
+              };
             }) as (...args: never[]) => {
               postUrl: string;
               urlChanged: boolean;
-              modalText: string | null;
+              pageSnapshot: string | null;
             },
             [result.preClickUrl || ""],
           );
 
           const notes: string[] = [];
-          if (postClick?.urlChanged) {
-            notes.push(`Page navigated to ${postClick.postUrl} after click.`);
+          if (postClickState?.urlChanged) {
+            notes.push(
+              `Page navigated to ${postClickState.postUrl} after click.`,
+            );
             ctx.navigated = true;
           } else if (result.isLink && result.linkHref) {
             notes.push(
               `Element was a link to ${result.linkHref} but URL did not change — click may have been intercepted by JS.`,
             );
           }
-          if (postClick?.modalText) {
+          if (postClickState?.pageSnapshot) {
             notes.push(
-              `A dialog/modal appeared after clicking with content: "${postClick.modalText}". You should read this and respond to it (e.g. select options, confirm, or dismiss) before assuming the action succeeded.`,
+              `After clicking, the page now shows:\n${postClickState.pageSnapshot}\nDo NOT assume the action succeeded — check this state and respond accordingly.`,
             );
           }
           if (result.stillVisible === false) {
-            notes.push(
-              "Element disappeared after click (likely a modal closed or content updated).",
-            );
+            notes.push("Element disappeared after click (content updated).");
           }
 
           return {
