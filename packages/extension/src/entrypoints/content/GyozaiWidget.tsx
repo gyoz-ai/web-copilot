@@ -130,9 +130,9 @@ export function GyozaiWidget() {
       ? (saved as Expression)
       : DEFAULT_EXPRESSION;
   });
-  // Track which message ID has already been animated — prevents
-  // re-playing typewriter when toggling chatbox open/closed.
-  const animatedMsgIdRef = useRef<string | null>(null);
+  // Track which message IDs have been animated — prevents
+  // re-playing typewriter when toggling chatbox open/closed or leaving proximity.
+  const animatedMsgIdsRef = useRef<Set<string>>(new Set());
   const [avatarPosition, setAvatarPosition] = useState<{
     x: number;
     y: number;
@@ -1344,11 +1344,12 @@ export function GyozaiWidget() {
                 autoDismissMs={0}
                 soundEnabled={typingSound}
                 typewriterEnabled={
-                  animatedMsgIdRef.current !== lastAssistantMsg!.id
+                  !animatedMsgIdsRef.current.has(lastAssistantMsg!.id)
                 }
                 onTypingChange={(typing) => {
                   setIsTypewriting(typing);
-                  if (!typing) animatedMsgIdRef.current = lastAssistantMsg!.id;
+                  if (!typing)
+                    animatedMsgIdsRef.current.add(lastAssistantMsg!.id);
                 }}
               />
             </div>
@@ -1504,7 +1505,7 @@ export function GyozaiWidget() {
                       msg.content
                     ) : msg.role === "assistant" ? (
                       isLatestAssistant &&
-                      animatedMsgIdRef.current !== msg.id ? (
+                      !animatedMsgIdsRef.current.has(msg.id) ? (
                         <TypewriterText
                           text={msg.content}
                           speed={5}
@@ -1512,7 +1513,7 @@ export function GyozaiWidget() {
                           soundEnabled={typingSound}
                           onTypingChange={(typing) => {
                             setIsTypewriting(typing);
-                            if (!typing) animatedMsgIdRef.current = msg.id;
+                            if (!typing) animatedMsgIdsRef.current.add(msg.id);
                           }}
                         />
                       ) : (
