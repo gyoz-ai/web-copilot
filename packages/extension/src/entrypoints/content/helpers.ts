@@ -43,6 +43,11 @@ export async function savePendingNav(state: PendingNavState) {
 // Guard against duplicate content script instances racing to consume the same pending-nav
 let _pendingNavConsumed = false;
 
+/** Reset the consumed flag so SPA navigations can re-check pending-nav */
+export function resetPendingNavConsumed() {
+  _pendingNavConsumed = false;
+}
+
 export async function loadAndClearPendingNav(
   tabId: number,
 ): Promise<PendingNavState | null> {

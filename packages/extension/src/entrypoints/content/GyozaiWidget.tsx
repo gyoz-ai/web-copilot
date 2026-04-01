@@ -44,6 +44,7 @@ import {
   sanitizeError,
   savePendingNav,
   loadAndClearPendingNav,
+  resetPendingNavConsumed,
   getTabId,
   loadConversationIndex,
   loadConversation,
@@ -447,6 +448,79 @@ export function GyozaiWidget() {
     return () => chrome.storage.onChanged.removeListener(handler);
   }, []);
 
+  // Resume conversation after navigation (full-page or SPA).
+  // Loads pending-nav from storage, restores conversation, captures new page
+  // context, and sends a follow-up query to continue the task.
+  async function resumeFromPendingNav(tid: number) {
+    resetPendingNavConsumed();
+    const pendingNav = await loadAndClearPendingNav(tid);
+    if (!pendingNav) return;
+
+    log(
+      "Resuming after navigation — pending-nav state:",
+      JSON.stringify(pendingNav),
+    );
+
+    // Restore the conversation that was in progress
+    activeConvIdRef.current = pendingNav.conversationId;
+    const conv = await loadConversation(pendingNav.conversationId);
+    if (conv) {
+      log("Restored conversation:", conv.id, "messages:", conv.messages.length);
+      setMessages(conv.messages);
+    }
+
+    setExpanded(true);
+    setLoading(true);
+
+    // Show navigate status so user sees what happened
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Navigated to ${window.location.pathname}`,
+        type: "tool-status" as const,
+      },
+    ]);
+
+    // Small delay to let the new page render fully
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Capture the requested snapshots on the NEW page
+    const pageCtx = capturePageContext(pendingNav.snapshotTypes);
+    const ctxText = formatPageContext(pageCtx);
+
+    if (ctxText) {
+      pendingExtraContext = ctxText;
+      log("Captured", ctxText.length, "chars from new page");
+    }
+
+    // The model already showed a message before navigating.
+    // Tell it to only provide NEW information about this page,
+    // not repeat what it already said.
+    const followUpQuery =
+      `Navigation complete — now on ${window.location.href}. ` +
+      `Original user request: "${pendingNav.originalQuery}". ` +
+      `Continue executing this task. Use get_page_context to understand the current page, ` +
+      `then take the next actions to fulfill the original request. ` +
+      `Do NOT repeat that you navigated here — just keep working.`;
+    log("Follow-up query:", followUpQuery);
+
+    try {
+      autoFollowUpUsed = false;
+      const result = await sendQuery(
+        followUpQuery,
+        pendingExtraContext || undefined,
+      );
+      pendingExtraContext = null;
+      await processAgentResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Get tab ID on mount + check for pending navigation (cross-page resume)
   // Uses preloaded tab ID if already resolved, otherwise waits for it.
   useEffect(() => {
@@ -457,82 +531,11 @@ export function GyozaiWidget() {
 
       if (tid == null) return;
 
-      // Check if we arrived here from a navigate + extraRequests
-      const pendingNav = await loadAndClearPendingNav(tid);
-      if (pendingNav) {
-        log(
-          "Resuming after navigation — pending-nav state:",
-          JSON.stringify(pendingNav),
-        );
-
-        // Restore the conversation that was in progress
-        activeConvIdRef.current = pendingNav.conversationId;
-        const conv = await loadConversation(pendingNav.conversationId);
-        if (conv) {
-          log(
-            "Restored conversation:",
-            conv.id,
-            "messages:",
-            conv.messages.length,
-          );
-          setMessages(conv.messages);
-        }
-
-        setExpanded(true);
-        setLoading(true);
-
-        // Show navigate status so user sees what happened
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: `Navigated to ${window.location.pathname}`,
-            type: "tool-status" as const,
-          },
-        ]);
-
-        // Small delay to let the new page render fully
-        await new Promise((r) => setTimeout(r, 500));
-
-        // Capture the requested snapshots on the NEW page
-        const pageCtx = capturePageContext(pendingNav.snapshotTypes);
-        const ctxText = formatPageContext(pageCtx);
-
-        if (ctxText) {
-          pendingExtraContext = ctxText;
-          log("Captured", ctxText.length, "chars from new page");
-        }
-
-        // The model already showed a message before navigating.
-        // Tell it to only provide NEW information about this page,
-        // not repeat what it already said.
-        const followUpQuery =
-          `Navigation complete — now on ${window.location.href}. ` +
-          `Original user request: "${pendingNav.originalQuery}". ` +
-          `Continue executing this task. Use get_page_context to understand the current page, ` +
-          `then take the next actions to fulfill the original request. ` +
-          `Do NOT repeat that you navigated here — just keep working.`;
-        log("Follow-up query:", followUpQuery);
-
-        try {
-          autoFollowUpUsed = false;
-          const result = await sendQuery(
-            followUpQuery,
-            pendingExtraContext || undefined,
-          );
-          pendingExtraContext = null;
-          await processAgentResult(result);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Something went wrong");
-        } finally {
-          setLoading(false);
-        }
-      }
+      await resumeFromPendingNav(tid);
     });
   }, []);
 
-  // Listen for toggle command from background
+  // Listen for toggle command and SPA navigation resume from background
   useEffect(() => {
     const handler = (msg: { type: string }) => {
       if (msg.type === "gyozai_toggle") {
@@ -547,6 +550,16 @@ export function GyozaiWidget() {
           hoverOpenRef.current = false;
           return true;
         });
+      }
+      // Background notifies us after a click-triggered SPA navigation
+      // saved pending-nav and aborted the stream. Re-check pending-nav
+      // since the mount useEffect won't re-fire on SPA navigations.
+      if (msg.type === "gyozai_check_pending_nav") {
+        log("SPA pending-nav check requested by background");
+        const tid = tabIdRef.current;
+        if (tid != null) {
+          resumeFromPendingNav(tid);
+        }
       }
     };
     chrome.runtime.onMessage.addListener(handler);

@@ -432,6 +432,12 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
       // Abort the AI stream so it doesn't keep calling tools on a dead page
       ctx.abortStream?.();
 
+      // Notify content script to check pending-nav — needed for SPA navigations
+      // where the content script stays alive and the mount useEffect won't re-fire.
+      chrome.tabs
+        .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
+        .catch(() => {});
+
       return {
         ...result,
         verification: `Page navigated to ${verify.newUrl}. Execution stopped — the widget will resume on the new page.`,
