@@ -408,14 +408,6 @@ export function App() {
                       </select>
                     </div>
                   )}
-                  {managedModels && !managedModels.modelSelection && (
-                    <div
-                      style={{ fontSize: 11, opacity: 0.5, margin: "8px 0" }}
-                    >
-                      Model auto-selected (Free plan)
-                    </div>
-                  )}
-
                   {/* Action buttons */}
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                     <button
