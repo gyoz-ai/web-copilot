@@ -139,7 +139,7 @@ export default defineBackground(() => {
         handleSetRecipesGlobal(sender, sendResponse);
         return true;
       case "gyozai_open_popup":
-        chrome.action.openPopup();
+        chrome.action?.openPopup?.();
         return false;
       case "gyozai_exec":
         handleLegacyExec(message, sendResponse);
