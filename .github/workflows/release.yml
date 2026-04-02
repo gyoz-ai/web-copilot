@@ -188,29 +188,49 @@ jobs:
     name: Build & Publish Safari Extension
     runs-on: macos-latest
     needs: release
-    if: |
-      secrets.APPLE_API_KEY_BASE64 != '' &&
-      secrets.APPLE_CERTIFICATE_BASE64 != ''
     env:
       APPLE_BUNDLE_ID: ${{ vars.APPLE_BUNDLE_ID || 'ai.gyoz.safari' }}
     steps:
+      - name: Check Apple secrets are configured
+        id: check
+        env:
+          HAS_CERT: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          HAS_KEY: ${{ secrets.APPLE_API_KEY_BASE64 }}
+        run: |
+          if [ -z "$HAS_CERT" ] || [ -z "$HAS_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "⚠ Apple secrets not configured — skipping Safari build"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "✓ Apple secrets found"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
         with:
           ref: main # picks up version-bumped commit from release job
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.check.outputs.skip != 'true'
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
-      - run: bun turbo build --filter=@gyoz-ai/engine
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build engine
+        if: steps.check.outputs.skip != 'true'
+        run: bun turbo build --filter=@gyoz-ai/engine
 
       # ─── Build Safari extension ──────────────────────────────────
       - name: Build Safari extension
+        if: steps.check.outputs.skip != 'true'
         run: cd packages/extension && bunx wxt build --browser safari
 
       # ─── Convert to Xcode project (universal: macOS + iOS) ──────
       - name: Convert to Xcode project
+        if: steps.check.outputs.skip != 'true'
         run: |
           xcrun safari-web-extension-converter packages/extension/.output/safari-mv2/ \
             --project-location $RUNNER_TEMP/safari-xcode \
@@ -225,6 +245,7 @@ jobs:
 
       # ─── Install Apple signing certificate ─────────────────────
       - name: Install Apple signing certificate
+        if: steps.check.outputs.skip != 'true'
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -253,6 +274,7 @@ jobs:
 
       # ─── Install App Store Connect API key ─────────────────────
       - name: Install App Store Connect API key
+        if: steps.check.outputs.skip != 'true'
         env:
           APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -263,6 +285,7 @@ jobs:
 
       # ─── Create export options plist ───────────────────────────
       - name: Create export options
+        if: steps.check.outputs.skip != 'true'
         run: |
           cat > $RUNNER_TEMP/ExportOptions.plist << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -279,6 +302,7 @@ jobs:
 
       # ─── Archive macOS app ─────────────────────────────────────
       - name: Archive macOS app
+        if: steps.check.outputs.skip != 'true'
         run: |
           xcodebuild archive \
             -project "$XCODEPROJ" \
@@ -294,6 +318,7 @@ jobs:
 
       # ─── Archive iOS app (iPhone + iPad) ───────────────────────
       - name: Archive iOS app
+        if: steps.check.outputs.skip != 'true'
         run: |
           xcodebuild archive \
             -project "$XCODEPROJ" \
@@ -309,6 +334,7 @@ jobs:
 
       # ─── Upload macOS to App Store Connect ─────────────────────
       - name: Upload macOS to App Store Connect
+        if: steps.check.outputs.skip != 'true'
         run: |
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/gyoza-macos.xcarchive \
@@ -321,6 +347,7 @@ jobs:
 
       # ─── Upload iOS to App Store Connect ───────────────────────
       - name: Upload iOS to App Store Connect
+        if: steps.check.outputs.skip != 'true'
         run: |
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/gyoza-ios.xcarchive \
