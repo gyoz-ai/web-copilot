@@ -13,6 +13,7 @@ import {
 } from "../../lib/i18n";
 import { GyozaiWidget, setPreloadState } from "./GyozaiWidget";
 import { WIDGET_STYLES } from "./styles";
+import { storageGet } from "../../lib/storage";
 import {
   capturePageContext,
   formatPageContext,
@@ -28,13 +29,13 @@ let _preloadedSession: WidgetSession | null = null;
 let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 let _preloadedExpression: string | null = null;
 
-const _preloadReady = chrome.runtime
+const _preloadReady = browser.runtime
   .sendMessage({ type: "gyozai_get_tab_id" })
   .then(async (r) => {
     _preloadedTabId = r?.tabId ?? null;
     await Promise.all([
       _preloadedTabId != null
-        ? chrome.runtime
+        ? browser.runtime
             .sendMessage({
               type: "gyozai_load_session",
               tabId: _preloadedTabId,
@@ -44,7 +45,7 @@ const _preloadReady = chrome.runtime
             })
             .catch(() => {})
         : Promise.resolve(),
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "gyozai_get_settings" })
         .then((s: Record<string, unknown> | undefined) => {
           if (typeof s?.language === "string") {
@@ -56,8 +57,7 @@ const _preloadReady = chrome.runtime
         })
         .catch(() => {}),
       // Load persisted avatar position from local storage (survives browser restart)
-      chrome.storage.local
-        .get("gyozai_avatar_position")
+      storageGet("gyozai_avatar_position")
         .then((r) => {
           if (r.gyozai_avatar_position) {
             _preloadedAvatarPosition = r.gyozai_avatar_position;
@@ -65,7 +65,7 @@ const _preloadReady = chrome.runtime
         })
         .catch(() => {}),
       // Load persisted expression via background worker (survives browser restart)
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "gyozai_load_expression" })
         .then((expr: string | null) => {
           if (expr) _preloadedExpression = expr;
@@ -111,7 +111,7 @@ function renderWidget(container: HTMLDivElement) {
 // ─── Recipe auto-import ──────────────────────────────────────────────────────
 
 async function tryAutoImportRecipe() {
-  const stored = await chrome.storage.local.get("gyozai_settings");
+  const stored = await storageGet("gyozai_settings");
   const autoImport = stored.gyozai_settings?.autoImportRecipes ?? true;
   if (!autoImport) return;
 
@@ -143,7 +143,7 @@ async function tryAutoImportRecipe() {
   }
 
   if (foundContent) {
-    const resp = await chrome.runtime.sendMessage({
+    const resp = await browser.runtime.sendMessage({
       type: "gyozai_auto_import_recipe",
       filename: "llms.txt",
       content: foundContent,
@@ -165,7 +165,7 @@ const SNAPSHOT_MAP: Record<string, SnapshotType> = {
   fullPage: "all",
 };
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "gyozai_tool_capture_context") {
     try {
       const types: SnapshotType[] = (msg.snapshotTypes || []).map(
@@ -242,22 +242,22 @@ export default defineContentScript({
     tryAutoImportRecipe().catch(() => {});
 
     // Inject installed recipes list as global var for page UI (main world)
-    // Uses chrome.scripting.executeScript via background (CSP-immune)
+    // Uses browser.scripting.executeScript via background (CSP-immune)
     function refreshInstalledRecipes() {
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "gyozai_set_recipes_global" })
         .catch(() => {});
     }
     refreshInstalledRecipes();
 
     // Refresh when recipes change (add/remove/toggle)
-    chrome.storage.onChanged.addListener((changes) => {
+    browser.storage.onChanged.addListener((changes) => {
       if (changes.gyozai_recipes) {
         refreshInstalledRecipes();
       }
     });
     // Also refresh on auto-import notification
-    chrome.runtime.onMessage.addListener((msg) => {
+    browser.runtime.onMessage.addListener((msg) => {
       if (msg.type === "gyozai_recipe_auto_added") {
         refreshInstalledRecipes();
       }

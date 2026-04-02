@@ -1,8 +1,10 @@
+import { storageGet } from "../../lib/storage";
+
 export function handleSaveExpression(
   message: { expression: string },
   sendResponse: (result: unknown) => void,
 ): void {
-  chrome.storage.local
+  browser.storage.local
     .set({ gyozai_expression: message.expression })
     .then(() => sendResponse({ ok: true }))
     .catch(() => sendResponse({ ok: false }));
@@ -11,8 +13,7 @@ export function handleSaveExpression(
 export function handleLoadExpression(
   sendResponse: (result: unknown) => void,
 ): void {
-  chrome.storage.local
-    .get("gyozai_expression")
+  storageGet("gyozai_expression")
     .then((r) => sendResponse(r.gyozai_expression ?? null))
     .catch(() => sendResponse(null));
 }

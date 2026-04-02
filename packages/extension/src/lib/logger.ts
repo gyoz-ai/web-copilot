@@ -1,3 +1,5 @@
+import { browser } from "wxt/browser";
+import { storageGet } from "./storage";
 type Category = "query" | "tool" | "storage" | "provider" | "session";
 type Level = "debug" | "info" | "warn" | "error";
 
@@ -39,13 +41,12 @@ function log(
 
   // Persist errors to storage
   if (level === "error") {
-    chrome.storage.local
-      .get("gyozai_error_log")
+    storageGet("gyozai_error_log")
       .then(({ gyozai_error_log: existing }) => {
         const errorLog = existing || [];
         errorLog.push(entry);
         if (errorLog.length > 100) errorLog.splice(0, errorLog.length - 100);
-        chrome.storage.local.set({ gyozai_error_log: errorLog });
+        browser.storage.local.set({ gyozai_error_log: errorLog });
       })
       .catch(() => {});
   }

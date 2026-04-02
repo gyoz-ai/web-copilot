@@ -1,3 +1,4 @@
+import { browser } from "wxt/browser";
 export type ResolveResult =
   | {
       found: true;
@@ -17,7 +18,7 @@ export interface ResolvedElement {
 
 /**
  * Resolve an element using a fallback chain.
- * Executes in the MAIN world via chrome.scripting.executeScript.
+ * Executes in the MAIN world via browser.scripting.executeScript.
  */
 export async function resolveElement(
   tabId: number,
@@ -29,7 +30,7 @@ export async function resolveElement(
     nearText?: string;
   },
 ): Promise<ResolveResult> {
-  const result = await chrome.scripting.executeScript({
+  const result = await browser.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
     func: (

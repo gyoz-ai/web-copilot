@@ -27,7 +27,7 @@ export default defineBackground(() => {
 
   // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
   // When user logs in/out on gyoz.ai, the extension picks it up instantly.
-  chrome.cookies.onChanged.addListener(async (changeInfo) => {
+  browser.cookies.onChanged.addListener(async (changeInfo) => {
     console.log(
       "[gyoza:cookie] onChanged →",
       changeInfo.cookie.name,
@@ -100,7 +100,7 @@ export default defineBackground(() => {
   console.log(
     "[gyoza:cookie] Startup: checking for existing session cookie...",
   );
-  chrome.cookies.get(
+  browser.cookies.get(
     { url: `https://${PLATFORM_DOMAIN}`, name: SESSION_COOKIE },
     async (cookie) => {
       console.log(
@@ -142,7 +142,7 @@ export default defineBackground(() => {
   // ─── Port-based handler for long-running queries ───────────────
   // Firefox GC's sendResponse on long async ops ("Promised response went out
   // of scope"). Ports stay alive until explicitly disconnected.
-  chrome.runtime.onConnect.addListener((port) => {
+  browser.runtime.onConnect.addListener((port) => {
     console.log("[gyoza:port] Connection received:", port.name);
     if (port.name !== "gyozai_query") return;
     port.onMessage.addListener((message) => {
@@ -166,7 +166,7 @@ export default defineBackground(() => {
     });
   });
 
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("[gyoza:msg] onMessage →", message.type);
     switch (message.type) {
       case "gyozai_get_tab_id":
@@ -203,11 +203,11 @@ export default defineBackground(() => {
         handleSetRecipesGlobal(sender, sendResponse);
         return true;
       case "gyozai_open_popup":
-        if (typeof chrome.action?.openPopup === "function") {
-          chrome.action.openPopup();
+        if (typeof browser.action?.openPopup === "function") {
+          browser.action.openPopup();
         } else {
           // Firefox doesn't support openPopup — open popup page in a new tab
-          chrome.tabs.create({ url: chrome.runtime.getURL("/popup.html") });
+          browser.tabs.create({ url: browser.runtime.getURL("/popup.html") });
         }
         return false;
       case "gyozai_exec":
@@ -218,19 +218,19 @@ export default defineBackground(() => {
     }
   });
 
-  chrome.commands.onCommand.addListener((command) => {
+  browser.commands.onCommand.addListener((command) => {
     console.log("[gyoza] Command received:", command);
     if (command === "toggle_widget") {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         console.log("[gyoza] Active tab:", tabs[0]?.id, tabs[0]?.url);
         if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { type: "gyozai_toggle" });
+          browser.tabs.sendMessage(tabs[0].id, { type: "gyozai_toggle" });
         }
       });
     }
   });
 
-  chrome.tabs.onRemoved.addListener((tabId) => {
+  browser.tabs.onRemoved.addListener((tabId) => {
     clearWidgetSession(tabId).catch(() => {});
   });
 });

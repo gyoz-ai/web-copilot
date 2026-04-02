@@ -111,7 +111,7 @@ export function App() {
       }
     });
     getRecipes().then(setRecipes);
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
         try {
           setCurrentDomain(new URL(tabs[0].url).host);
@@ -422,7 +422,7 @@ export function App() {
                       className="btn-secondary"
                       style={{ flex: 1 }}
                       onClick={() =>
-                        chrome.tabs.create({ url: "https://gyoz.ai/account" })
+                        browser.tabs.create({ url: "https://gyoz.ai/account" })
                       }
                     >
                       Manage Plan
@@ -453,7 +453,7 @@ export function App() {
                   <button
                     className="btn-primary"
                     onClick={() =>
-                      chrome.tabs.create({ url: "https://gyoz.ai/pricing" })
+                      browser.tabs.create({ url: "https://gyoz.ai/pricing" })
                     }
                   >
                     {tr.popup_managed_subscribe_btn}

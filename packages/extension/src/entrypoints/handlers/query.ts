@@ -121,7 +121,7 @@ export async function handleQuery(
     }) => {
       if (!queryId) return;
       pendingSends.push(
-        chrome.tabs
+        browser.tabs
           .sendMessage(tabId, {
             type: "gyozai_stream_event",
             queryId,
@@ -277,16 +277,16 @@ export async function handleQuery(
 
     // Persist expression to local storage so it survives page refresh
     if (ctx.expression) {
-      chrome.storage.local
+      browser.storage.local
         .set({ gyozai_expression: ctx.expression })
         .catch(() => {});
     }
 
     // Desktop notification when tab is not focused
     if (sender?.tab?.id) {
-      chrome.tabs.get(sender.tab.id, (tab) => {
+      browser.tabs.get(sender.tab.id, (tab) => {
         if (!tab.active && ctx.messages.length > 0) {
-          chrome.notifications.create({
+          browser.notifications.create({
             type: "basic",
             iconUrl: "/icon-128.png",
             title: "gyoza",

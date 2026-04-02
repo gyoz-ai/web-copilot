@@ -7,7 +7,7 @@ export function handlePatchHistory(
     sendResponse({ ok: false });
     return;
   }
-  chrome.scripting
+  browser.scripting
     .executeScript({
       target: { tabId },
       world: "MAIN",
@@ -41,12 +41,12 @@ export function handleLegacyExec(
   message: { code: string },
   sendResponse: (result: unknown) => void,
 ): void {
-  chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+  browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
     if (!tab?.id) {
       sendResponse({ error: "No active tab" });
       return;
     }
-    chrome.scripting
+    browser.scripting
       .executeScript({
         target: { tabId: tab.id },
         world: "MAIN",

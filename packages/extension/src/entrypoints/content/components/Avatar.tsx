@@ -42,11 +42,17 @@ export function Avatar({
   const px = AVATAR_SIZES[size];
 
   const iconUrl = useMemo(
-    () => chrome.runtime.getURL(getAvatarUrl(expression, false, avatar)),
+    () =>
+      browser.runtime.getURL(
+        getAvatarUrl(expression, false, avatar) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      ),
     [expression, avatar],
   );
   const talkingIconUrl = useMemo(
-    () => chrome.runtime.getURL(getAvatarUrl(expression, true, avatar)),
+    () =>
+      browser.runtime.getURL(
+        getAvatarUrl(expression, true, avatar) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      ),
     [expression, avatar],
   );
 

@@ -98,7 +98,7 @@ function log(...args: unknown[]) {
 }
 
 function saveSessionViaBackground(tabId: number, session: WidgetSession): void {
-  chrome.runtime
+  browser.runtime
     .sendMessage({ type: "gyozai_save_session", tabId, session })
     .catch(() => {});
 }
@@ -234,7 +234,7 @@ export function GyozaiWidget() {
     leaveDelay: 50,
   });
 
-  // ─── Restore session from chrome.storage.session after preload ───
+  // ─── Restore session from browser.storage.session after preload ───
   useEffect(() => {
     _preloadReady.then(() => {
       log(
@@ -268,7 +268,7 @@ export function GyozaiWidget() {
   }, []);
 
   // ─── Persist widget session on every state change ───
-  // Writes IMMEDIATELY (no debounce) to chrome.storage.session so the
+  // Writes IMMEDIATELY (no debounce) to browser.storage.session so the
   // session is always up-to-date before any navigation can kill the page.
   // Keep a ref to the latest session so beforeunload can read it.
   const latestSessionRef = useRef<{
@@ -294,8 +294,8 @@ export function GyozaiWidget() {
     };
     latestSessionRef.current = { tabId, session };
     // Write immediately via background worker (content scripts can't
-    // access chrome.storage.session directly).
-    chrome.runtime
+    // access browser.storage.session directly).
+    browser.runtime
       .sendMessage({ type: "gyozai_save_session", tabId, session })
       .then((r) => {
         if (r?.ok) {
@@ -380,8 +380,8 @@ export function GyozaiWidget() {
         setTimeout(() => setToast(null), 4000);
       }
     };
-    chrome.runtime.onMessage.addListener(handler);
-    return () => chrome.runtime.onMessage.removeListener(handler);
+    browser.runtime.onMessage.addListener(handler);
+    return () => browser.runtime.onMessage.removeListener(handler);
   }, []);
 
   // Listen for recipe install events from gyoz.ai platform
@@ -392,7 +392,7 @@ export function GyozaiWidget() {
         content: string;
       };
       if (!detail?.content) return;
-      chrome.runtime
+      browser.runtime
         .sendMessage({
           type: "gyozai_auto_import_recipe",
           filename: detail.name || "recipe",
@@ -418,7 +418,7 @@ export function GyozaiWidget() {
     _preloadReady.then(() => {
       if (_preloadedLocale) setLocale(_preloadedLocale);
       // Load initial agentSize
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "gyozai_get_settings" })
         .then((s: ExtensionSettings | undefined) => {
           if (s?.agentSize) setAgentSize(s.agentSize);
@@ -450,8 +450,8 @@ export function GyozaiWidget() {
         setBubbleOpacity(newSettings.bubbleOpacity);
       }
     };
-    chrome.storage.onChanged.addListener(handler);
-    return () => chrome.storage.onChanged.removeListener(handler);
+    browser.storage.onChanged.addListener(handler);
+    return () => browser.storage.onChanged.removeListener(handler);
   }, []);
 
   // Resume conversation after navigation (full-page or SPA).
@@ -568,8 +568,8 @@ export function GyozaiWidget() {
         }
       }
     };
-    chrome.runtime.onMessage.addListener(handler);
-    return () => chrome.runtime.onMessage.removeListener(handler);
+    browser.runtime.onMessage.addListener(handler);
+    return () => browser.runtime.onMessage.removeListener(handler);
   }, []);
 
   // Auto-focus input when expanded
@@ -775,11 +775,11 @@ export function GyozaiWidget() {
     const currentRoute = window.location.pathname;
 
     const [recipe, extSettings] = await Promise.all([
-      chrome.runtime.sendMessage({
+      browser.runtime.sendMessage({
         type: "gyozai_get_recipe",
         domain: window.location.host,
       }),
-      chrome.runtime.sendMessage({ type: "gyozai_get_settings" }),
+      browser.runtime.sendMessage({ type: "gyozai_get_settings" }),
     ]);
 
     const manifestMode = !!recipe?.content;
@@ -852,7 +852,7 @@ export function GyozaiWidget() {
     // long-running async handlers ("Promised response went out of scope").
     console.log("[gyoza:query] Using PORT-based messaging (Firefox-safe)");
     const result = await new Promise<AgentResult>((resolve, reject) => {
-      const port = chrome.runtime.connect({ name: "gyozai_query" });
+      const port = browser.runtime.connect({ name: "gyozai_query" });
       console.log("[gyoza:query] Port connected, posting message...");
       port.onMessage.addListener((msg: AgentResult) => {
         console.log("[gyoza:query] Port received response ✓");
@@ -860,7 +860,7 @@ export function GyozaiWidget() {
         port.disconnect();
       });
       port.onDisconnect.addListener(() => {
-        const err = chrome.runtime.lastError;
+        const err = browser.runtime.lastError;
         console.warn(
           "[gyoza:query] Port disconnected unexpectedly:",
           err?.message,
@@ -936,7 +936,7 @@ export function GyozaiWidget() {
         break;
       case "execute-js":
         if (action.code) {
-          const result = await chrome.runtime.sendMessage({
+          const result = await browser.runtime.sendMessage({
             type: "gyozai_exec",
             code: action.code,
           });
@@ -1045,7 +1045,7 @@ export function GyozaiWidget() {
         case "expression":
           if (evt.face && EXPRESSIONS.includes(evt.face as Expression)) {
             setExpression(evt.face as Expression);
-            chrome.runtime
+            browser.runtime
               .sendMessage({
                 type: "gyozai_save_expression",
                 expression: evt.face,
@@ -1058,8 +1058,8 @@ export function GyozaiWidget() {
           break;
       }
     };
-    chrome.runtime.onMessage.addListener(handler);
-    return () => chrome.runtime.onMessage.removeListener(handler);
+    browser.runtime.onMessage.addListener(handler);
+    return () => browser.runtime.onMessage.removeListener(handler);
   }, [addAssistantMessage, addToolStatusMessage]);
 
   // Process the agent result from the background worker
@@ -1476,7 +1476,7 @@ export function GyozaiWidget() {
         onDragEnd={(pos) => {
           setAvatarPosition(pos);
           // Persist to local storage (survives browser close)
-          chrome.storage.local
+          browser.storage.local
             .set({ gyozai_avatar_position: pos })
             .catch(() => {});
         }}
@@ -1750,7 +1750,7 @@ export function GyozaiWidget() {
           <button
             className="gyozai-icon-btn"
             onClick={() =>
-              chrome.runtime.sendMessage({ type: "gyozai_open_popup" })
+              browser.runtime.sendMessage({ type: "gyozai_open_popup" })
             }
             title={tr.widget_settings}
           >

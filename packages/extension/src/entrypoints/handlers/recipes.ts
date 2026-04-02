@@ -26,7 +26,7 @@ export function handleAutoImportRecipe(
         tabHost,
       ).then(() => {
         if (sender.tab?.id) {
-          chrome.tabs.sendMessage(sender.tab.id, {
+          browser.tabs.sendMessage(sender.tab.id, {
             type: "gyozai_recipe_auto_added",
             filename: message.filename,
           });
@@ -74,7 +74,7 @@ export function handleSetRecipesGlobal(
   getRecipes()
     .then((recipes) => {
       const data = recipes.filter((r) => r.enabled).map((r) => r.id);
-      return chrome.scripting.executeScript({
+      return browser.scripting.executeScript({
         target: { tabId },
         world: "MAIN",
         func: (d: unknown) => {

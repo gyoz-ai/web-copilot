@@ -1,3 +1,4 @@
+import { browser } from "wxt/browser";
 import { tool, jsonSchema } from "ai";
 import type {
   Capabilities,
@@ -190,7 +191,7 @@ async function execInPage<T>(
   func: (...args: never[]) => T,
   args: unknown[] = [],
 ): Promise<T> {
-  const results = await chrome.scripting.executeScript({
+  const results = await browser.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
     func: func as (...a: unknown[]) => T,
@@ -206,7 +207,7 @@ async function execIsolated<T>(
   func: (...args: never[]) => T,
   args: unknown[] = [],
 ): Promise<T> {
-  const results = await chrome.scripting.executeScript({
+  const results = await browser.scripting.executeScript({
     target: { tabId },
     world: "ISOLATED",
     func: func as (...a: unknown[]) => T,
@@ -235,7 +236,7 @@ function findNewLines(before: string, after: string): string {
 
 async function capturePageState(tabId: number): Promise<string> {
   try {
-    const result = await chrome.tabs.sendMessage(tabId, {
+    const result = await browser.tabs.sendMessage(tabId, {
       type: "gyozai_tool_capture_context",
       snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
     });
@@ -247,7 +248,7 @@ async function capturePageState(tabId: number): Promise<string> {
 
 async function waitForPageLoad(tabId: number): Promise<void> {
   try {
-    await chrome.scripting.executeScript({
+    await browser.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
       func: () => {
@@ -269,7 +270,7 @@ async function waitForPageLoad(tabId: number): Promise<void> {
 
 async function getPageUrl(tabId: number): Promise<string | null> {
   try {
-    const results = await chrome.scripting.executeScript({
+    const results = await browser.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
       func: () => window.location.href,
@@ -397,7 +398,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     // the new page's widget will find this immediately on mount.
     // If no navigation occurs, we delete it after verification.
     const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-    await chrome.storage.local.set({
+    await browser.storage.local.set({
       [pendingNavKey]: {
         snapshotTypes: ["all"],
         originalQuery: ctx.originalQuery,
@@ -413,7 +414,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
 
     // If the tool already failed, clean up pending-nav and skip verification
     if ("success" in result && result.success === false) {
-      await chrome.storage.local.remove(pendingNavKey);
+      await browser.storage.local.remove(pendingNavKey);
       return result;
     }
 
@@ -434,7 +435,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
 
       // Notify content script to check pending-nav — needed for SPA navigations
       // where the content script stays alive and the mount useEffect won't re-fire.
-      chrome.tabs
+      browser.tabs
         .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
         .catch(() => {});
 
@@ -445,7 +446,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     }
 
     // No navigation occurred — clean up the pre-saved pending-nav
-    await chrome.storage.local.remove(pendingNavKey);
+    await browser.storage.local.remove(pendingNavKey);
 
     if (verify.actionIncomplete) {
       return {
@@ -538,7 +539,7 @@ export function createBrowserTools(
       execute: async ({ url }: { url: string }) => {
         ctx.navigated = true;
         try {
-          const [tab] = await chrome.tabs.query({
+          const [tab] = await browser.tabs.query({
             active: true,
             currentWindow: true,
           });
@@ -551,7 +552,7 @@ export function createBrowserTools(
 
           // Save pending-nav state so the widget auto-resumes on the new page
           const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-          await chrome.storage.local.set({
+          await browser.storage.local.set({
             [pendingNavKey]: {
               snapshotTypes: ["all"],
               originalQuery: ctx.originalQuery,
@@ -1101,7 +1102,7 @@ export function createBrowserTools(
     execute: async ({ types }: { types: string[] }) => {
       ctx.onStreamEvent?.({ kind: "tool-status", content: "Reading page" });
       try {
-        const result = await chrome.tabs.sendMessage(ctx.tabId, {
+        const result = await browser.tabs.sendMessage(ctx.tabId, {
           type: "gyozai_tool_capture_context",
           snapshotTypes: types,
         });

@@ -1,3 +1,4 @@
+import { browser } from "wxt/browser";
 /** Widget injection helpers — extracted for testability.
  *
  *  Key design: the host element + shadow DOM + React root are created ONCE.
@@ -61,7 +62,7 @@ export function injectWidget(
 }
 
 /** Patch history.pushState/replaceState in the MAIN world to dispatch
- *  a 'gyozai:navchange' DOM event.  Uses chrome.scripting.executeScript
+ *  a 'gyozai:navchange' DOM event.  Uses browser.scripting.executeScript
  *  via the background worker (bypasses page CSP entirely).
  *  Falls back to inline <script> injection if messaging fails. */
 let _historyPatchRequested = false;
@@ -69,18 +70,18 @@ function patchMainWorldHistory() {
   if (_historyPatchRequested) return;
   _historyPatchRequested = true;
   // Ask background worker to inject into MAIN world (CSP-proof)
-  // Guard: chrome.runtime may not exist in test environments
-  if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) {
+  // Guard: browser.runtime may not exist in test environments
+  if (typeof chrome === "undefined" || !browser.runtime?.sendMessage) {
     inlineHistoryPatch();
     return;
   }
-  chrome.runtime
+  browser.runtime
     .sendMessage({ type: "gyozai_patch_history" })
     .then((r) => {
       if (r?.ok) {
-        log("MAIN-world history patch injected via chrome.scripting");
+        log("MAIN-world history patch injected via browser.scripting");
       } else {
-        log("chrome.scripting patch failed, trying inline fallback");
+        log("browser.scripting patch failed, trying inline fallback");
         inlineHistoryPatch();
       }
     })

@@ -1,3 +1,5 @@
+import { browser } from "wxt/browser";
+import { storageGet } from "./storage";
 export interface PageWatcher {
   id: string;
   description: string; // Natural language condition
@@ -12,8 +14,7 @@ export interface PageWatcher {
 const STORAGE_KEY = "gyozai_watchers";
 
 export async function getWatchers(): Promise<PageWatcher[]> {
-  const { [STORAGE_KEY]: watchers } =
-    await chrome.storage.local.get(STORAGE_KEY);
+  const { [STORAGE_KEY]: watchers } = await storageGet(STORAGE_KEY);
   return watchers || [];
 }
 
@@ -32,13 +33,13 @@ export async function addWatcher(
     lastCheckedAt: null,
     triggered: false,
   });
-  await chrome.storage.local.set({ [STORAGE_KEY]: watchers });
+  await browser.storage.local.set({ [STORAGE_KEY]: watchers });
   return id;
 }
 
 export async function removeWatcher(id: string): Promise<void> {
   const watchers = await getWatchers();
-  await chrome.storage.local.set({
+  await browser.storage.local.set({
     [STORAGE_KEY]: watchers.filter((w) => w.id !== id),
   });
 }
@@ -51,7 +52,7 @@ export async function updateWatcher(
   const idx = watchers.findIndex((w) => w.id === id);
   if (idx >= 0) {
     watchers[idx] = { ...watchers[idx], ...update };
-    await chrome.storage.local.set({ [STORAGE_KEY]: watchers });
+    await browser.storage.local.set({ [STORAGE_KEY]: watchers });
   }
 }
 
@@ -60,7 +61,7 @@ export async function checkWatcher(
   tabId: number,
 ): Promise<boolean> {
   try {
-    const results = await chrome.scripting.executeScript({
+    const results = await browser.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
       func: (script: string) => {

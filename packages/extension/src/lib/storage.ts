@@ -1,3 +1,20 @@
+import { browser } from "wxt/browser";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>;
+
+/**
+ * Typed wrapper for browser.storage.local.get — WXT's browser API returns
+ * Record<string, unknown> which requires casting at every call site.
+ */
+export async function storageGet(keys: string | string[]): Promise<AnyRecord> {
+  return (await browser.storage.local.get(keys)) as AnyRecord;
+}
+
+export async function sessionGet(keys: string | string[]): Promise<AnyRecord> {
+  return (await browser.storage.session.get(keys)) as AnyRecord;
+}
+
 export type ProviderKey = "claude" | "openai" | "gemini";
 
 export interface ManagedUsage {
@@ -39,7 +56,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
-  const result = await chrome.storage.local.get("gyozai_settings");
+  const result = await storageGet("gyozai_settings");
   const raw = result.gyozai_settings || {};
   const settings = { ...DEFAULT_SETTINGS, ...raw };
 
@@ -64,7 +81,7 @@ export async function getSettings(): Promise<ExtensionSettings> {
       [provider]: raw.apiKey,
     };
     delete (settings as Record<string, unknown>).apiKey;
-    await chrome.storage.local.set({ gyozai_settings: settings });
+    await browser.storage.local.set({ gyozai_settings: settings });
   }
 
   return settings;
@@ -83,9 +100,9 @@ export async function saveSettings(settings: ExtensionSettings): Promise<void> {
     "hasManagedToken:",
     !!settings.managedToken,
   );
-  await chrome.storage.local.set({ gyozai_settings: settings });
+  await browser.storage.local.set({ gyozai_settings: settings });
   // Verify the write persisted
-  const verify = await chrome.storage.local.get("gyozai_settings");
+  const verify = await storageGet("gyozai_settings");
   const saved = verify.gyozai_settings as ExtensionSettings;
   console.log(
     "[gyoza:storage] saveSettings VERIFY → hasApiKey:",
@@ -125,7 +142,7 @@ function convKey(id: string) {
 }
 
 export async function getConversationIndex(): Promise<ConversationSummary[]> {
-  const result = await chrome.storage.local.get(CONV_INDEX_KEY);
+  const result = await storageGet(CONV_INDEX_KEY);
   const index: ConversationSummary[] = result[CONV_INDEX_KEY] || [];
   // Return sorted by most recent first
   return index.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -134,13 +151,13 @@ export async function getConversationIndex(): Promise<ConversationSummary[]> {
 export async function getConversation(
   id: string,
 ): Promise<Conversation | null> {
-  const result = await chrome.storage.local.get(convKey(id));
+  const result = await storageGet(convKey(id));
   return result[convKey(id)] || null;
 }
 
 export async function saveConversation(conv: Conversation): Promise<void> {
   // Save full conversation data
-  await chrome.storage.local.set({ [convKey(conv.id)]: conv });
+  await browser.storage.local.set({ [convKey(conv.id)]: conv });
 
   // Update index
   const index = await getConversationIndex();
@@ -164,18 +181,18 @@ export async function saveConversation(conv: Conversation): Promise<void> {
   if (index.length > 50) {
     const removed = index.splice(50);
     for (const r of removed) {
-      await chrome.storage.local.remove(convKey(r.id));
+      await browser.storage.local.remove(convKey(r.id));
     }
   }
 
-  await chrome.storage.local.set({ [CONV_INDEX_KEY]: index });
+  await browser.storage.local.set({ [CONV_INDEX_KEY]: index });
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await chrome.storage.local.remove(convKey(id));
+  await browser.storage.local.remove(convKey(id));
   const index = await getConversationIndex();
   const filtered = index.filter((c) => c.id !== id);
-  await chrome.storage.local.set({ [CONV_INDEX_KEY]: filtered });
+  await browser.storage.local.set({ [CONV_INDEX_KEY]: filtered });
 }
 
 export async function getConversationLlmHistory(
@@ -226,5 +243,5 @@ export async function saveConversationLlmHistory(
 
   conv.llmHistory = trimmed;
   conv.updatedAt = Date.now();
-  await chrome.storage.local.set({ [convKey(conversationId)]: conv });
+  await browser.storage.local.set({ [convKey(conversationId)]: conv });
 }

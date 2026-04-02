@@ -1,3 +1,5 @@
+import { browser } from "wxt/browser";
+import { storageGet } from "./storage";
 // ─── Recipe Frontmatter ─────────────────────────────────────────────────────
 
 export interface RecipeMeta {
@@ -79,7 +81,7 @@ export interface StoredRecipe {
 }
 
 export async function getRecipes(): Promise<StoredRecipe[]> {
-  const result = await chrome.storage.local.get("gyozai_recipes");
+  const result = await storageGet("gyozai_recipes");
   return result.gyozai_recipes || [];
 }
 
@@ -109,20 +111,20 @@ export async function toggleRecipe(id: string): Promise<boolean> {
   const recipe = recipes.find((r) => r.id === id);
   if (!recipe) return false;
   recipe.enabled = !recipe.enabled;
-  await chrome.storage.local.set({ gyozai_recipes: recipes });
+  await browser.storage.local.set({ gyozai_recipes: recipes });
   return recipe.enabled;
 }
 
 export async function addRecipe(recipe: StoredRecipe): Promise<void> {
   const recipes = await getRecipes();
   recipes.push(recipe);
-  await chrome.storage.local.set({ gyozai_recipes: recipes });
+  await browser.storage.local.set({ gyozai_recipes: recipes });
 }
 
 export async function removeRecipe(id: string): Promise<void> {
   const recipes = await getRecipes();
   const filtered = recipes.filter((r) => r.id !== id);
-  await chrome.storage.local.set({ gyozai_recipes: filtered });
+  await browser.storage.local.set({ gyozai_recipes: filtered });
 }
 
 /**
@@ -190,7 +192,7 @@ export async function importRecipeFromFile(
       enabled: true,
       installedAt: new Date().toISOString(),
     };
-    await chrome.storage.local.set({ gyozai_recipes: existing });
+    await browser.storage.local.set({ gyozai_recipes: existing });
     return;
   }
 

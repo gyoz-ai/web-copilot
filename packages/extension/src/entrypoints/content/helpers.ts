@@ -1,5 +1,9 @@
 import type { SnapshotType } from "@gyoz-ai/engine";
-import type { Conversation, ConversationSummary } from "../../lib/storage";
+import {
+  storageGet,
+  type Conversation,
+  type ConversationSummary,
+} from "../../lib/storage";
 
 // ─── Snapshot helpers ──────────────────────────────────────────────────────
 
@@ -37,7 +41,7 @@ function pendingNavKey(tabId: number) {
 }
 
 export async function savePendingNav(state: PendingNavState) {
-  await chrome.storage.local.set({ [pendingNavKey(state.tabId)]: state });
+  await browser.storage.local.set({ [pendingNavKey(state.tabId)]: state });
 }
 
 // Guard against duplicate content script instances racing to consume the same pending-nav
@@ -58,10 +62,10 @@ export async function loadAndClearPendingNav(
 
   const key = pendingNavKey(tabId);
   try {
-    const result = await chrome.storage.local.get(key);
+    const result = await storageGet(key);
     const state = result[key] as PendingNavState | undefined;
     if (state) {
-      await chrome.storage.local.remove(key);
+      await browser.storage.local.remove(key);
       // Expire after 30s (in case of stale state)
       if (Date.now() - state.timestamp > 30000) return null;
       return state;
@@ -76,7 +80,7 @@ export async function loadAndClearPendingNav(
 
 export async function getTabId(): Promise<number | null> {
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = await browser.runtime.sendMessage({
       type: "gyozai_get_tab_id",
     });
     return response?.tabId ?? null;
@@ -85,10 +89,10 @@ export async function getTabId(): Promise<number | null> {
   }
 }
 
-// ─── Conversation storage helpers (talk to chrome.storage.local) ────────────
+// ─── Conversation storage helpers (talk to browser.storage.local) ────────────
 
 export async function loadConversationIndex(): Promise<ConversationSummary[]> {
-  const result = await chrome.storage.local.get("gyozai_conv_index");
+  const result = await storageGet("gyozai_conv_index");
   const index: ConversationSummary[] = result.gyozai_conv_index || [];
   return index.sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -97,13 +101,13 @@ export async function loadConversation(
   id: string,
 ): Promise<Conversation | null> {
   const key = `gyozai_conv_${id}`;
-  const result = await chrome.storage.local.get(key);
+  const result = await storageGet(key);
   return result[key] || null;
 }
 
 export async function persistConversation(conv: Conversation): Promise<void> {
   const key = `gyozai_conv_${conv.id}`;
-  await chrome.storage.local.set({ [key]: conv });
+  await browser.storage.local.set({ [key]: conv });
 
   // Update index
   const index = await loadConversationIndex();
@@ -127,16 +131,16 @@ export async function persistConversation(conv: Conversation): Promise<void> {
   if (index.length > 50) {
     const removed = index.splice(50);
     for (const r of removed) {
-      await chrome.storage.local.remove(`gyozai_conv_${r.id}`);
+      await browser.storage.local.remove(`gyozai_conv_${r.id}`);
     }
   }
 
-  await chrome.storage.local.set({ gyozai_conv_index: index });
+  await browser.storage.local.set({ gyozai_conv_index: index });
 }
 
 export async function removeConversation(id: string): Promise<void> {
-  await chrome.storage.local.remove(`gyozai_conv_${id}`);
+  await browser.storage.local.remove(`gyozai_conv_${id}`);
   const index = await loadConversationIndex();
   const filtered = index.filter((c) => c.id !== id);
-  await chrome.storage.local.set({ gyozai_conv_index: filtered });
+  await browser.storage.local.set({ gyozai_conv_index: filtered });
 }
