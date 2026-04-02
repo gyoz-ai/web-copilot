@@ -229,7 +229,7 @@ cd packages/extension
 bun run build:safari
 
 # Convert to Xcode project (universal — macOS + iOS)
-xcrun safari-web-extension-converter .output/safari-mv3/ \
+xcrun safari-web-extension-converter .output/safari-mv2/ \
   --project-location ./safari-xcode \
   --app-name "gyoza" \
   --bundle-identifier ai.gyoz.safari \
@@ -250,7 +250,7 @@ In Xcode:
 # Build and convert
 cd packages/extension
 bun run build:safari
-xcrun safari-web-extension-converter .output/safari-mv3/ \
+xcrun safari-web-extension-converter .output/safari-mv2/ \
   --project-location ./safari-xcode \
   --app-name "gyoza" \
   --bundle-identifier ai.gyoz.safari \
