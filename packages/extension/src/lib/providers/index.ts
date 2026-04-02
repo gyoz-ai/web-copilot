@@ -6,7 +6,7 @@ import type { ProviderResult } from "./types";
 
 export type { ProviderResult } from "./types";
 
-const PLATFORM_URL = "https://api.gyoz.ai/v1/ai";
+const PLATFORM_URL = "https://gyoz.ai/v1/ai";
 
 export function createProvider(settings: ExtensionSettings): ProviderResult {
   // Managed mode → OpenAI-compatible proxy (same streamText() path as BYOK)

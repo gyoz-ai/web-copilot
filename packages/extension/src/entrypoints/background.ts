@@ -18,7 +18,7 @@ import { getSettings, saveSettings } from "../lib/storage";
 
 const PLATFORM_DOMAIN = "gyoz.ai";
 const SESSION_COOKIE = "gyozai_session";
-const PLATFORM_URL = "https://api.gyoz.ai";
+const PLATFORM_URL = "https://gyoz.ai";
 
 export default defineBackground(() => {
   console.log("[gyoza] Background worker started");

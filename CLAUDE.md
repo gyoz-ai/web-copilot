@@ -35,6 +35,6 @@
 - Use chrome.storage.local for persistent settings (API keys, provider, model preferences, recipes)
 - Use chrome.storage.session for ephemeral data (conversation history, UI messages, expanded state)
 - BYOK mode: LLM called directly from background worker (key stored locally)
-- Managed mode: calls platform API at api.gyoz.ai/v1/inference
+- Managed mode: calls platform API at gyoz.ai/v1/ai
 - Provider abstraction: same interface for Claude, OpenAI, Gemini, and managed proxy
 - No morph-ui action — use execute-js instead for all DOM manipulation

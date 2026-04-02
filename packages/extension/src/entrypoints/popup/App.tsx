@@ -48,7 +48,7 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
   ],
 };
 
-const PLATFORM_URL = "https://api.gyoz.ai";
+const PLATFORM_URL = "https://gyoz.ai";
 
 interface ManagedModels {
   plan: string;
