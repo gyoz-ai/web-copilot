@@ -1,213 +1,366 @@
 # Deploying the gyoza Extension
 
-This guide covers building and publishing the gyoza browser extension to Chrome Web Store, Firefox Add-ons (AMO), and Safari.
-
-## Prerequisites
-
-- Node.js 18+ and Bun installed
-- Dependencies installed: `bun install` from the repo root
-- Engine package built: `bun turbo build` (builds `@gyoz-ai/engine` dependency)
-
-## 1. Build the Extension
-
-All build commands run from `packages/extension/`.
-
-```bash
-# Chrome / Edge / Chromium browsers
-bun run build
-
-# Firefox
-bun run build:firefox
-```
-
-Build output goes to `.output/chrome-mv3/` or `.output/firefox-mv2/`.
-
-To create a distributable zip:
-
-```bash
-# Chrome zip → .output/gyoza — AI Browser Copilot-0.0.1-chrome.zip
-bun run zip
-
-# Firefox zip → .output/gyoza — AI Browser Copilot-0.0.1-firefox.zip
-bun run zip:firefox
-```
+This guide covers building and publishing the gyoza browser extension to **Chrome Web Store**, **Firefox Add-ons (AMO)**, and **Apple App Store** (macOS Safari, iOS Safari, iPadOS Safari).
 
 ---
 
-## 2. Chrome Web Store
+## Prerequisites
+
+- Bun installed (`curl -fsSL https://bun.sh/install | bash`)
+- Dependencies installed: `bun install` from the repo root
+- Engine package built: `bun turbo build --filter=@gyoz-ai/engine`
+
+---
+
+## CI/CD Overview
+
+Everything is automated via GitHub Actions:
+
+| Workflow | Trigger | What it does |
+|----------|---------|-------------|
+| `ci.yml` | Push/PR to main | Typecheck, test, build Chrome + Firefox + Safari artifacts |
+| `release.yml` | Manual dispatch | Version bump → build → GitHub release → publish to all stores |
+
+The release workflow publishes to Chrome, Firefox, and Apple stores in parallel. Each store upload is gated on its secrets being configured — stores with missing secrets are silently skipped.
+
+---
+
+## 1. Chrome Web Store
 
 ### First-time setup
 
 1. Register as a Chrome Web Store developer at https://chrome.google.com/webstore/devconsole ($5 one-time fee)
-2. Prepare store listing assets:
-   - **Icon**: 128x128 PNG (already at `public/icon-128.png`)
-   - **Screenshots**: 1280x800 or 640x400 PNG/JPEG (at least 1, up to 5)
-   - **Promo tile** (optional): 440x280 PNG
-   - **Description**: short (132 chars) and detailed
+2. Create a new extension listing manually for the first upload:
+   - Build the zip: `cd packages/extension && bun run zip`
+   - Upload the `.output/*-chrome.zip` file
+   - Fill in listing details (see "Store listing assets" below)
+   - Submit for review
+3. Note the **Extension ID** from the listing URL (32-char alphanumeric string)
 
-### Publish
+### Store listing assets
 
-1. Build the zip: `bun run zip`
+- **Icon**: 128x128 PNG (already at `public/icon-128.png`)
+- **Screenshots**: 1280x800 or 640x400 PNG/JPEG (at least 1, up to 5)
+- **Promo tile** (optional): 440x280 PNG
+- **Category**: Productivity
+- **Privacy justifications**:
+  - `activeTab` — read and interact with the current page
+  - `storage` — persist settings and conversation history
+  - `scripting` — execute AI-generated actions on the page
+  - `notifications` — notify when background actions complete
+  - `cookies` — sync managed-mode session
+- **Data use**: No user data collected (BYOK mode stores keys locally only)
+
+### CI/CD secrets for Chrome
+
+Set these in **GitHub → Settings → Secrets and variables → Actions → Secrets**:
+
+| Secret | How to get it |
+|--------|--------------|
+| `CHROME_EXTENSION_ID` | From Chrome Web Store Developer Console → your extension's URL |
+| `CHROME_CLIENT_ID` | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID |
+| `CHROME_CLIENT_SECRET` | Same OAuth credential |
+| `CHROME_REFRESH_TOKEN` | Use the [Chrome Web Store API token tool](https://nicedoc.io/nicedoc-io/nicedoc) or `chrome-webstore-upload` CLI to get a refresh token via OAuth flow |
+
+**Getting the OAuth credentials:**
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Create an OAuth 2.0 Client ID (type: Desktop app)
+3. Enable the **Chrome Web Store API** in your GCP project
+4. Use the client ID/secret to run the OAuth flow and get a refresh token:
+   ```bash
+   npx chrome-webstore-upload-cli init
+   ```
+   Follow the prompts — it will output the refresh token.
+
+### Manual publish (if CI secrets not configured)
+
+1. `cd packages/extension && bun run zip`
 2. Go to https://chrome.google.com/webstore/devconsole
-3. Click **New Item** → upload the `.output/*-chrome.zip` file
-4. Fill in the store listing:
-   - Category: **Productivity** or **Developer Tools**
-   - Language: English
-   - Add screenshots and description
-5. Under **Privacy**, declare:
-   - **Single purpose**: "AI assistant that navigates websites on your behalf"
-   - **Permissions justification**:
-     - `activeTab` — to read and interact with the current page
-     - `storage` — to persist settings and conversation history
-     - `scripting` — to execute AI-generated actions on the page
-     - `notifications` — to notify when actions complete in background tabs
-   - **Data use**: no user data collected (BYOK mode stores keys locally only)
-6. Submit for review (typically 1-3 business days)
-
-### Updates
-
-1. Bump `version` in `wxt.config.ts` manifest section
-2. Build new zip: `bun run zip`
-3. In Developer Console → select existing item → **Package** → **Upload new package**
-4. Submit for review
+3. Select your extension → **Package** → **Upload new package**
+4. Upload `.output/*-chrome.zip`
+5. Submit for review (1-3 business days)
 
 ---
 
-## 3. Firefox Add-ons (AMO)
+## 2. Firefox Add-ons (AMO)
 
 ### First-time setup
 
 1. Create an account at https://addons.mozilla.org/developers/
-2. Prepare the same store listing assets as Chrome
+2. Submit the first version manually:
+   - Build: `cd packages/extension && bun run zip:firefox`
+   - Go to https://addons.mozilla.org/developers/addon/submit/distribution
+   - Choose **On this site** (listed on AMO)
+   - Upload `.output/*-firefox.zip`
+   - When asked for source code, upload a repo zip:
+     ```bash
+     git archive --format=zip HEAD -o gyoza-source.zip
+     ```
+   - Fill in listing details and submit
+3. Note the **Extension GUID** (shown in the extension's AMO developer page, e.g. `{uuid}` or `extension@id`)
 
-### Publish
+### CI/CD secrets for Firefox
 
-1. Build the zip: `bun run zip:firefox`
-2. Go to https://addons.mozilla.org/developers/addon/submit/distribution
-3. Choose **On this site** (listed on AMO)
-4. Upload the `.output/*-firefox.zip` file
-5. AMO may ask for source code — upload the full repo zip (or link to the GitHub repo) so reviewers can verify the build
-6. Fill in listing details:
-   - Name: **gyoza — AI Browser Copilot**
-   - Category: **Other** or **Web Development**
-   - Add screenshots and description
-   - Support email / website
-7. Submit for review (typically 1-5 business days, can be longer)
+| Secret | How to get it |
+|--------|--------------|
+| `FIREFOX_JWT_ISSUER` | AMO → Tools → Manage API Keys → JWT issuer (API key) |
+| `FIREFOX_JWT_SECRET` | AMO → Tools → Manage API Keys → JWT secret |
+| `FIREFOX_EXTENSION_GUID` | From your extension's AMO developer page |
 
-### Source code submission
+**Getting API keys:**
+1. Go to https://addons.mozilla.org/developers/addon/api/key/
+2. Generate new credentials
+3. Copy the **JWT issuer** and **JWT secret**
 
-Firefox reviewers require source code for extensions that use bundlers. When prompted:
+### Manual publish
 
-1. Zip the entire repo: `git archive --format=zip HEAD -o gyoza-source.zip`
-2. Include build instructions:
-   - `bun install`
-   - `bun turbo build` (builds engine dependency)
-   - `cd packages/extension && bun run build:firefox`
-3. Upload as "source code" during submission
-
-### Updates
-
-1. Bump `version` in `wxt.config.ts`
-2. Build new zip: `bun run zip:firefox`
-3. Go to your extension's AMO page → **Manage Versions** → **Upload a New Version**
-4. Submit for review
+1. `cd packages/extension && bun run zip:firefox`
+2. AMO → your extension → **Manage Versions** → **Upload a New Version**
+3. Upload `.output/*-firefox.zip` + source code zip
+4. Submit for review (1-5 business days)
 
 ---
 
-## 4. Safari (via Xcode)
+## 3. Apple App Store (macOS + iOS + iPadOS Safari)
 
-Safari extensions require wrapping the web extension in a native macOS/iOS app using Xcode.
+Safari extensions are distributed as native apps through the App Store. One listing covers macOS Safari (desktop) and iOS/iPadOS Safari (mobile/tablet).
 
-### Prerequisites
+### First-time setup
 
-- macOS with Xcode 14+ installed
-- Apple Developer account ($99/year) for App Store distribution
-- Safari web extension conversion tool (bundled with Xcode)
+#### A. Apple Developer Account
 
-### Convert to Safari extension
+1. Enroll in the Apple Developer Program at https://developer.apple.com/programs/ ($99/year)
+2. Note your **Team ID** — visible at https://developer.apple.com/account → Membership
 
-1. Build the Chrome version first: `bun run build`
-2. Run the conversion tool:
-   ```bash
-   xcrun safari-web-extension-converter .output/chrome-mv3/ \
-     --project-location ./safari-extension \
-     --app-name "gyoza" \
-     --bundle-identifier ai.gyoz.extension \
-     --macos-only
-   ```
-   Add `--ios-only` or remove `--macos-only` for iOS support.
-3. This creates an Xcode project at `./safari-extension/`
+#### B. Create App IDs
 
-### Build and test locally
+In the Apple Developer portal (https://developer.apple.com/account/resources/identifiers/list):
 
-1. Open `safari-extension/gyoza.xcodeproj` in Xcode
-2. Select your development team under **Signing & Capabilities**
-3. Build and run (Cmd+R)
-4. Enable the extension: Safari → Settings → Extensions → check "gyoza"
-5. Grant permissions when prompted
+1. Create an **App ID** for the container app:
+   - Platform: iOS, macOS (check both)
+   - Bundle ID: `ai.gyoz.safari` (explicit)
+   - Capabilities: none needed beyond defaults
+2. Create an **App ID** for the Safari web extension:
+   - Platform: iOS, macOS (check both)
+   - Bundle ID: `ai.gyoz.safari.Extension` (explicit)
+   - Capabilities: none needed beyond defaults
 
-### Publish to Mac App Store
+#### C. Create an App Store Connect record
 
-1. In Xcode, set the version and build number
-2. Archive: **Product → Archive**
-3. In the Organizer window, click **Distribute App**
-4. Choose **App Store Connect** → **Upload**
-5. Go to https://appstoreconnect.apple.com:
-   - Create a new app (type: Safari Extension)
-   - Add screenshots (1280x800 for Mac, appropriate sizes for iOS)
-   - Fill in description, category (**Utilities** or **Productivity**), keywords
-   - Select the uploaded build
-   - Submit for review (typically 1-2 days)
+1. Go to https://appstoreconnect.apple.com/apps
+2. Click **+** → **New App**
+3. Platforms: **macOS** and **iOS**
+4. Name: **gyoza — AI Browser Copilot**
+5. Bundle ID: `ai.gyoz.safari`
+6. SKU: `gyoza-safari`
+7. Fill in:
+   - Category: **Utilities** or **Productivity**
+   - Description, screenshots (see sizes below), keywords
+   - Privacy policy URL
+   - Support URL
 
-### Updates
+**Screenshot sizes needed:**
+- macOS: 1280x800 or 1440x900
+- iPhone 6.9": 1320x2868
+- iPhone 6.7": 1290x2796
+- iPad 13": 2064x2752
 
-1. Rebuild the Chrome version with bumped version
-2. Re-run `xcrun safari-web-extension-converter` with `--force` to overwrite
-3. Update version/build in Xcode
-4. Archive and upload again
+#### D. Create a Distribution Certificate
+
+1. Open **Keychain Access** on your Mac
+2. Keychain Access → Certificate Assistant → **Request a Certificate From a Certificate Authority**
+   - Email: your Apple ID email
+   - Save to disk (creates a `.certSigningRequest` file)
+3. Go to https://developer.apple.com/account/resources/certificates/add
+4. Choose **Apple Distribution**
+5. Upload the `.certSigningRequest`
+6. Download the `.cer` file and double-click to install in Keychain
+7. **Export as .p12**: In Keychain Access, find "Apple Distribution: Your Name" → right-click → Export as .p12 → set a password
+
+#### E. Create an App Store Connect API Key
+
+1. Go to https://appstoreconnect.apple.com/access/integrations/api
+2. Click **+** to generate a new key
+3. Name: `gyoza-ci`
+4. Access: **App Manager** (or Admin)
+5. Download the `.p8` file (you can only download it once!)
+6. Note the **Key ID** and **Issuer ID** shown on the page
+
+#### F. Set GitHub Secrets
+
+| Secret | Value |
+|--------|-------|
+| `APPLE_TEAM_ID` | Your 10-character Team ID |
+| `APPLE_CERTIFICATE_BASE64` | `base64 -i distribution.p12 \| pbcopy` — paste the result |
+| `APPLE_CERTIFICATE_PASSWORD` | The password you set when exporting the .p12 |
+| `APPLE_API_KEY_ID` | Key ID from App Store Connect API page |
+| `APPLE_API_ISSUER_ID` | Issuer ID from App Store Connect API page |
+| `APPLE_API_KEY_BASE64` | `base64 -i AuthKey_XXXX.p8 \| pbcopy` — paste the result |
+
+Optionally, set a **repository variable** (not secret):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APPLE_BUNDLE_ID` | `ai.gyoz.safari` | Base bundle identifier for the Safari app |
+
+### How the CI/CD works
+
+The `release.yml` workflow runs a `release-safari` job on a macOS runner that:
+
+1. Builds the Safari extension with WXT (`wxt build --browser safari`)
+2. Converts to a universal Xcode project with `xcrun safari-web-extension-converter`
+3. Installs your distribution certificate into a temporary keychain
+4. Archives for **macOS** and **iOS** (which includes iPadOS) using automatic signing
+5. Uploads both archives directly to **App Store Connect**
+6. Cleans up the temporary keychain
+
+After upload, the builds appear in App Store Connect under **TestFlight** → **Builds**. You then:
+1. Go to your app in App Store Connect
+2. Select the macOS/iOS version → add the uploaded build
+3. Submit for review
+
+### Manual build (local Xcode)
+
+If you prefer to build and upload from your Mac:
+
+```bash
+# Build Safari extension
+cd packages/extension
+bun run build:safari
+
+# Convert to Xcode project (universal — macOS + iOS)
+xcrun safari-web-extension-converter .output/safari-mv3/ \
+  --project-location ./safari-xcode \
+  --app-name "gyoza" \
+  --bundle-identifier ai.gyoz.safari \
+  --no-prompt
+
+# Open in Xcode
+open safari-xcode/gyoza/gyoza.xcodeproj
+```
+
+In Xcode:
+1. Select your development team under **Signing & Capabilities** for ALL targets
+2. For **macOS**: Select the `gyoza (macOS)` scheme → Product → Archive → Distribute App → App Store Connect
+3. For **iOS**: Select the `gyoza (iOS)` scheme → Product → Archive → Distribute App → App Store Connect
+
+### Testing locally
+
+```bash
+# Build and convert
+cd packages/extension
+bun run build:safari
+xcrun safari-web-extension-converter .output/safari-mv3/ \
+  --project-location ./safari-xcode \
+  --app-name "gyoza" \
+  --bundle-identifier ai.gyoz.safari \
+  --no-prompt
+
+# Open in Xcode, select scheme, click Run (Cmd+R)
+open safari-xcode/gyoza/gyoza.xcodeproj
+```
+
+Then enable the extension:
+- **macOS**: Safari → Settings → Extensions → check "gyoza"
+- **iOS/iPadOS**: Settings → Safari → Extensions → enable "gyoza"
 
 ---
 
-## 5. Local Development / Sideloading
+## 4. Local Development / Sideloading
 
 For testing before publishing:
 
 ### Chrome
 
-1. `bun run build`
+1. `cd packages/extension && bun run build`
 2. Go to `chrome://extensions`
 3. Enable **Developer mode** (top right)
 4. Click **Load unpacked** → select `.output/chrome-mv3/`
 
 ### Firefox
 
-1. `bun run build:firefox`
+1. `cd packages/extension && bun run build:firefox`
 2. Go to `about:debugging#/runtime/this-firefox`
-3. Click **Load Temporary Add-on** → select any file inside `.output/firefox-mv2/`
+3. Click **Load Temporary Add-on** → select any file inside `.output/firefox-mv3/`
 
 ### Safari
 
-1. Build and run from Xcode (see above)
-2. Enable in Safari → Settings → Extensions
+See "Testing locally" above in the Apple section.
 
 ### Dev mode with hot reload
 
 ```bash
 # Chrome (auto-opens browser with extension loaded)
-bun run dev
+cd packages/extension && bun run dev
 
 # Firefox
-bun run dev:firefox
+cd packages/extension && bun run dev:firefox
 ```
 
 ---
 
-## Version Bumping Checklist
+## 5. Release Checklist
 
-When releasing a new version:
+When cutting a new release:
 
-1. Update `version` in `wxt.config.ts` → `manifest` section
-2. Update `version` in `packages/extension/package.json`
-3. Build and test locally for each target browser
-4. Create zip files and upload to respective stores
-5. Tag the release: `git tag v0.0.x && git push --tags`
+1. **Trigger the release workflow**: Go to GitHub → Actions → "Release Extension" → Run workflow
+2. Choose version bump type: `patch` / `minor` / `major`
+3. The workflow automatically:
+   - Bumps the version in `wxt.config.ts` and `package.json`
+   - Runs typecheck and tests
+   - Builds and zips Chrome + Firefox
+   - Creates a GitHub Release with artifacts
+   - Uploads to Chrome Web Store (if secrets configured)
+   - Uploads to Firefox Add-ons (if secrets configured)
+   - Builds Safari, archives for macOS + iOS, uploads to App Store Connect (if secrets configured)
+4. **After CI completes** (App Store only):
+   - Go to https://appstoreconnect.apple.com
+   - Select the uploaded build for each platform version
+   - Submit for App Store review
+
+---
+
+## 6. All GitHub Secrets Reference
+
+| Secret | Store | Required |
+|--------|-------|----------|
+| `CHROME_EXTENSION_ID` | Chrome | Yes |
+| `CHROME_CLIENT_ID` | Chrome | Yes |
+| `CHROME_CLIENT_SECRET` | Chrome | Yes |
+| `CHROME_REFRESH_TOKEN` | Chrome | Yes |
+| `FIREFOX_JWT_ISSUER` | Firefox | Yes |
+| `FIREFOX_JWT_SECRET` | Firefox | Yes |
+| `FIREFOX_EXTENSION_GUID` | Firefox | Yes |
+| `APPLE_TEAM_ID` | Apple | Yes |
+| `APPLE_CERTIFICATE_BASE64` | Apple | Yes |
+| `APPLE_CERTIFICATE_PASSWORD` | Apple | Yes |
+| `APPLE_API_KEY_ID` | Apple | Yes |
+| `APPLE_API_ISSUER_ID` | Apple | Yes |
+| `APPLE_API_KEY_BASE64` | Apple | Yes |
+
+| Variable (not secret) | Default | Description |
+|-----------------------|---------|-------------|
+| `APPLE_BUNDLE_ID` | `ai.gyoz.safari` | Bundle ID for the Safari app |
+
+---
+
+## Troubleshooting
+
+### Chrome: "The item is not found in the Web Store"
+- New extensions take up to 24h to propagate after first review approval.
+
+### Firefox: "Upload submitted (may need manual review)"
+- This is normal. Extensions using bundlers often require manual review (1-5 days).
+- Make sure you uploaded source code with your submission.
+
+### Apple: "No eligible signing certificate found"
+- Verify the .p12 was exported from an **Apple Distribution** certificate (not Developer).
+- Check the certificate hasn't expired at https://developer.apple.com/account/resources/certificates.
+
+### Apple: "No profiles for 'ai.gyoz.safari' were found"
+- Ensure both App IDs exist in the Developer portal (`ai.gyoz.safari` and `ai.gyoz.safari.Extension`).
+- The CI uses automatic signing — Xcode generates provisioning profiles via the API key. Make sure the API key has **App Manager** or **Admin** access.
+
+### Apple: Build appears in TestFlight but can't submit
+- You need to fill in all required metadata in App Store Connect first (screenshots, description, privacy policy).
+- Export compliance: Safari extensions typically qualify for the encryption exemption — select "No" for custom encryption.
