@@ -255,8 +255,12 @@ export async function handleQuery(
       sendStreamEvent({ kind: "message", content: finalText.trim() });
     }
 
-    // Ensure all streaming events have been delivered before returning
-    await Promise.all(pendingSends);
+    // Best-effort wait for streaming events — don't block sendResponse if
+    // a tabs.sendMessage Promise never settles (no listener response).
+    await Promise.race([
+      Promise.all(pendingSends),
+      new Promise((r) => setTimeout(r, 1000)),
+    ]);
 
     // Update conversation history — append assistant response
     // (user message was already pushed before streaming to survive navigation)
