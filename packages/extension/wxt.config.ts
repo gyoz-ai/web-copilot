@@ -35,6 +35,19 @@ export default defineConfig({
     description:
       "AI that navigates any website for you. Ask questions, get answers, let AI click and navigate.",
     version: "0.0.2",
+    browser_specific_settings: {
+      gecko: {
+        id: "gyoza@gyoz.ai",
+        strict_min_version: "128.0",
+        data_collection_permissions: {
+          technicalData: false,
+          interactionData: false,
+        },
+      },
+      gecko_android: {
+        strict_min_version: "128.0",
+      },
+    },
     icons: {
       16: "/icon-16.png",
       32: "/icon-32.png",
