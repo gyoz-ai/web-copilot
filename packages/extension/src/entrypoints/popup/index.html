@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gyozAI</title>
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <!--
+      Static skeleton so Chrome paints the popup window immediately.
+      React replaces this on mount — no flash since styles match popup.css.
+    -->
+    <div id="root">
+      <div class="popup-container">
+        <div class="popup-header">
+          <div class="popup-header-left">
+            <img src="/icon-128.png" alt="gyoza" class="popup-logo" />
+            <span class="popup-brand">gyoza</span>
+          </div>
+        </div>
+        <div class="popup-section" style="padding: 20px 16px">
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 10px"
+            ></div>
+            <div
+              class="skeleton-line"
+              style="
+                width: 40%;
+                height: 12px;
+                border-radius: 6px;
+                margin-top: 6px;
+              "
+            ></div>
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 8px"
+            ></div>
+            <div
+              class="skeleton-line"
+              style="
+                width: 40%;
+                height: 12px;
+                border-radius: 6px;
+                margin-top: 6px;
+              "
+            ></div>
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 8px"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

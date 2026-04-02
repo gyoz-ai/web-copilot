@@ -1,0 +1,40 @@
+# FreshCart Grocery
+
+> domain: localhost:4322 | prefix: /demos/grocery
+
+Online grocery store with product categories, individual product pages, and a shopping cart.
+
+## Routes
+
+- [Home](/demos/grocery): Grocery store home page with featured products and category links
+- [Produce](/demos/grocery/category/produce): Fresh fruits and vegetables
+- [Dairy](/demos/grocery/category/dairy): Milk, cheese, yogurt, and eggs
+- [Bakery](/demos/grocery/category/bakery): Bread, pastries, and baked goods
+- [Beverages](/demos/grocery/category/beverages): Juices, water, coffee, and drinks
+- [Product Detail](/demos/grocery/product/:id): Individual product page with details, price, and add to cart
+- [Shopping Cart](/demos/grocery/cart): View cart items, adjust quantities, and proceed to checkout
+
+## UI Elements
+
+- `a[href*='/category/produce']` link "Produce" on /demos/grocery
+- `a[href*='/category/dairy']` link "Dairy" on /demos/grocery
+- `a[href*='/category/bakery']` link "Bakery" on /demos/grocery
+- `a[href*='/category/beverages']` link "Beverages" on /demos/grocery
+- `#add-to-cart` button "Add to Cart" on /demos/grocery/product/:id
+- `#checkout-btn` button "Proceed to Checkout" on /demos/grocery/cart
+
+## API Endpoints
+
+- POST /api/cart/add: Add a product to the shopping cart
+- POST /api/cart/update: Update quantity of a cart item
+- DELETE /api/cart/remove: Remove an item from the cart
+
+## Page Descriptions
+
+- /demos/grocery: Grocery store home page. Shows a grid of featured products with images, names, and prices. Category cards link to Produce, Dairy, Bakery, and Beverages.
+- /demos/grocery/category/produce: Produce category. Grid of fresh fruits and vegetables with product cards showing image, name, price.
+- /demos/grocery/category/dairy: Dairy category. Grid of milk, cheese, yogurt, and eggs.
+- /demos/grocery/category/bakery: Bakery category. Grid of bread, pastries, and baked goods.
+- /demos/grocery/category/beverages: Beverages category. Grid of juices, water, coffee, and drinks.
+- /demos/grocery/product/:id: Product detail page. Large product image, full name, description, price, and Add to Cart button.
+- /demos/grocery/cart: Shopping cart. Lists added items with quantity controls, per-item total, and Proceed to Checkout button.

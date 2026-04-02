@@ -1,0 +1,36 @@
+{
+  "name": "@gyoz-ai/sdk",
+  "version": "0.0.1",
+  "description": "gyoza React components — BubbleSearch and SearchBar",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "find src -name '*.test.*' -o -name '*.spec.*' | grep -q . && bun test || echo 'No test files found, skipping'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@gyoz-ai/engine": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5"
+  }
+}
