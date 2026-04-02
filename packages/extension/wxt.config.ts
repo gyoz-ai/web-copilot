@@ -40,6 +40,7 @@ export default defineConfig({
         id: "gyoza@gyoz.ai",
         strict_min_version: "128.0",
         data_collection_permissions: {
+          required: false,
           technicalData: false,
           interactionData: false,
         },
