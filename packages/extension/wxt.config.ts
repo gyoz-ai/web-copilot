@@ -34,7 +34,7 @@ export default defineConfig({
     name: "gyoza — AI Browser Copilot",
     description:
       "AI that navigates any website for you. Ask questions, get answers, let AI click and navigate.",
-    version: "0.0.5",
+    version: "0.0.6",
     browser_specific_settings: {
       gecko: {
         id: "gyoza@gyoz.ai",
