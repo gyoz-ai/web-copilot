@@ -412,7 +412,7 @@ export function App() {
                     <div
                       style={{ fontSize: 11, opacity: 0.5, margin: "8px 0" }}
                     >
-                      Model auto-selected (Starter plan)
+                      Model auto-selected (Free plan)
                     </div>
                   )}
 

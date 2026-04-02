@@ -71,6 +71,8 @@ export default defineConfig({
           "/icon-talking.gif",
           "/avatars/*/*.jpeg",
           "/avatars/*/*.gif",
+          "/fonts/*.css",
+          "/fonts/*.woff2",
         ],
         matches: ["<all_urls>"],
       },

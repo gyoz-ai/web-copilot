@@ -201,14 +201,13 @@ export default defineContentScript({
       return;
     }
 
-    // Load fonts non-blocking
+    // Load self-hosted fonts (no external CDN dependency)
     try {
       if (!document.querySelector("#gyozai-fonts")) {
         const fontLink = document.createElement("link");
         fontLink.id = "gyozai-fonts";
         fontLink.rel = "stylesheet";
-        fontLink.href =
-          "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap";
+        fontLink.href = browser.runtime.getURL("/fonts/fonts.css");
         document.head.appendChild(fontLink);
       }
     } catch {
