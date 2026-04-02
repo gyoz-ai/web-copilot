@@ -318,24 +318,38 @@ export async function handleQuery(
     // (AI_NoOutputGeneratedError wraps AI_APICallError which has the real message)
     let errorMessage = err instanceof Error ? err.message : "Unknown error";
     let errorType: string | undefined;
+    let statusCode: number | undefined;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let cause = err instanceof Error ? (err as any).cause : undefined;
     while (cause) {
       if (cause.message) errorMessage = cause.message;
+      if (cause.statusCode) statusCode = cause.statusCode;
+      if (cause.status) statusCode = cause.status;
       cause = cause.cause;
     }
+
+    console.error(
+      "[gyoza] Extracted error → message:",
+      errorMessage,
+      "statusCode:",
+      statusCode,
+      "original:",
+      err instanceof Error ? err.constructor.name : typeof err,
+    );
 
     // Detect billing/credit/quota/rate-limit errors and make them user-friendly
     const msgLower = errorMessage.toLowerCase();
     if (
+      statusCode === 429 ||
       msgLower.includes("rate limit") ||
       msgLower.includes("rate_limit") ||
       msgLower.includes("too many requests") ||
       msgLower.includes("429")
     ) {
       errorType = "rate_limited";
-      errorMessage = `${settings.provider} rate limit hit — wait a moment and try again.`;
+      errorMessage = `${settings.provider} rate limit hit (429) — wait a moment and try again.`;
     } else if (
+      statusCode === 402 ||
       msgLower.includes("credit") ||
       msgLower.includes("balance") ||
       msgLower.includes("billing") ||
@@ -350,12 +364,18 @@ export async function handleQuery(
       };
       const url = DASHBOARD_URLS[settings.provider] || "";
       errorMessage = `Your ${settings.provider} API key has run out of credits. Top up at: ${url}`;
-    } else if (msgLower.includes("invalid") && msgLower.includes("key")) {
+    } else if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      (msgLower.includes("invalid") && msgLower.includes("key"))
+    ) {
       errorType = "auth";
       errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
     } else if (msgLower.includes("no output generated")) {
       errorMessage =
         "The AI failed to generate a response. This may be a temporary issue — try again.";
+    } else if (statusCode) {
+      errorMessage = `${settings.provider} API error (${statusCode}): ${errorMessage}`;
     }
 
     sendResponse({

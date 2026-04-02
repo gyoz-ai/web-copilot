@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gyozAI</title>
     <link rel="stylesheet" href="./popup.css" />
-    <!-- Load fonts non-blocking: renders instantly with system fallback, swaps when ready -->
-    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap"
-      media="print"
-      onload="this.media='all'"
-    />
+    <!-- Load fonts non-blocking: renders with system fallback, swaps when ready.
+         Loaded via JS to suppress console errors when fontshare CDN is down. -->
+    <script>
+      var l = document.createElement("link");
+      l.rel = "stylesheet";
+      l.href =
+        "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap";
+      l.onerror = function () {};
+      document.head.appendChild(l);
+    </script>
   </head>
   <body>
     <!--
@@ -30,11 +32,36 @@
         </div>
         <div class="popup-section" style="padding: 20px 16px">
           <div style="display: flex; flex-direction: column; gap: 10px">
-            <div class="skeleton-line" style="width: 100%; height: 36px; border-radius: 10px"></div>
-            <div class="skeleton-line" style="width: 40%; height: 12px; border-radius: 6px; margin-top: 6px"></div>
-            <div class="skeleton-line" style="width: 100%; height: 36px; border-radius: 8px"></div>
-            <div class="skeleton-line" style="width: 40%; height: 12px; border-radius: 6px; margin-top: 6px"></div>
-            <div class="skeleton-line" style="width: 100%; height: 36px; border-radius: 8px"></div>
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 10px"
+            ></div>
+            <div
+              class="skeleton-line"
+              style="
+                width: 40%;
+                height: 12px;
+                border-radius: 6px;
+                margin-top: 6px;
+              "
+            ></div>
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 8px"
+            ></div>
+            <div
+              class="skeleton-line"
+              style="
+                width: 40%;
+                height: 12px;
+                border-radius: 6px;
+                margin-top: 6px;
+              "
+            ></div>
+            <div
+              class="skeleton-line"
+              style="width: 100%; height: 36px; border-radius: 8px"
+            ></div>
           </div>
         </div>
       </div>
