@@ -28,18 +28,29 @@ export default defineBackground(() => {
   // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
   // When user logs in/out on gyoz.ai, the extension picks it up instantly.
   chrome.cookies.onChanged.addListener(async (changeInfo) => {
+    console.log(
+      "[gyoza:cookie] onChanged →",
+      changeInfo.cookie.name,
+      "domain:",
+      changeInfo.cookie.domain,
+      "removed:",
+      changeInfo.removed,
+    );
     if (
       changeInfo.cookie.domain.replace(/^\./, "") !== PLATFORM_DOMAIN ||
       changeInfo.cookie.name !== SESSION_COOKIE
     )
       return;
 
+    console.log("[gyoza:cookie] Matched session cookie! Processing...");
     const settings = await getSettings();
 
     if (changeInfo.removed) {
       // Cookie deleted (logout or expiry)
       if (settings.managedToken) {
-        console.log("[gyoza] Session cookie removed — clearing managed token");
+        console.log(
+          "[gyoza:cookie] Session cookie removed — clearing managed token",
+        );
         await saveSettings({
           ...settings,
           managedToken: undefined,
@@ -50,53 +61,81 @@ export default defineBackground(() => {
     } else {
       // Cookie set or updated (login)
       const token = changeInfo.cookie.value;
+      console.log(
+        "[gyoza:cookie] Cookie value present:",
+        !!token,
+        "already synced:",
+        token === settings.managedToken,
+      );
       if (token && token !== settings.managedToken) {
-        console.log("[gyoza] Session cookie detected — syncing managed token");
+        console.log(
+          "[gyoza:cookie] Session cookie detected — syncing managed token",
+        );
         // Fetch plan info from platform
         let managedPlan: string | undefined;
         try {
           const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          console.log("[gyoza:cookie] Usage API response:", res.status);
           if (res.ok) {
             const data = await res.json();
             managedPlan = data.plan;
+            console.log("[gyoza:cookie] Plan:", managedPlan);
           }
-        } catch {
-          // Platform unreachable — still store the token
+        } catch (err) {
+          console.warn("[gyoza:cookie] Platform unreachable:", err);
         }
         await saveSettings({
           ...settings,
           managedToken: token,
           managedPlan,
         });
+        console.log("[gyoza:cookie] Managed token saved ✓");
       }
     }
   });
 
   // On startup, check if cookie already exists (e.g. extension reloaded while logged in)
+  console.log(
+    "[gyoza:cookie] Startup: checking for existing session cookie...",
+  );
   chrome.cookies.get(
     { url: `https://${PLATFORM_DOMAIN}`, name: SESSION_COOKIE },
     async (cookie) => {
+      console.log(
+        "[gyoza:cookie] Startup cookie lookup result:",
+        cookie ? `found (domain: ${cookie.domain})` : "not found",
+      );
       if (!cookie) return;
       const settings = await getSettings();
+      console.log(
+        "[gyoza:cookie] Startup: current managedToken present:",
+        !!settings.managedToken,
+        "matches cookie:",
+        settings.managedToken === cookie.value,
+      );
       if (settings.managedToken === cookie.value) return; // already synced
-      console.log("[gyoza] Startup: syncing existing session cookie");
+      console.log("[gyoza:cookie] Startup: syncing existing session cookie");
       let managedPlan: string | undefined;
       try {
         const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
           headers: { Authorization: `Bearer ${cookie.value}` },
         });
+        console.log("[gyoza:cookie] Startup usage API response:", res.status);
         if (res.ok) {
           const data = await res.json();
           managedPlan = data.plan;
         }
-      } catch {}
+      } catch (err) {
+        console.warn("[gyoza:cookie] Startup platform unreachable:", err);
+      }
       await saveSettings({
         ...settings,
         managedToken: cookie.value,
         managedPlan,
       });
+      console.log("[gyoza:cookie] Startup: managed token saved ✓");
     },
   );
 
@@ -104,19 +143,31 @@ export default defineBackground(() => {
   // Firefox GC's sendResponse on long async ops ("Promised response went out
   // of scope"). Ports stay alive until explicitly disconnected.
   chrome.runtime.onConnect.addListener((port) => {
+    console.log("[gyoza:port] Connection received:", port.name);
     if (port.name !== "gyozai_query") return;
     port.onMessage.addListener((message) => {
+      console.log("[gyoza:port] Query message received via port");
       const sender = port.sender!;
       handleQuery(
         message,
         sender,
-        (result) => port.postMessage(result),
+        (result) => {
+          console.log(
+            "[gyoza:port] Sending query result via port, error:",
+            (result as Record<string, unknown>)?.error || "none",
+          );
+          port.postMessage(result);
+        },
         engines,
       );
+    });
+    port.onDisconnect.addListener(() => {
+      console.log("[gyoza:port] Port disconnected");
     });
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("[gyoza:msg] onMessage →", message.type);
     switch (message.type) {
       case "gyozai_get_tab_id":
         handleGetTabId(sender, sendResponse);

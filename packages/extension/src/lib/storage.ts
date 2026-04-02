@@ -43,6 +43,17 @@ export async function getSettings(): Promise<ExtensionSettings> {
   const raw = result.gyozai_settings || {};
   const settings = { ...DEFAULT_SETTINGS, ...raw };
 
+  console.log(
+    "[gyoza:storage] getSettings → provider:",
+    settings.provider,
+    "mode:",
+    settings.mode,
+    "hasApiKey:",
+    !!settings.apiKeys[settings.provider],
+    "hasManagedToken:",
+    !!settings.managedToken,
+  );
+
   // Migrate legacy single apiKey → per-provider apiKeys
   if (raw.apiKey && !raw.apiKeys) {
     const provider: ProviderKey = raw.provider || "claude";
@@ -60,7 +71,30 @@ export async function getSettings(): Promise<ExtensionSettings> {
 }
 
 export async function saveSettings(settings: ExtensionSettings): Promise<void> {
+  console.log(
+    "[gyoza:storage] saveSettings → provider:",
+    settings.provider,
+    "mode:",
+    settings.mode,
+    "hasApiKey:",
+    !!settings.apiKeys[settings.provider],
+    "apiKeyLen:",
+    settings.apiKeys[settings.provider]?.length || 0,
+    "hasManagedToken:",
+    !!settings.managedToken,
+  );
   await chrome.storage.local.set({ gyozai_settings: settings });
+  // Verify the write persisted
+  const verify = await chrome.storage.local.get("gyozai_settings");
+  const saved = verify.gyozai_settings as ExtensionSettings;
+  console.log(
+    "[gyoza:storage] saveSettings VERIFY → hasApiKey:",
+    !!saved?.apiKeys?.[settings.provider],
+    "apiKeyLen:",
+    saved?.apiKeys?.[settings.provider]?.length || 0,
+    "hasManagedToken:",
+    !!saved?.managedToken,
+  );
 }
 
 // ─── Conversation-based storage ─────────────────────────────────────────────

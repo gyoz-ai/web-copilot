@@ -850,14 +850,21 @@ export function GyozaiWidget() {
     );
     // Use port-based messaging for queries — Firefox GC's sendResponse on
     // long-running async handlers ("Promised response went out of scope").
+    console.log("[gyoza:query] Using PORT-based messaging (Firefox-safe)");
     const result = await new Promise<AgentResult>((resolve, reject) => {
       const port = chrome.runtime.connect({ name: "gyozai_query" });
+      console.log("[gyoza:query] Port connected, posting message...");
       port.onMessage.addListener((msg: AgentResult) => {
+        console.log("[gyoza:query] Port received response ✓");
         resolve(msg);
         port.disconnect();
       });
       port.onDisconnect.addListener(() => {
         const err = chrome.runtime.lastError;
+        console.warn(
+          "[gyoza:query] Port disconnected unexpectedly:",
+          err?.message,
+        );
         reject(new Error(err?.message || "Background connection lost"));
       });
       port.postMessage(payload);

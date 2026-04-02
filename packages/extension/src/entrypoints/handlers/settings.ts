@@ -10,5 +10,7 @@ export function handleGetTabId(
 export function handleGetSettings(
   sendResponse: (result: unknown) => void,
 ): void {
-  getSettings().then(sendResponse);
+  getSettings()
+    .then(sendResponse)
+    .catch(() => sendResponse(null));
 }

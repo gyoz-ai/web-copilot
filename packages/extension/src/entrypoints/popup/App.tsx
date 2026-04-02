@@ -82,7 +82,20 @@ export function App() {
   );
 
   useEffect(() => {
+    console.log("[gyoza:popup] Mounting — loading settings...");
     getSettings().then((s) => {
+      console.log(
+        "[gyoza:popup] Settings loaded → provider:",
+        s.provider,
+        "mode:",
+        s.mode,
+        "hasApiKey:",
+        !!s.apiKeys[s.provider],
+        "apiKeyLen:",
+        s.apiKeys[s.provider]?.length || 0,
+        "hasManagedToken:",
+        !!s.managedToken,
+      );
       setSettings(s);
       // Fetch managed info if signed in
       if (s.managedToken) {
@@ -114,7 +127,23 @@ export function App() {
   const tr = getTranslations(locale);
 
   const handleSave = async () => {
+    console.log(
+      "[gyoza:popup] handleSave called → provider:",
+      settings.provider,
+      "apiKeyLen:",
+      settings.apiKeys[settings.provider]?.length || 0,
+      "mode:",
+      settings.mode,
+    );
     await saveSettings(settings);
+    // Re-read to confirm persistence
+    const check = await getSettings();
+    console.log(
+      "[gyoza:popup] handleSave verify → apiKeyLen:",
+      check.apiKeys[check.provider]?.length || 0,
+      "provider:",
+      check.provider,
+    );
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -316,8 +345,9 @@ export function App() {
                       >
                         <span>Weekly usage</span>
                         <span>
-                          {managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount} /{" "}
-                          {managedUsage.weeklyLimit}
+                          {managedUsage.usage.totalCredits ??
+                            managedUsage.usage.requestCount}{" "}
+                          / {managedUsage.weeklyLimit}
                         </span>
                       </div>
                       <div
@@ -334,7 +364,8 @@ export function App() {
                             borderRadius: 3,
                             width: `${Math.min(100, ((managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount) / managedUsage.weeklyLimit) * 100)}%`,
                             background:
-                              (managedUsage.usage.totalCredits ?? managedUsage.usage.requestCount) >=
+                              (managedUsage.usage.totalCredits ??
+                                managedUsage.usage.requestCount) >=
                               managedUsage.weeklyLimit
                                 ? "#ef4444"
                                 : "#E8950A",

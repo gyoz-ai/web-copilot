@@ -10,15 +10,21 @@ export function handleAutoImportRecipe(
   sender: chrome.runtime.MessageSender,
   sendResponse: (result: unknown) => void,
 ): void {
-  recipeExists(message.content).then((exists) => {
-    if (exists) {
-      console.log("[gyoza] Recipe already imported, skipping auto-add");
-      sendResponse({ ok: true, skipped: true });
-      return;
-    }
-    const tabHost = sender.tab?.url ? new URL(sender.tab.url).host : undefined;
-    importRecipeFromFile(message.filename, message.content, tabHost).then(
-      () => {
+  recipeExists(message.content)
+    .then((exists) => {
+      if (exists) {
+        console.log("[gyoza] Recipe already imported, skipping auto-add");
+        sendResponse({ ok: true, skipped: true });
+        return;
+      }
+      const tabHost = sender.tab?.url
+        ? new URL(sender.tab.url).host
+        : undefined;
+      return importRecipeFromFile(
+        message.filename,
+        message.content,
+        tabHost,
+      ).then(() => {
         if (sender.tab?.id) {
           chrome.tabs.sendMessage(sender.tab.id, {
             type: "gyozai_recipe_auto_added",
@@ -26,30 +32,34 @@ export function handleAutoImportRecipe(
           });
         }
         sendResponse({ ok: true });
-      },
-    );
-  });
+      });
+    })
+    .catch(() => sendResponse({ ok: false }));
 }
 
 export function handleGetRecipe(
   message: { domain: string },
   sendResponse: (result: unknown) => void,
 ): void {
-  getMergedRecipeForDomain(message.domain).then(sendResponse);
+  getMergedRecipeForDomain(message.domain)
+    .then(sendResponse)
+    .catch(() => sendResponse(null));
 }
 
 export function handleGetRecipesList(
   sendResponse: (result: unknown) => void,
 ): void {
-  getRecipes().then((recipes) => {
-    sendResponse(
-      recipes.map((r) => ({
-        domain: r.domain,
-        name: r.name,
-        enabled: r.enabled,
-      })),
-    );
-  });
+  getRecipes()
+    .then((recipes) => {
+      sendResponse(
+        recipes.map((r) => ({
+          domain: r.domain,
+          name: r.name,
+          enabled: r.enabled,
+        })),
+      );
+    })
+    .catch(() => sendResponse([]));
 }
 
 export function handleSetRecipesGlobal(
