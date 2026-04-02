@@ -848,7 +848,20 @@ export function GyozaiWidget() {
       `%c[gyoza:query] Sending to background (queryId: ${queryId.slice(0, 8)}, convId: ${activeConvIdRef.current?.slice(0, 8) || "none"})`,
       "color: #3b82f6",
     );
-    const result = (await chrome.runtime.sendMessage(payload)) as AgentResult;
+    // Use port-based messaging for queries — Firefox GC's sendResponse on
+    // long-running async handlers ("Promised response went out of scope").
+    const result = await new Promise<AgentResult>((resolve, reject) => {
+      const port = chrome.runtime.connect({ name: "gyozai_query" });
+      port.onMessage.addListener((msg: AgentResult) => {
+        resolve(msg);
+        port.disconnect();
+      });
+      port.onDisconnect.addListener(() => {
+        const err = chrome.runtime.lastError;
+        reject(new Error(err?.message || "Background connection lost"));
+      });
+      port.postMessage(payload);
+    });
     const ms = Date.now() - start;
     console.log(
       `%c[gyoza:query] Response received in ${ms}ms (messages: ${result?.messages?.length || 0}, tools: ${result?.toolCalls?.length || 0}, error: ${result?.error || "none"})`,

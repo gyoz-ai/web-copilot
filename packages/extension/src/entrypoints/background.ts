@@ -100,6 +100,22 @@ export default defineBackground(() => {
     },
   );
 
+  // ─── Port-based handler for long-running queries ───────────────
+  // Firefox GC's sendResponse on long async ops ("Promised response went out
+  // of scope"). Ports stay alive until explicitly disconnected.
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== "gyozai_query") return;
+    port.onMessage.addListener((message) => {
+      const sender = port.sender!;
+      handleQuery(
+        message,
+        sender,
+        (result) => port.postMessage(result),
+        engines,
+      );
+    });
+  });
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case "gyozai_get_tab_id":
@@ -120,9 +136,6 @@ export default defineBackground(() => {
       case "gyozai_load_expression":
         handleLoadExpression(sendResponse);
         return true;
-      case "gyozai_query":
-        handleQuery(message, sender, sendResponse, engines);
-        return true;
       case "gyozai_get_settings":
         handleGetSettings(sendResponse);
         return true;
@@ -139,7 +152,12 @@ export default defineBackground(() => {
         handleSetRecipesGlobal(sender, sendResponse);
         return true;
       case "gyozai_open_popup":
-        chrome.action?.openPopup?.();
+        if (typeof chrome.action?.openPopup === "function") {
+          chrome.action.openPopup();
+        } else {
+          // Firefox doesn't support openPopup — open popup page in a new tab
+          chrome.tabs.create({ url: chrome.runtime.getURL("/popup.html") });
+        }
         return false;
       case "gyozai_exec":
         handleLegacyExec(message, sendResponse);
