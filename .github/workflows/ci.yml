@@ -40,4 +40,55 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: extension-firefox
-          path: packages/extension/.output/firefox-mv3/
+          path: packages/extension/.output/firefox-mv2/
+
+  build-safari:
+    name: Build Safari Extension
+    runs-on: macos-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun turbo build --filter=@gyoz-ai/engine
+
+      - name: Build Safari extension
+        run: cd packages/extension && bunx wxt build --browser safari
+
+      - name: Convert to Xcode project
+        run: |
+          xcrun safari-web-extension-converter packages/extension/.output/safari-mv3/ \
+            --project-location $RUNNER_TEMP/safari-xcode \
+            --app-name "gyoza" \
+            --bundle-identifier ai.gyoz.safari \
+            --no-prompt \
+            --no-open
+
+      - name: Verify Xcode project builds (macOS)
+        run: |
+          XCODEPROJ=$(find $RUNNER_TEMP/safari-xcode -name "*.xcodeproj" -maxdepth 2 | head -1)
+          xcodebuild build \
+            -project "$XCODEPROJ" \
+            -scheme "gyoza (macOS)" \
+            -configuration Debug \
+            -destination "generic/platform=macOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -5
+
+      - name: Verify Xcode project builds (iOS)
+        run: |
+          XCODEPROJ=$(find $RUNNER_TEMP/safari-xcode -name "*.xcodeproj" -maxdepth 2 | head -1)
+          xcodebuild build \
+            -project "$XCODEPROJ" \
+            -scheme "gyoza (iOS)" \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-safari
+          path: packages/extension/.output/safari-mv3/

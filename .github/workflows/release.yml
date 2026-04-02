@@ -20,6 +20,9 @@ jobs:
   release:
     name: Build, Release & Publish
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,8 +38,8 @@ jobs:
       - name: Bump version
         id: version
         run: |
-          # Read current version from wxt.config.ts
-          CURRENT=$(grep -oP 'version:\s*"\K[^"]+' packages/extension/wxt.config.ts)
+          # Read current version from wxt.config.ts (negative lookbehind skips strict_min_version)
+          CURRENT=$(grep -oP '(?<!_)version:\s*"\K[^"]+' packages/extension/wxt.config.ts | head -1)
           echo "Current version: $CURRENT"
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
@@ -140,7 +143,7 @@ jobs:
             --api-secret="${{ secrets.FIREFOX_JWT_SECRET }}" \
             --id="${{ secrets.FIREFOX_EXTENSION_GUID }}" \
             --channel=listed \
-            --source-dir=packages/extension/.output/firefox-mv3/ \
+            --source-dir=packages/extension/.output/firefox-mv2/ \
             --upload-source-code=packages/extension/src/ \
             || echo "Firefox upload submitted (may need manual review)"
         env:
@@ -177,3 +180,158 @@ jobs:
           fi
         env:
           FIREFOX_EXTENSION_GUID: ${{ secrets.FIREFOX_EXTENSION_GUID }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Safari — macOS + iOS/iPadOS (App Store Connect)
+  # ═══════════════════════════════════════════════════════════════════
+  release-safari:
+    name: Build & Publish Safari Extension
+    runs-on: macos-latest
+    needs: release
+    if: |
+      secrets.APPLE_API_KEY_BASE64 != '' &&
+      secrets.APPLE_CERTIFICATE_BASE64 != ''
+    env:
+      APPLE_BUNDLE_ID: ${{ vars.APPLE_BUNDLE_ID || 'ai.gyoz.safari' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # picks up version-bumped commit from release job
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+      - run: bun turbo build --filter=@gyoz-ai/engine
+
+      # ─── Build Safari extension ──────────────────────────────────
+      - name: Build Safari extension
+        run: cd packages/extension && bunx wxt build --browser safari
+
+      # ─── Convert to Xcode project (universal: macOS + iOS) ──────
+      - name: Convert to Xcode project
+        run: |
+          xcrun safari-web-extension-converter packages/extension/.output/safari-mv3/ \
+            --project-location $RUNNER_TEMP/safari-xcode \
+            --app-name "gyoza" \
+            --bundle-identifier "$APPLE_BUNDLE_ID" \
+            --no-prompt \
+            --no-open
+
+          XCODEPROJ=$(find $RUNNER_TEMP/safari-xcode -name "*.xcodeproj" -maxdepth 2 | head -1)
+          echo "XCODEPROJ=$XCODEPROJ" >> "$GITHUB_ENV"
+          echo "Found Xcode project: $XCODEPROJ"
+
+      # ─── Install Apple signing certificate ─────────────────────
+      - name: Install Apple signing certificate
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+
+          # Decode certificate
+          echo -n "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          security import "$CERT_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      # ─── Install App Store Connect API key ─────────────────────
+      - name: Install App Store Connect API key
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "$APPLE_API_KEY_BASE64" | base64 --decode \
+            > ~/private_keys/AuthKey_${APPLE_API_KEY_ID}.p8
+
+      # ─── Create export options plist ───────────────────────────
+      - name: Create export options
+        run: |
+          cat > $RUNNER_TEMP/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+          </dict>
+          </plist>
+          PLIST
+
+      # ─── Archive macOS app ─────────────────────────────────────
+      - name: Archive macOS app
+        run: |
+          xcodebuild archive \
+            -project "$XCODEPROJ" \
+            -scheme "gyoza (macOS)" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -archivePath $RUNNER_TEMP/gyoza-macos.xcarchive \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }}
+
+      # ─── Archive iOS app (iPhone + iPad) ───────────────────────
+      - name: Archive iOS app
+        run: |
+          xcodebuild archive \
+            -project "$XCODEPROJ" \
+            -scheme "gyoza (iOS)" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath $RUNNER_TEMP/gyoza-ios.xcarchive \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }}
+
+      # ─── Upload macOS to App Store Connect ─────────────────────
+      - name: Upload macOS to App Store Connect
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/gyoza-macos.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export-macos \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }} \
+            || echo "⚠ macOS upload submitted (check App Store Connect)"
+
+      # ─── Upload iOS to App Store Connect ───────────────────────
+      - name: Upload iOS to App Store Connect
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/gyoza-ios.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export-ios \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }} \
+            || echo "⚠ iOS upload submitted (check App Store Connect)"
+
+      # ─── Cleanup ───────────────────────────────────────────────
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
