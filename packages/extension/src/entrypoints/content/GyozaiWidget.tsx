@@ -212,6 +212,7 @@ export function GyozaiWidget() {
   const panelRef = useRef<HTMLDivElement>(null);
   const speechBubbleRef = useRef<HTMLDivElement>(null);
   const insidePanelRef = useRef(false);
+  const dragDropGraceRef = useRef(false);
   const { forceInside, startLeave } = useProximity({
     elementRef: avatarWrapperRef,
     radius: proximityRadius,
@@ -221,7 +222,12 @@ export function GyozaiWidget() {
     },
     onLeave: () => {
       // Don't close if cursor is still inside the chatbox/input panel
-      if (hoverOpenRef.current && !insidePanelRef.current) {
+      // or if we just dropped the avatar (grace period)
+      if (
+        hoverOpenRef.current &&
+        !insidePanelRef.current &&
+        !dragDropGraceRef.current
+      ) {
         setExpanded(false);
       }
     },
@@ -605,7 +611,8 @@ export function GyozaiWidget() {
       y <= r.bottom + margin;
 
     const interval = setInterval(() => {
-      if (!hoverOpenRef.current || !expanded) return;
+      if (!hoverOpenRef.current || !expanded || dragDropGraceRef.current)
+        return;
       const panel = panelRef.current;
       const avatar = avatarWrapperRef.current;
       const bubble = speechBubbleRef.current;
@@ -1074,18 +1081,31 @@ export function GyozaiWidget() {
 
     // If events were already streamed to the UI, skip duplicate rendering.
     // Only handle clarify (already set via streaming) and edge-case fallbacks.
+    // When the model performed actions but never sent a concluding
+    // show_message, ask it to briefly confirm what was done instead of
+    // showing a hardcoded English fallback.
+    const needsAiConclusion = (
+      toolCalls: AgentResult["toolCalls"],
+      msgs: string[],
+    ) => {
+      if (!toolCalls?.length) return false;
+      // Only needed if the model didn't end with a message.
+      // If the last tool was show_message or there's final AI text, no need.
+      const lastTool = toolCalls[toolCalls.length - 1];
+      if (lastTool.tool === "show_message") return false;
+      if (msgs.some((m) => m.trim())) return false;
+      return true;
+    };
+
     if (result.streamed) {
-      // Fallback: if streaming sent nothing, show a generic message
       const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-      const statusLines = buildToolStatusLines(result.toolCalls);
-      if (statusLines.length === 0 && aiMessages.length === 0) {
-        if (result.navigated) {
-          addToolStatusMessage("Navigating...");
-        } else if (result.toolCalls?.length) {
-          addAssistantMessage("Done.");
-        } else {
-          addAssistantMessage("I processed your request.");
-        }
+      if (needsAiConclusion(result.toolCalls, aiMessages)) {
+        // No message was shown — ask AI to summarize
+        autoFollowUpUsed = false;
+        const followUp = await sendQuery(
+          "Briefly confirm what you just did in one short sentence. Use show_message.",
+        );
+        await processAgentResult(followUp);
       }
       return;
     }
@@ -1101,14 +1121,12 @@ export function GyozaiWidget() {
       addAssistantMessage(msg);
     }
 
-    if (statusLines.length === 0 && aiMessages.length === 0) {
-      if (result.navigated) {
-        addToolStatusMessage("Navigating...");
-      } else if (result.toolCalls?.length) {
-        addAssistantMessage("Done.");
-      } else {
-        addAssistantMessage("I processed your request.");
-      }
+    if (needsAiConclusion(result.toolCalls, aiMessages)) {
+      autoFollowUpUsed = false;
+      const followUp = await sendQuery(
+        "Briefly confirm what you just did in one short sentence. Use show_message.",
+      );
+      await processAgentResult(followUp);
     }
 
     if (result.clarify) {
@@ -1444,7 +1462,23 @@ export function GyozaiWidget() {
         }}
         onClick={() => {}}
         wrapperRef={avatarWrapperRef}
-        onDragStateChange={setIsDraggingAvatar}
+        onDragStateChange={(dragging) => {
+          const wasDragging = isDraggingAvatar;
+          setIsDraggingAvatar(dragging);
+          // When a real drag ends (was dragging → now not), the cursor is still
+          // on the avatar — force proximity open so the panel reappears.
+          // Brief grace period prevents the proximity leave from immediately
+          // closing the panel (cursor may be outside the new avatar position).
+          if (wasDragging && !dragging) {
+            dragDropGraceRef.current = true;
+            setTimeout(() => {
+              dragDropGraceRef.current = false;
+            }, 600);
+            hoverOpenRef.current = true;
+            forceInside();
+            setExpanded(true);
+          }
+        }}
         onPositionChange={bumpAvatarPosTick}
       />
 

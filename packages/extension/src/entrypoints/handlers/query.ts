@@ -169,6 +169,7 @@ export async function handleQuery(
       args: Record<string, unknown>;
     }> = [];
 
+    let streamError: Error | null = null;
     const stream = streamText({
       model: providerResult.model,
       system: systemPrompt,
@@ -176,6 +177,21 @@ export async function handleQuery(
       tools,
       abortSignal: abortController.signal,
       stopWhen: stepCountIs(10),
+      onError: ({ error }) => {
+        if (error instanceof Error) {
+          streamError = error;
+        } else if (
+          typeof error === "object" &&
+          error !== null &&
+          "message" in error
+        ) {
+          streamError = new Error((error as { message: string }).message);
+        } else {
+          streamError = new Error(
+            typeof error === "string" ? error : JSON.stringify(error),
+          );
+        }
+      },
       onStepFinish: ({ toolCalls }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
@@ -213,6 +229,12 @@ export async function handleQuery(
       } else {
         throw streamErr;
       }
+    }
+
+    // If the SDK caught an error via onError (swallowed instead of thrown),
+    // re-throw so our catch block formats and returns it properly.
+    if (streamError && !aborted) {
+      throw streamError;
     }
 
     const ms = Date.now() - start;
@@ -299,9 +321,17 @@ export async function handleQuery(
       cause = cause.cause;
     }
 
-    // Detect billing/credit/quota errors and make them user-friendly
+    // Detect billing/credit/quota/rate-limit errors and make them user-friendly
     const msgLower = errorMessage.toLowerCase();
     if (
+      msgLower.includes("rate limit") ||
+      msgLower.includes("rate_limit") ||
+      msgLower.includes("too many requests") ||
+      msgLower.includes("429")
+    ) {
+      errorType = "rate_limited";
+      errorMessage = `${settings.provider} rate limit hit — wait a moment and try again.`;
+    } else if (
       msgLower.includes("credit") ||
       msgLower.includes("balance") ||
       msgLower.includes("billing") ||

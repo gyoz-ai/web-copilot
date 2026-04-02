@@ -76,6 +76,7 @@ export const WIDGET_STYLES = `
     right: 20px;
     width: 380px;
     max-height: 520px;
+    height: fit-content;
     border-radius: 16px;
     display: flex;
     flex-direction: column;
@@ -124,13 +125,13 @@ export const WIDGET_STYLES = `
   /* ─── Messages ──────────────────────────────────────────── */
 
   .gyozai-messages {
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
     padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-height: 80px;
+    min-height: 0;
   }
 
   .gyozai-empty {
