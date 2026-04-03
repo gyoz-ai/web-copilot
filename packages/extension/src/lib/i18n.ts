@@ -56,6 +56,26 @@ export interface Translations {
   widget_days_ago: string; // "{n}d ago"
   widget_recipe_imported: string; // "Recipe auto-imported from {name}"
   widget_delete_conversation: string;
+  widget_status_thinking: string;
+  widget_status_idling: string;
+  widget_stopped: string;
+  widget_confirm_allow: string;
+  widget_confirm_deny: string;
+  widget_shortcut_tip: string; // "Tip: press {shortcut} to talk to me anytime"
+
+  // Status pill — tool actions
+  status_navigating: string; // "Navigating to {url}"
+  status_clicked: string; // "Clicked element"
+  status_highlighted: string; // "Highlighted element"
+  status_reading_page: string; // "Reading page"
+  status_fetching: string; // "Fetching data"
+  status_filling: string; // "Filling input"
+  status_selecting: string; // "Selecting option"
+  status_toggling: string; // "Toggling checkbox"
+  status_submitting: string; // "Submitting form"
+  status_scrolling: string; // "Scrolling"
+  status_searching: string; // "Searching page"
+  status_extracting: string; // "Extracting table"
 
   // Popup (App.tsx)
   popup_loading: string;
@@ -104,6 +124,24 @@ const en: Translations = {
   widget_days_ago: "{n}d ago",
   widget_recipe_imported: "Recipe auto-imported from {name}",
   widget_delete_conversation: "Delete conversation",
+  widget_status_thinking: "Thinking...",
+  widget_status_idling: "Idling...",
+  widget_stopped: "Stopped.",
+  widget_confirm_allow: "Allow",
+  widget_confirm_deny: "Deny",
+  widget_shortcut_tip: "Tip: press {shortcut} to talk to me anytime",
+  status_navigating: "Navigating to {url}",
+  status_clicked: "Clicked element",
+  status_highlighted: "Highlighted element",
+  status_reading_page: "Reading page",
+  status_fetching: "Fetching data",
+  status_filling: "Filling input",
+  status_selecting: "Selecting option",
+  status_toggling: "Toggling checkbox",
+  status_submitting: "Submitting form",
+  status_scrolling: "Scrolling",
+  status_searching: "Searching page",
+  status_extracting: "Extracting table",
   popup_loading: "Loading...",
   popup_provider: "Provider",
   popup_api_key: "API Key",
@@ -152,6 +190,25 @@ const ptBR: Translations = {
   widget_days_ago: "{n}d atr\u00e1s",
   widget_recipe_imported: "Receita importada automaticamente de {name}",
   widget_delete_conversation: "Excluir conversa",
+  widget_status_thinking: "Pensando...",
+  widget_status_idling: "Ocioso...",
+  widget_stopped: "Parado.",
+  widget_confirm_allow: "Permitir",
+  widget_confirm_deny: "Negar",
+  widget_shortcut_tip:
+    "Dica: pressione {shortcut} para falar comigo a qualquer momento",
+  status_navigating: "Navegando para {url}",
+  status_clicked: "Elemento clicado",
+  status_highlighted: "Elemento destacado",
+  status_reading_page: "Lendo a página",
+  status_fetching: "Buscando dados",
+  status_filling: "Preenchendo campo",
+  status_selecting: "Selecionando opção",
+  status_toggling: "Alternando checkbox",
+  status_submitting: "Enviando formulário",
+  status_scrolling: "Rolando",
+  status_searching: "Pesquisando na página",
+  status_extracting: "Extraindo tabela",
   popup_loading: "Carregando...",
   popup_provider: "Provedor",
   popup_api_key: "Chave de API",
@@ -217,6 +274,25 @@ const es: Translations = {
   widget_days_ago: "hace {n}d",
   widget_recipe_imported: "Receta importada autom\u00e1ticamente de {name}",
   widget_delete_conversation: "Eliminar conversaci\u00f3n",
+  widget_status_thinking: "Pensando...",
+  widget_status_idling: "Inactivo...",
+  widget_stopped: "Detenido.",
+  widget_confirm_allow: "Permitir",
+  widget_confirm_deny: "Denegar",
+  widget_shortcut_tip:
+    "Consejo: pulsa {shortcut} para hablar conmigo en cualquier momento",
+  status_navigating: "Navegando a {url}",
+  status_clicked: "Elemento clicado",
+  status_highlighted: "Elemento resaltado",
+  status_reading_page: "Leyendo p\u00e1gina",
+  status_fetching: "Obteniendo datos",
+  status_filling: "Rellenando campo",
+  status_selecting: "Seleccionando opci\u00f3n",
+  status_toggling: "Alternando casilla",
+  status_submitting: "Enviando formulario",
+  status_scrolling: "Desplazando",
+  status_searching: "Buscando en p\u00e1gina",
+  status_extracting: "Extrayendo tabla",
   popup_loading: "Cargando...",
   popup_provider: "Proveedor",
   popup_api_key: "Clave de API",
@@ -265,6 +341,25 @@ const fr: Translations = {
   widget_days_ago: "il y a {n}j",
   widget_recipe_imported: "Recette import\u00e9e automatiquement depuis {name}",
   widget_delete_conversation: "Supprimer la conversation",
+  widget_status_thinking: "R\u00e9flexion...",
+  widget_status_idling: "Inactif...",
+  widget_stopped: "Arr\u00eat\u00e9.",
+  widget_confirm_allow: "Autoriser",
+  widget_confirm_deny: "Refuser",
+  widget_shortcut_tip:
+    "Astuce\u00a0: appuyez sur {shortcut} pour me parler \u00e0 tout moment",
+  status_navigating: "Navigation vers {url}",
+  status_clicked: "\u00c9l\u00e9ment cliqu\u00e9",
+  status_highlighted: "\u00c9l\u00e9ment surlign\u00e9",
+  status_reading_page: "Lecture de la page",
+  status_fetching: "R\u00e9cup\u00e9ration des donn\u00e9es",
+  status_filling: "Remplissage du champ",
+  status_selecting: "S\u00e9lection d'option",
+  status_toggling: "Basculement de case",
+  status_submitting: "Envoi du formulaire",
+  status_scrolling: "D\u00e9filement",
+  status_searching: "Recherche dans la page",
+  status_extracting: "Extraction du tableau",
   popup_loading: "Chargement...",
   popup_provider: "Fournisseur",
   popup_api_key: "Cl\u00e9 API",
@@ -313,6 +408,25 @@ const de: Translations = {
   widget_days_ago: "vor {n}T",
   widget_recipe_imported: "Rezept automatisch importiert von {name}",
   widget_delete_conversation: "Gespr\u00e4ch l\u00f6schen",
+  widget_status_thinking: "Denkt nach...",
+  widget_status_idling: "Leerlauf...",
+  widget_stopped: "Gestoppt.",
+  widget_confirm_allow: "Erlauben",
+  widget_confirm_deny: "Ablehnen",
+  widget_shortcut_tip:
+    "Tipp: Dr\u00fccke {shortcut}, um jederzeit mit mir zu sprechen",
+  status_navigating: "Navigiert zu {url}",
+  status_clicked: "Element angeklickt",
+  status_highlighted: "Element hervorgehoben",
+  status_reading_page: "Seite wird gelesen",
+  status_fetching: "Daten werden abgerufen",
+  status_filling: "Feld wird ausgef\u00fcllt",
+  status_selecting: "Option wird ausgew\u00e4hlt",
+  status_toggling: "Kontrollk\u00e4stchen umschalten",
+  status_submitting: "Formular wird gesendet",
+  status_scrolling: "Scrollen",
+  status_searching: "Seite durchsuchen",
+  status_extracting: "Tabelle extrahieren",
   popup_loading: "Laden...",
   popup_provider: "Anbieter",
   popup_api_key: "API-Schl\u00fcssel",
@@ -361,6 +475,25 @@ const it: Translations = {
   widget_days_ago: "{n}g fa",
   widget_recipe_imported: "Ricetta importata automaticamente da {name}",
   widget_delete_conversation: "Elimina conversazione",
+  widget_status_thinking: "Sto pensando...",
+  widget_status_idling: "Inattivo...",
+  widget_stopped: "Fermato.",
+  widget_confirm_allow: "Consenti",
+  widget_confirm_deny: "Nega",
+  widget_shortcut_tip:
+    "Suggerimento: premi {shortcut} per parlarmi in qualsiasi momento",
+  status_navigating: "Navigazione verso {url}",
+  status_clicked: "Elemento cliccato",
+  status_highlighted: "Elemento evidenziato",
+  status_reading_page: "Lettura pagina",
+  status_fetching: "Recupero dati",
+  status_filling: "Compilazione campo",
+  status_selecting: "Selezione opzione",
+  status_toggling: "Cambio casella",
+  status_submitting: "Invio modulo",
+  status_scrolling: "Scorrimento",
+  status_searching: "Ricerca nella pagina",
+  status_extracting: "Estrazione tabella",
   popup_loading: "Caricamento...",
   popup_provider: "Provider",
   popup_api_key: "Chiave API",
@@ -409,6 +542,24 @@ const nl: Translations = {
   widget_days_ago: "{n}d geleden",
   widget_recipe_imported: "Recept automatisch ge\u00efmporteerd van {name}",
   widget_delete_conversation: "Gesprek verwijderen",
+  widget_status_thinking: "Nadenken...",
+  widget_status_idling: "Inactief...",
+  widget_stopped: "Gestopt.",
+  widget_confirm_allow: "Toestaan",
+  widget_confirm_deny: "Weigeren",
+  widget_shortcut_tip: "Tip: druk op {shortcut} om altijd met me te praten",
+  status_navigating: "Navigeren naar {url}",
+  status_clicked: "Element aangeklikt",
+  status_highlighted: "Element gemarkeerd",
+  status_reading_page: "Pagina lezen",
+  status_fetching: "Gegevens ophalen",
+  status_filling: "Veld invullen",
+  status_selecting: "Optie selecteren",
+  status_toggling: "Selectievakje wisselen",
+  status_submitting: "Formulier verzenden",
+  status_scrolling: "Scrollen",
+  status_searching: "Pagina doorzoeken",
+  status_extracting: "Tabel extraheren",
   popup_loading: "Laden...",
   popup_provider: "Aanbieder",
   popup_api_key: "API-sleutel",
@@ -457,6 +608,25 @@ const pl: Translations = {
   widget_days_ago: "{n}d temu",
   widget_recipe_imported: "Przepis automatycznie zaimportowany z {name}",
   widget_delete_conversation: "Usu\u0144 rozmow\u0119",
+  widget_status_thinking: "My\u015bl\u0119...",
+  widget_status_idling: "Bezczynno\u015b\u0107...",
+  widget_stopped: "Zatrzymano.",
+  widget_confirm_allow: "Zezw\u00f3l",
+  widget_confirm_deny: "Odrzu\u0107",
+  widget_shortcut_tip:
+    "Wskaz\u00f3wka: naci\u015bnij {shortcut}, aby porozmawiaj ze mn\u0105 w dowolnym momencie",
+  status_navigating: "Przechodzenie do {url}",
+  status_clicked: "Klikni\u0119to element",
+  status_highlighted: "Wyr\u00f3\u017cniono element",
+  status_reading_page: "Czytanie strony",
+  status_fetching: "Pobieranie danych",
+  status_filling: "Wype\u0142nianie pola",
+  status_selecting: "Wybieranie opcji",
+  status_toggling: "Prze\u0142\u0105czanie pola wyboru",
+  status_submitting: "Wysy\u0142anie formularza",
+  status_scrolling: "Przewijanie",
+  status_searching: "Przeszukiwanie strony",
+  status_extracting: "Wyodr\u0119bnianie tabeli",
   popup_loading: "\u0141adowanie...",
   popup_provider: "Dostawca",
   popup_api_key: "Klucz API",
@@ -511,6 +681,38 @@ const ru: Translations = {
     "\u0420\u0435\u0446\u0435\u043f\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u0438\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u043d \u0438\u0437 {name}",
   widget_delete_conversation:
     "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440",
+  widget_status_thinking: "\u0414\u0443\u043c\u0430\u044e...",
+  widget_status_idling: "\u041e\u0436\u0438\u0434\u0430\u043d\u0438\u0435...",
+  widget_stopped:
+    "\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e.",
+  widget_confirm_allow:
+    "\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c",
+  widget_confirm_deny: "\u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c",
+  widget_shortcut_tip:
+    "\u0421\u043e\u0432\u0435\u0442: \u043d\u0430\u0436\u043c\u0438\u0442\u0435 {shortcut}, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u0441\u043e \u043c\u043d\u043e\u0439 \u0432 \u043b\u044e\u0431\u043e\u0435 \u0432\u0440\u0435\u043c\u044f",
+  status_navigating:
+    "\u041f\u0435\u0440\u0435\u0445\u043e\u0434 \u043d\u0430 {url}",
+  status_clicked:
+    "\u042d\u043b\u0435\u043c\u0435\u043d\u0442 \u043d\u0430\u0436\u0430\u0442",
+  status_highlighted:
+    "\u042d\u043b\u0435\u043c\u0435\u043d\u0442 \u0432\u044b\u0434\u0435\u043b\u0435\u043d",
+  status_reading_page:
+    "\u0427\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b",
+  status_fetching:
+    "\u041f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0435 \u0434\u0430\u043d\u043d\u044b\u0445",
+  status_filling:
+    "\u0417\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435 \u043f\u043e\u043b\u044f",
+  status_selecting:
+    "\u0412\u044b\u0431\u043e\u0440 \u043e\u043f\u0446\u0438\u0438",
+  status_toggling:
+    "\u041f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0444\u043b\u0430\u0436\u043a\u0430",
+  status_submitting:
+    "\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430 \u0444\u043e\u0440\u043c\u044b",
+  status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
+  status_searching:
+    "\u041f\u043e\u0438\u0441\u043a \u043d\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435",
+  status_extracting:
+    "\u0418\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u0435 \u0442\u0430\u0431\u043b\u0438\u0446\u044b",
   popup_loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...",
   popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
   popup_api_key: "API-\u043a\u043b\u044e\u0447",
@@ -573,6 +775,38 @@ const uk: Translations = {
     "\u0420\u0435\u0446\u0435\u043f\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u043d\u043e \u0456\u043c\u043f\u043e\u0440\u0442\u043e\u0432\u0430\u043d\u043e \u0437 {name}",
   widget_delete_conversation:
     "\u0412\u0438\u0434\u0430\u043b\u0438\u0442\u0438 \u0440\u043e\u0437\u043c\u043e\u0432\u0443",
+  widget_status_thinking: "\u0414\u0443\u043c\u0430\u044e...",
+  widget_status_idling:
+    "\u041e\u0447\u0456\u043a\u0443\u0432\u0430\u043d\u043d\u044f...",
+  widget_stopped: "\u0417\u0443\u043f\u0438\u043d\u0435\u043d\u043e.",
+  widget_confirm_allow:
+    "\u0414\u043e\u0437\u0432\u043e\u043b\u0438\u0442\u0438",
+  widget_confirm_deny: "\u0412\u0456\u0434\u0445\u0438\u043b\u0438\u0442\u0438",
+  widget_shortcut_tip:
+    "\u041f\u043e\u0440\u0430\u0434\u0430: \u043d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c {shortcut}, \u0449\u043e\u0431 \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u0438 \u0437\u0456 \u043c\u043d\u043e\u044e \u0431\u0443\u0434\u044c-\u043a\u043e\u043b\u0438",
+  status_navigating:
+    "\u041f\u0435\u0440\u0435\u0445\u0456\u0434 \u043d\u0430 {url}",
+  status_clicked:
+    "\u0415\u043b\u0435\u043c\u0435\u043d\u0442 \u043d\u0430\u0442\u0438\u0441\u043d\u0443\u0442\u043e",
+  status_highlighted:
+    "\u0415\u043b\u0435\u043c\u0435\u043d\u0442 \u0432\u0438\u0434\u0456\u043b\u0435\u043d\u043e",
+  status_reading_page:
+    "\u0427\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0438",
+  status_fetching:
+    "\u041e\u0442\u0440\u0438\u043c\u0430\u043d\u043d\u044f \u0434\u0430\u043d\u0438\u0445",
+  status_filling:
+    "\u0417\u0430\u043f\u043e\u0432\u043d\u0435\u043d\u043d\u044f \u043f\u043e\u043b\u044f",
+  status_selecting:
+    "\u0412\u0438\u0431\u0456\u0440 \u043e\u043f\u0446\u0456\u0457",
+  status_toggling:
+    "\u041f\u0435\u0440\u0435\u043c\u0438\u043a\u0430\u043d\u043d\u044f \u043f\u0440\u0430\u043f\u043e\u0440\u0446\u044f",
+  status_submitting:
+    "\u0412\u0456\u0434\u043f\u0440\u0430\u0432\u043a\u0430 \u0444\u043e\u0440\u043c\u0438",
+  status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
+  status_searching:
+    "\u041f\u043e\u0448\u0443\u043a \u043d\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u0446\u0456",
+  status_extracting:
+    "\u0412\u0438\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0442\u0430\u0431\u043b\u0438\u0446\u0456",
   popup_loading:
     "\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f...",
   popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
@@ -637,6 +871,36 @@ const el: Translations = {
     "\u0397 \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ae \u03b5\u03b9\u03c3\u03ae\u03c7\u03b8\u03b7 \u03b1\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03b1 \u03b1\u03c0\u03cc {name}",
   widget_delete_conversation:
     "\u0394\u03b9\u03b1\u03b3\u03c1\u03b1\u03c6\u03ae \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1\u03c2",
+  widget_status_thinking: "\u03a3\u03ba\u03ad\u03c8\u03b7...",
+  widget_status_idling: "\u0391\u03b4\u03c1\u03b1\u03bd\u03ad\u03c2...",
+  widget_stopped:
+    "\u03a3\u03c4\u03b1\u03bc\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5.",
+  widget_confirm_allow: "\u0391\u03c0\u03bf\u03b4\u03bf\u03c7\u03ae",
+  widget_confirm_deny: "\u0386\u03c1\u03bd\u03b7\u03c3\u03b7",
+  widget_shortcut_tip:
+    "\u03a3\u03c5\u03bc\u03b2\u03bf\u03c5\u03bb\u03ae: \u03c0\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 {shortcut} \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03bc\u03bf\u03c5 \u03bc\u03b9\u03bb\u03ae\u03c3\u03b5\u03c4\u03b5 \u03bf\u03c0\u03bf\u03c4\u03b5\u03b4\u03ae\u03c0\u03bf\u03c4\u03b5",
+  status_navigating:
+    "\u039c\u03b5\u03c4\u03ac\u03b2\u03b1\u03c3\u03b7 \u03c3\u03c4\u03bf {url}",
+  status_clicked:
+    "\u039a\u03bb\u03b9\u03ba \u03c3\u03b5 \u03c3\u03c4\u03bf\u03b9\u03c7\u03b5\u03af\u03bf",
+  status_highlighted:
+    "\u0395\u03c0\u03b9\u03c3\u03ae\u03bc\u03b1\u03bd\u03c3\u03b7 \u03c3\u03c4\u03bf\u03b9\u03c7\u03b5\u03af\u03bf\u03c5",
+  status_reading_page:
+    "\u0391\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1\u03c2",
+  status_fetching:
+    "\u039b\u03ae\u03c8\u03b7 \u03b4\u03b5\u03b4\u03bf\u03bc\u03ad\u03bd\u03c9\u03bd",
+  status_filling:
+    "\u03a3\u03c5\u03bc\u03c0\u03bb\u03ae\u03c1\u03c9\u03c3\u03b7 \u03c0\u03b5\u03b4\u03af\u03bf\u03c5",
+  status_selecting: "\u0395\u03c0\u03b9\u03bb\u03bf\u03b3\u03ae",
+  status_toggling:
+    "\u0395\u03bd\u03b1\u03bb\u03bb\u03b1\u03b3\u03ae \u03c0\u03bb\u03b1\u03b9\u03c3\u03af\u03bf\u03c5",
+  status_submitting:
+    "\u03a5\u03c0\u03bf\u03b2\u03bf\u03bb\u03ae \u03c6\u03cc\u03c1\u03bc\u03b1\u03c2",
+  status_scrolling: "\u039a\u03cd\u03bb\u03b9\u03c3\u03b7",
+  status_searching:
+    "\u0391\u03bd\u03b1\u03b6\u03ae\u03c4\u03b7\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1\u03c2",
+  status_extracting:
+    "\u0395\u03be\u03b1\u03b3\u03c9\u03b3\u03ae \u03c0\u03af\u03bd\u03b1\u03ba\u03b1",
   popup_loading: "\u03a6\u03cc\u03c1\u03c4\u03c9\u03c3\u03b7...",
   popup_provider: "\u03a0\u03ac\u03c1\u03bf\u03c7\u03bf\u03c2",
   popup_api_key: "\u039a\u03bb\u03b5\u03b9\u03b4\u03af API",
@@ -696,6 +960,25 @@ const tr: Translations = {
   widget_recipe_imported:
     "Tarif {name} kayna\u011f\u0131ndan otomatik i\u00e7e aktar\u0131ld\u0131",
   widget_delete_conversation: "Sohbeti sil",
+  widget_status_thinking: "D\u00fc\u015f\u00fcn\u00fcyor...",
+  widget_status_idling: "Bo\u015fta...",
+  widget_stopped: "Durduruldu.",
+  widget_confirm_allow: "\u0130zin ver",
+  widget_confirm_deny: "Reddet",
+  widget_shortcut_tip:
+    "\u0130pucu: her zaman benimle konu\u015fmak i\u00e7in {shortcut} tu\u015funa bas\u0131n",
+  status_navigating: "{url} adresine gidiliyor",
+  status_clicked: "\u00d6\u011feye t\u0131kland\u0131",
+  status_highlighted: "\u00d6\u011fe vurguland\u0131",
+  status_reading_page: "Sayfa okunuyor",
+  status_fetching: "Veri al\u0131n\u0131yor",
+  status_filling: "Alan dolduruluyor",
+  status_selecting: "Se\u00e7enek se\u00e7iliyor",
+  status_toggling: "Onay kutusu de\u011fi\u015ftiriliyor",
+  status_submitting: "Form g\u00f6nderiliyor",
+  status_scrolling: "Kayd\u0131r\u0131l\u0131yor",
+  status_searching: "Sayfada aran\u0131yor",
+  status_extracting: "Tablo \u00e7\u0131kar\u0131l\u0131yor",
   popup_loading: "Y\u00fckleniyor...",
   popup_provider: "Sa\u011flay\u0131c\u0131",
   popup_api_key: "API Anahtar\u0131",
@@ -751,6 +1034,36 @@ const ar: Translations = {
     "\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0627\u0644\u0648\u0635\u0641\u0629 \u062a\u0644\u0642\u0627\u0626\u064a\u0627\u064b \u0645\u0646 {name}",
   widget_delete_conversation:
     "\u062d\u0630\u0641 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629",
+  widget_status_thinking:
+    "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u0641\u0643\u064a\u0631...",
+  widget_status_idling: "\u062e\u0627\u0645\u0644...",
+  widget_stopped: "\u062a\u0645 \u0627\u0644\u0625\u064a\u0642\u0627\u0641.",
+  widget_confirm_allow: "\u0633\u0645\u0627\u062d",
+  widget_confirm_deny: "\u0631\u0641\u0636",
+  widget_shortcut_tip:
+    "\u0646\u0635\u064a\u062d\u0629: \u0627\u0636\u063a\u0637 {shortcut} \u0644\u0644\u062a\u062d\u062f\u062b \u0645\u0639\u064a \u0641\u064a \u0623\u064a \u0648\u0642\u062a",
+  status_navigating:
+    "\u0627\u0644\u0627\u0646\u062a\u0642\u0627\u0644 \u0625\u0644\u0649 {url}",
+  status_clicked:
+    "\u062a\u0645 \u0627\u0644\u0646\u0642\u0631 \u0639\u0644\u0649 \u0627\u0644\u0639\u0646\u0635\u0631",
+  status_highlighted:
+    "\u062a\u0645 \u062a\u0645\u064a\u064a\u0632 \u0627\u0644\u0639\u0646\u0635\u0631",
+  status_reading_page:
+    "\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0629",
+  status_fetching:
+    "\u062c\u0644\u0628 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a",
+  status_filling: "\u0645\u0644\u0621 \u0627\u0644\u062d\u0642\u0644",
+  status_selecting:
+    "\u0627\u062e\u062a\u064a\u0627\u0631 \u062e\u064a\u0627\u0631",
+  status_toggling:
+    "\u062a\u0628\u062f\u064a\u0644 \u0645\u0631\u0628\u0639 \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631",
+  status_submitting:
+    "\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0646\u0645\u0648\u0630\u062c",
+  status_scrolling: "\u0627\u0644\u062a\u0645\u0631\u064a\u0631",
+  status_searching:
+    "\u0627\u0644\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0635\u0641\u062d\u0629",
+  status_extracting:
+    "\u0627\u0633\u062a\u062e\u0631\u0627\u062c \u0627\u0644\u062c\u062f\u0648\u0644",
   popup_loading:
     "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...",
   popup_provider: "\u0627\u0644\u0645\u0632\u0648\u062f",
@@ -815,6 +1128,38 @@ const hi: Translations = {
     "\u0930\u0947\u0938\u093f\u092a\u0940 {name} \u0938\u0947 \u0911\u091f\u094b-\u0907\u0902\u092a\u094b\u0930\u094d\u091f \u0939\u0941\u0908",
   widget_delete_conversation:
     "\u092c\u093e\u0924\u091a\u0940\u0924 \u0939\u091f\u093e\u090f\u0902",
+  widget_status_thinking:
+    "\u0938\u094b\u091a \u0930\u0939\u093e \u0939\u0948...",
+  widget_status_idling:
+    "\u0928\u093f\u0937\u094d\u0915\u094d\u0930\u093f\u092f...",
+  widget_stopped: "\u0930\u0941\u0915\u093e\u0964",
+  widget_confirm_allow: "\u0905\u0928\u0941\u092e\u0924\u093f",
+  widget_confirm_deny: "\u0905\u0938\u094d\u0935\u0940\u0915\u093e\u0930",
+  widget_shortcut_tip:
+    "\u0938\u0941\u091d\u093e\u0935: \u0915\u093f\u0938\u0940 \u092d\u0940 \u0938\u092e\u092f \u092e\u0941\u091d\u0938\u0947 \u092c\u093e\u0924 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f {shortcut} \u0926\u092c\u093e\u090f\u0902",
+  status_navigating:
+    "{url} \u092a\u0930 \u091c\u093e \u0930\u0939\u093e \u0939\u0948",
+  status_clicked:
+    "\u0924\u0924\u094d\u0935 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u093f\u092f\u093e",
+  status_highlighted:
+    "\u0924\u0924\u094d\u0935 \u0939\u093e\u0907\u0932\u093e\u0907\u091f \u0915\u093f\u092f\u093e",
+  status_reading_page:
+    "\u092a\u0947\u091c \u092a\u0922\u093c \u0930\u0939\u093e \u0939\u0948",
+  status_fetching:
+    "\u0921\u0947\u091f\u093e \u092a\u094d\u0930\u093e\u092a\u094d\u0924 \u0915\u0930 \u0930\u0939\u093e \u0939\u0948",
+  status_filling:
+    "\u0907\u0928\u092a\u0941\u091f \u092d\u0930 \u0930\u0939\u093e \u0939\u0948",
+  status_selecting:
+    "\u0935\u093f\u0915\u0932\u094d\u092a \u091a\u0941\u0928 \u0930\u0939\u093e \u0939\u0948",
+  status_toggling:
+    "\u091a\u0947\u0915\u092c\u0949\u0915\u094d\u0938 \u091f\u0949\u0917\u0932",
+  status_submitting:
+    "\u092b\u0949\u0930\u094d\u092e \u0938\u092c\u092e\u093f\u091f \u0915\u0930 \u0930\u0939\u093e \u0939\u0948",
+  status_scrolling:
+    "\u0938\u094d\u0915\u094d\u0930\u094b\u0932\u093f\u0902\u0917",
+  status_searching: "\u092a\u0947\u091c \u092e\u0947\u0902 \u0916\u094b\u091c",
+  status_extracting:
+    "\u091f\u0947\u092c\u0932 \u0928\u093f\u0915\u093e\u0932 \u0930\u0939\u093e \u0939\u0948",
   popup_loading:
     "\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...",
   popup_provider: "\u092a\u094d\u0930\u0926\u093e\u0924\u093e",
@@ -874,6 +1219,26 @@ const ja: Translations = {
   widget_recipe_imported:
     "{name}\u304b\u3089\u30ec\u30b7\u30d4\u3092\u81ea\u52d5\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f",
   widget_delete_conversation: "\u4f1a\u8a71\u3092\u524a\u9664",
+  widget_status_thinking: "\u8003\u3048\u4e2d...",
+  widget_status_idling: "\u5f85\u6a5f\u4e2d...",
+  widget_stopped: "\u505c\u6b62\u3057\u307e\u3057\u305f\u3002",
+  widget_confirm_allow: "\u8a31\u53ef",
+  widget_confirm_deny: "\u62d2\u5426",
+  widget_shortcut_tip:
+    "\u30d2\u30f3\u30c8: {shortcut} \u3092\u62bc\u3057\u3066\u3044\u3064\u3067\u3082\u8a71\u3057\u304b\u3051\u3066\u304f\u3060\u3055\u3044",
+  status_navigating: "{url}\u306b\u79fb\u52d5\u4e2d",
+  status_clicked: "\u8981\u7d20\u3092\u30af\u30ea\u30c3\u30af",
+  status_highlighted: "\u8981\u7d20\u3092\u30cf\u30a4\u30e9\u30a4\u30c8",
+  status_reading_page: "\u30da\u30fc\u30b8\u3092\u8aad\u307f\u53d6\u308a\u4e2d",
+  status_fetching: "\u30c7\u30fc\u30bf\u3092\u53d6\u5f97\u4e2d",
+  status_filling: "\u5165\u529b\u4e2d",
+  status_selecting: "\u30aa\u30d7\u30b7\u30e7\u30f3\u3092\u9078\u629e\u4e2d",
+  status_toggling:
+    "\u30c1\u30a7\u30c3\u30af\u30dc\u30c3\u30af\u30b9\u3092\u5207\u308a\u66ff\u3048",
+  status_submitting: "\u30d5\u30a9\u30fc\u30e0\u3092\u9001\u4fe1\u4e2d",
+  status_scrolling: "\u30b9\u30af\u30ed\u30fc\u30eb\u4e2d",
+  status_searching: "\u30da\u30fc\u30b8\u3092\u691c\u7d22\u4e2d",
+  status_extracting: "\u30c6\u30fc\u30d6\u30eb\u3092\u62bd\u51fa\u4e2d",
   popup_loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
   popup_provider: "\u30d7\u30ed\u30d0\u30a4\u30c0\u30fc",
   popup_api_key: "API\u30ad\u30fc",
@@ -930,6 +1295,25 @@ const ko: Translations = {
   widget_recipe_imported:
     "{name}\uc5d0\uc11c \ub808\uc2dc\ud53c\uac00 \uc790\ub3d9 \uac00\uc838\uc624\uae30 \ub428",
   widget_delete_conversation: "\ub300\ud654 \uc0ad\uc81c",
+  widget_status_thinking: "\uc0dd\uac01 \uc911...",
+  widget_status_idling: "\ub300\uae30 \uc911...",
+  widget_stopped: "\uc815\uc9c0\ub428.",
+  widget_confirm_allow: "\ud5c8\uc6a9",
+  widget_confirm_deny: "\uac70\ubd80",
+  widget_shortcut_tip:
+    "\ud301: {shortcut}\uc744 \ub20c\ub7ec \uc5b8\uc81c\ub4e0 \uc800\uc640 \ub300\ud654\ud558\uc138\uc694",
+  status_navigating: "{url}\uc73c\ub85c \uc774\ub3d9 \uc911",
+  status_clicked: "\uc694\uc18c \ud074\ub9ad\ub428",
+  status_highlighted: "\uc694\uc18c \uac15\uc870\ub428",
+  status_reading_page: "\ud398\uc774\uc9c0 \uc77d\ub294 \uc911",
+  status_fetching: "\ub370\uc774\ud130 \uac00\uc838\uc624\ub294 \uc911",
+  status_filling: "\uc785\ub825 \uc911",
+  status_selecting: "\uc635\uc158 \uc120\ud0dd \uc911",
+  status_toggling: "\uccb4\ud06c\ubc15\uc2a4 \uc804\ud658",
+  status_submitting: "\uc591\uc2dd \uc81c\ucd9c \uc911",
+  status_scrolling: "\uc2a4\ud06c\ub864 \uc911",
+  status_searching: "\ud398\uc774\uc9c0 \uac80\uc0c9 \uc911",
+  status_extracting: "\ud14c\uc774\ube14 \ucd94\ucd9c \uc911",
   popup_loading: "\ub85c\ub529 \uc911...",
   popup_provider: "\uc81c\uacf5\uc790",
   popup_api_key: "API \ud0a4",
@@ -982,6 +1366,25 @@ const zhCN: Translations = {
   widget_recipe_imported:
     "\u5df2\u4ece{name}\u81ea\u52a8\u5bfc\u5165\u914d\u65b9",
   widget_delete_conversation: "\u5220\u9664\u5bf9\u8bdd",
+  widget_status_thinking: "\u601d\u8003\u4e2d...",
+  widget_status_idling: "\u7a7a\u95f2\u4e2d...",
+  widget_stopped: "\u5df2\u505c\u6b62\u3002",
+  widget_confirm_allow: "\u5141\u8bb8",
+  widget_confirm_deny: "\u62d2\u7edd",
+  widget_shortcut_tip:
+    "\u63d0\u793a\uff1a\u6309 {shortcut} \u968f\u65f6\u4e0e\u6211\u5bf9\u8bdd",
+  status_navigating: "\u6b63\u5728\u5bfc\u822a\u5230 {url}",
+  status_clicked: "\u5df2\u70b9\u51fb\u5143\u7d20",
+  status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
+  status_reading_page: "\u6b63\u5728\u8bfb\u53d6\u9875\u9762",
+  status_fetching: "\u6b63\u5728\u83b7\u53d6\u6570\u636e",
+  status_filling: "\u6b63\u5728\u586b\u5199\u8f93\u5165",
+  status_selecting: "\u6b63\u5728\u9009\u62e9\u9009\u9879",
+  status_toggling: "\u6b63\u5728\u5207\u6362\u590d\u9009\u6846",
+  status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u5355",
+  status_scrolling: "\u6b63\u5728\u6eda\u52a8",
+  status_searching: "\u6b63\u5728\u641c\u7d22\u9875\u9762",
+  status_extracting: "\u6b63\u5728\u63d0\u53d6\u8868\u683c",
   popup_loading: "\u52a0\u8f7d\u4e2d...",
   popup_provider: "\u63d0\u4f9b\u5546",
   popup_api_key: "API\u5bc6\u94a5",
@@ -1021,6 +1424,25 @@ const zhTW: Translations = {
     "\u95dc\u65bc\u9019\u500b\u9801\u9762\uff0c\u96a8\u4fbf\u554f...",
   widget_no_conversations: "\u5c1a\u7121\u5c0d\u8a71",
   widget_delete_conversation: "\u522a\u9664\u5c0d\u8a71",
+  widget_status_thinking: "\u601d\u8003\u4e2d...",
+  widget_status_idling: "\u9592\u7f6e\u4e2d...",
+  widget_stopped: "\u5df2\u505c\u6b62\u3002",
+  widget_confirm_allow: "\u5141\u8a31",
+  widget_confirm_deny: "\u62d2\u7d55",
+  widget_shortcut_tip:
+    "\u63d0\u793a\uff1a\u6309 {shortcut} \u96a8\u6642\u8207\u6211\u5c0d\u8a71",
+  status_navigating: "\u6b63\u5728\u5c0e\u822a\u81f3 {url}",
+  status_clicked: "\u5df2\u9ede\u64ca\u5143\u7d20",
+  status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
+  status_reading_page: "\u6b63\u5728\u8b80\u53d6\u9801\u9762",
+  status_fetching: "\u6b63\u5728\u7372\u53d6\u8cc7\u6599",
+  status_filling: "\u6b63\u5728\u586b\u5beb\u8f38\u5165",
+  status_selecting: "\u6b63\u5728\u9078\u64c7\u9078\u9805",
+  status_toggling: "\u6b63\u5728\u5207\u63db\u6838\u53d6\u65b9\u584a",
+  status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u55ae",
+  status_scrolling: "\u6b63\u5728\u6372\u52d5",
+  status_searching: "\u6b63\u5728\u641c\u5c0b\u9801\u9762",
+  status_extracting: "\u6b63\u5728\u64f7\u53d6\u8868\u683c",
   popup_loading: "\u8f09\u5165\u4e2d...",
   popup_api_key: "API\u91d1\u9470",
   popup_api_key_placeholder: "\u8f38\u5165{provider} API\u91d1\u9470",
@@ -1074,6 +1496,37 @@ const th: Translations = {
     "\u0e19\u0e33\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e15\u0e23\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34\u0e08\u0e32\u0e01 {name}",
   widget_delete_conversation:
     "\u0e25\u0e1a\u0e01\u0e32\u0e23\u0e2a\u0e19\u0e17\u0e19\u0e32",
+  widget_status_thinking: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e04\u0e34\u0e14...",
+  widget_status_idling: "\u0e27\u0e48\u0e32\u0e07...",
+  widget_stopped: "\u0e2b\u0e22\u0e38\u0e14\u0e41\u0e25\u0e49\u0e27",
+  widget_confirm_allow: "\u0e2d\u0e19\u0e38\u0e0d\u0e32\u0e15",
+  widget_confirm_deny: "\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18",
+  widget_shortcut_tip:
+    "\u0e40\u0e04\u0e25\u0e47\u0e14\u0e25\u0e31\u0e1a: \u0e01\u0e14 {shortcut} \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1e\u0e39\u0e14\u0e04\u0e38\u0e22\u0e01\u0e31\u0e1a\u0e09\u0e31\u0e19\u0e44\u0e14\u0e49\u0e17\u0e38\u0e01\u0e40\u0e21\u0e37\u0e48\u0e2d",
+  status_navigating:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e19\u0e33\u0e17\u0e32\u0e07\u0e44\u0e1b {url}",
+  status_clicked:
+    "\u0e04\u0e25\u0e34\u0e01\u0e2d\u0e07\u0e04\u0e4c\u0e1b\u0e23\u0e30\u0e01\u0e2d\u0e1a",
+  status_highlighted:
+    "\u0e44\u0e2e\u0e44\u0e25\u0e17\u0e4c\u0e2d\u0e07\u0e04\u0e4c\u0e1b\u0e23\u0e30\u0e01\u0e2d\u0e1a",
+  status_reading_page:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32",
+  status_fetching:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e36\u0e07\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25",
+  status_filling:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e01\u0e23\u0e2d\u0e01\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25",
+  status_selecting:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e15\u0e31\u0e27\u0e40\u0e25\u0e37\u0e2d\u0e01",
+  status_toggling:
+    "\u0e2a\u0e25\u0e31\u0e1a\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e33\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e2b\u0e21\u0e32\u0e22",
+  status_submitting:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e48\u0e07\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21",
+  status_scrolling:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e40\u0e25\u0e37\u0e48\u0e2d\u0e19",
+  status_searching:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e04\u0e49\u0e19\u0e2b\u0e32\u0e2b\u0e19\u0e49\u0e32",
+  status_extracting:
+    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e36\u0e07\u0e15\u0e32\u0e23\u0e32\u0e07",
   popup_loading: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...",
   popup_provider:
     "\u0e1c\u0e39\u0e49\u0e43\u0e2b\u0e49\u0e1a\u0e23\u0e34\u0e01\u0e32\u0e23",
@@ -1134,6 +1587,25 @@ const vi: Translations = {
   widget_recipe_imported:
     "C\u00f4ng th\u1ee9c \u0111\u00e3 t\u1ef1 \u0111\u1ed9ng nh\u1eadp t\u1eeb {name}",
   widget_delete_conversation: "X\u00f3a cu\u1ed9c tr\u00f2 chuy\u1ec7n",
+  widget_status_thinking: "\u0110ang suy ngh\u0129...",
+  widget_status_idling: "Ngh\u1ec9 ng\u01a1i...",
+  widget_stopped: "\u0110\u00e3 d\u1eebng.",
+  widget_confirm_allow: "Cho ph\u00e9p",
+  widget_confirm_deny: "T\u1eeb ch\u1ed1i",
+  widget_shortcut_tip:
+    "M\u1eb9o: nh\u1ea5n {shortcut} \u0111\u1ec3 n\u00f3i chuy\u1ec7n v\u1edbi t\u00f4i b\u1ea5t c\u1ee9 l\u00fac n\u00e0o",
+  status_navigating: "\u0110ang chuy\u1ec3n \u0111\u1ebfn {url}",
+  status_clicked: "\u0110\u00e3 nh\u1ea5p ph\u1ea7n t\u1eed",
+  status_highlighted: "\u0110\u00e3 \u0111\u00e1nh d\u1ea5u ph\u1ea7n t\u1eed",
+  status_reading_page: "\u0110ang \u0111\u1ecdc trang",
+  status_fetching: "\u0110ang l\u1ea5y d\u1eef li\u1ec7u",
+  status_filling: "\u0110ang \u0111i\u1ec1n d\u1eef li\u1ec7u",
+  status_selecting: "\u0110ang ch\u1ecdn t\u00f9y ch\u1ecdn",
+  status_toggling: "Chuy\u1ec3n \u0111\u1ed5i h\u1ed9p ki\u1ec3m",
+  status_submitting: "\u0110ang g\u1eedi bi\u1ec3u m\u1eabu",
+  status_scrolling: "\u0110ang cu\u1ed9n",
+  status_searching: "\u0110ang t\u00ecm ki\u1ebfm trang",
+  status_extracting: "\u0110ang tr\u00edch xu\u1ea5t b\u1ea3ng",
   popup_loading: "\u0110ang t\u1ea3i...",
   popup_provider: "Nh\u00e0 cung c\u1ea5p",
   popup_api_key: "Kh\u00f3a API",
@@ -1184,6 +1656,25 @@ const id: Translations = {
   widget_days_ago: "{n}h lalu",
   widget_recipe_imported: "Resep diimpor otomatis dari {name}",
   widget_delete_conversation: "Hapus percakapan",
+  widget_status_thinking: "Berpikir...",
+  widget_status_idling: "Menganggur...",
+  widget_stopped: "Dihentikan.",
+  widget_confirm_allow: "Izinkan",
+  widget_confirm_deny: "Tolak",
+  widget_shortcut_tip:
+    "Tips: tekan {shortcut} untuk berbicara dengan saya kapan saja",
+  status_navigating: "Menavigasi ke {url}",
+  status_clicked: "Elemen diklik",
+  status_highlighted: "Elemen disorot",
+  status_reading_page: "Membaca halaman",
+  status_fetching: "Mengambil data",
+  status_filling: "Mengisi input",
+  status_selecting: "Memilih opsi",
+  status_toggling: "Mengubah kotak centang",
+  status_submitting: "Mengirim formulir",
+  status_scrolling: "Menggulir",
+  status_searching: "Mencari di halaman",
+  status_extracting: "Mengekstrak tabel",
   popup_loading: "Memuat...",
   popup_provider: "Penyedia",
   popup_api_key: "Kunci API",

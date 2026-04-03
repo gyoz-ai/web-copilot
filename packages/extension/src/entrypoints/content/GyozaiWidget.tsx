@@ -110,6 +110,14 @@ export function GyozaiWidget() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
+  const [confirmation, setConfirmation] = useState<{
+    description: string;
+    onConfirm: () => void;
+    onDeny: () => void;
+  } | null>(null);
+  const activePortRef = useRef<ReturnType<
+    typeof browser.runtime.connect
+  > | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   // Use preloaded locale if available, else detect from browser
@@ -541,6 +549,32 @@ export function GyozaiWidget() {
     });
   }, []);
 
+  // Listen for confirmation requests from background (tool execution safeguards)
+  useEffect(() => {
+    const confirmHandler = (
+      msg: { type: string; description?: string },
+      _sender: unknown,
+      sendResponse: (response: boolean) => void,
+    ) => {
+      if (msg.type === "gyozai_confirm_action" && msg.description) {
+        setConfirmation({
+          description: msg.description,
+          onConfirm: () => {
+            sendResponse(true);
+            setConfirmation(null);
+          },
+          onDeny: () => {
+            sendResponse(false);
+            setConfirmation(null);
+          },
+        });
+        return true; // keep sendResponse alive for async
+      }
+    };
+    browser.runtime.onMessage.addListener(confirmHandler);
+    return () => browser.runtime.onMessage.removeListener(confirmHandler);
+  }, []);
+
   // Listen for toggle command and SPA navigation resume from background
   useEffect(() => {
     const handler = (msg: { type: string }) => {
@@ -853,13 +887,16 @@ export function GyozaiWidget() {
     console.log("[gyoza:query] Using PORT-based messaging (Firefox-safe)");
     const result = await new Promise<AgentResult>((resolve, reject) => {
       const port = browser.runtime.connect({ name: "gyozai_query" });
+      activePortRef.current = port;
       console.log("[gyoza:query] Port connected, posting message...");
       port.onMessage.addListener((msg: AgentResult) => {
         console.log("[gyoza:query] Port received response ✓");
+        activePortRef.current = null;
         resolve(msg);
         port.disconnect();
       });
       port.onDisconnect.addListener(() => {
+        activePortRef.current = null;
         const err = browser.runtime.lastError;
         console.warn(
           "[gyoza:query] Port disconnected unexpectedly:",
@@ -1347,6 +1384,24 @@ export function GyozaiWidget() {
     }
   };
 
+  function handleStop() {
+    if (activePortRef.current) {
+      activePortRef.current.disconnect();
+      activePortRef.current = null;
+    }
+    setLoading(false);
+    setConfirmation(null);
+    const tr = getTranslations(locale);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: tr.widget_stopped,
+      },
+    ]);
+  }
+
   // Avatar click disabled — chatbox opens via proximity only
 
   const tr = getTranslations(locale);
@@ -1406,8 +1461,8 @@ export function GyozaiWidget() {
           const showPill =
             (isThinking && lastStatus) || isThinking || !lastAssistantMsg;
           const pillText = isThinking
-            ? lastStatus?.content || "Thinking..."
-            : "Idling...";
+            ? lastStatus?.content || tr.widget_status_thinking
+            : tr.widget_status_idling;
 
           if (showPill && !(lastAssistantMsg && !isThinking)) {
             return (
@@ -1608,8 +1663,11 @@ export function GyozaiWidget() {
                     const isMac =
                       navigator.platform?.includes("Mac") ??
                       navigator.userAgent.includes("Mac");
-                    const shortcut = isMac ? "⌘⇧E" : "Ctrl+Shift+E";
-                    return `Tip: press ${shortcut} to talk to me anytime`;
+                    const shortcut = isMac ? "\u2318\u21e7E" : "Ctrl+Shift+E";
+                    return tr.widget_shortcut_tip.replace(
+                      "{shortcut}",
+                      shortcut,
+                    );
                   })()}
                 </div>
               )}
@@ -1676,6 +1734,27 @@ export function GyozaiWidget() {
                     {option}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Action confirmation (safeguard for submit_form / execute_js) */}
+            {confirmation && (
+              <div className="gyozai-clarify">
+                <span className="gyozai-confirm-text">
+                  {confirmation.description}
+                </span>
+                <button
+                  className="gyozai-clarify-btn"
+                  onClick={confirmation.onConfirm}
+                >
+                  {tr.widget_confirm_allow}
+                </button>
+                <button
+                  className="gyozai-clarify-btn"
+                  onClick={confirmation.onDeny}
+                >
+                  {tr.widget_confirm_deny}
+                </button>
               </div>
             )}
 
@@ -1768,25 +1847,42 @@ export function GyozaiWidget() {
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             </svg>
           </button>
-          <button
-            className="gyozai-send-btn"
-            onClick={handleSubmit}
-            disabled={loading || !input.trim()}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {loading ? (
+            <button
+              className="gyozai-send-btn gyozai-stop-btn"
+              onClick={handleStop}
+              title="Stop"
             >
-              <path d="M22 2L11 13" />
-              <path d="M22 2l-7 20-4-9-9-4z" />
-            </svg>
-          </button>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              className="gyozai-send-btn"
+              onClick={handleSubmit}
+              disabled={!input.trim()}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 2L11 13" />
+                <path d="M22 2l-7 20-4-9-9-4z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </>
