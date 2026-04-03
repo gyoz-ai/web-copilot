@@ -50,6 +50,43 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
 
 const PLATFORM_URL = "https://gyoz.ai";
 
+/** Friendly display names + tier for managed models (client-side mapping) */
+const MANAGED_MODEL_META: Record<
+  string,
+  { name: string; tier: "fast" | "balanced" | "expert" }
+> = {
+  // Anthropic
+  "claude-haiku-4-5-20251001": { name: "Claude Haiku 4.5", tier: "fast" },
+  "claude-sonnet-4-6": { name: "Claude Sonnet 4.6", tier: "balanced" },
+  "claude-opus-4-6": { name: "Claude Opus 4.6", tier: "expert" },
+  // OpenAI
+  "gpt-5.4-nano": { name: "GPT-5.4 Nano", tier: "fast" },
+  "gpt-5.4-mini": { name: "GPT-5.4 Mini", tier: "balanced" },
+  "gpt-5.4": { name: "GPT-5.4", tier: "expert" },
+  // Google
+  "gemini-3.1-flash-lite-preview": {
+    name: "Gemini 3.1 Flash Lite",
+    tier: "fast",
+  },
+  "gemini-3-flash-preview": { name: "Gemini 3 Flash", tier: "balanced" },
+  "gemini-3.1-pro-preview": { name: "Gemini 3.1 Pro", tier: "expert" },
+};
+
+const TIER_COLORS: Record<string, { bg: string; fg: string }> = {
+  fast: { bg: "rgba(34,197,94,0.15)", fg: "#22c55e" },
+  balanced: { bg: "rgba(59,130,246,0.15)", fg: "#3b82f6" },
+  expert: { bg: "rgba(168,85,247,0.15)", fg: "#a855f7" },
+};
+
+function getManagedModelDisplay(id: string, provider: string) {
+  const meta = MANAGED_MODEL_META[id];
+  return {
+    name: meta?.name ?? id,
+    tier: meta?.tier ?? "balanced",
+    provider,
+  };
+}
+
 interface ManagedModels {
   plan: string;
   modelSelection: boolean;
@@ -216,13 +253,21 @@ export function App() {
             <div className="mode-toggle">
               <button
                 className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
-                onClick={() => setSettings({ ...settings, mode: "byok" })}
+                onClick={() => {
+                  const updated = { ...settings, mode: "byok" as const };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
               >
                 BYOK
               </button>
               <button
                 className={`mode-btn ${settings.mode === "managed" ? "active" : ""}`}
-                onClick={() => setSettings({ ...settings, mode: "managed" })}
+                onClick={() => {
+                  const updated = { ...settings, mode: "managed" as const };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
               >
                 Managed
               </button>
@@ -387,24 +432,43 @@ export function App() {
                   {managedModels?.modelSelection && (
                     <div style={{ margin: "10px 0" }}>
                       <label className="form-label">{tr.popup_model}</label>
-                      <select
-                        className="form-select"
-                        value={settings.model}
-                        onChange={(e) => {
-                          const updated = {
-                            ...settings,
-                            model: e.target.value,
-                          };
-                          setSettings(updated);
-                          saveSettings(updated);
-                        }}
-                      >
-                        {managedModels.models.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.id} ({m.provider})
-                          </option>
-                        ))}
-                      </select>
+                      <div className="managed-model-list">
+                        {managedModels.models.map((m) => {
+                          const display = getManagedModelDisplay(
+                            m.id,
+                            m.provider,
+                          );
+                          const tierColor = TIER_COLORS[display.tier];
+                          const isSelected = settings.model === m.id;
+                          return (
+                            <button
+                              key={m.id}
+                              className={`managed-model-item ${isSelected ? "selected" : ""}`}
+                              onClick={() => {
+                                const updated = {
+                                  ...settings,
+                                  model: m.id,
+                                };
+                                setSettings(updated);
+                                saveSettings(updated);
+                              }}
+                            >
+                              <span className="managed-model-name">
+                                {display.name}
+                              </span>
+                              <span
+                                className="managed-model-tier"
+                                style={{
+                                  background: tierColor.bg,
+                                  color: tierColor.fg,
+                                }}
+                              >
+                                {display.tier}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                   {/* Action buttons */}
