@@ -117,6 +117,23 @@ export function App() {
   const [managedUsage, setManagedUsage] = useState<ManagedUsageInfo | null>(
     null,
   );
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [modelDropdownOpen]);
 
   useEffect(() => {
     console.log("[gyoza:popup] Mounting — loading settings...");
@@ -432,42 +449,94 @@ export function App() {
                   {managedModels?.modelSelection && (
                     <div style={{ margin: "10px 0" }}>
                       <label className="form-label">{tr.popup_model}</label>
-                      <div className="managed-model-list">
-                        {managedModels.models.map((m) => {
-                          const display = getManagedModelDisplay(
-                            m.id,
-                            m.provider,
+                      <div className="managed-model-dropdown" ref={dropdownRef}>
+                        {/* Trigger button showing selected model */}
+                        {(() => {
+                          const sel = managedModels.models.find(
+                            (m) => m.id === settings.model,
                           );
-                          const tierColor = TIER_COLORS[display.tier];
-                          const isSelected = settings.model === m.id;
+                          const display = sel
+                            ? getManagedModelDisplay(sel.id, sel.provider)
+                            : {
+                                name: settings.model,
+                                tier: "balanced" as const,
+                              };
+                          const tierColor =
+                            TIER_COLORS[display.tier] || TIER_COLORS.balanced;
                           return (
                             <button
-                              key={m.id}
-                              className={`managed-model-item ${isSelected ? "selected" : ""}`}
-                              onClick={() => {
-                                const updated = {
-                                  ...settings,
-                                  model: m.id,
-                                };
-                                setSettings(updated);
-                                saveSettings(updated);
-                              }}
+                              className={`managed-model-trigger ${modelDropdownOpen ? "open" : ""}`}
+                              onClick={() =>
+                                setModelDropdownOpen(!modelDropdownOpen)
+                              }
                             >
                               <span className="managed-model-name">
                                 {display.name}
                               </span>
-                              <span
-                                className="managed-model-tier"
+                              <div
                                 style={{
-                                  background: tierColor.bg,
-                                  color: tierColor.fg,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
                                 }}
                               >
-                                {display.tier}
-                              </span>
+                                <span
+                                  className="managed-model-tier"
+                                  style={{
+                                    background: tierColor.bg,
+                                    color: tierColor.fg,
+                                  }}
+                                >
+                                  {display.tier}
+                                </span>
+                                <span className="managed-model-chevron">
+                                  {"\u25BE"}
+                                </span>
+                              </div>
                             </button>
                           );
-                        })}
+                        })()}
+                        {/* Dropdown items */}
+                        {modelDropdownOpen && (
+                          <div className="managed-model-list">
+                            {managedModels.models.map((m) => {
+                              const display = getManagedModelDisplay(
+                                m.id,
+                                m.provider,
+                              );
+                              const tierColor = TIER_COLORS[display.tier];
+                              const isSelected = settings.model === m.id;
+                              return (
+                                <button
+                                  key={m.id}
+                                  className={`managed-model-item ${isSelected ? "selected" : ""}`}
+                                  onClick={() => {
+                                    const updated = {
+                                      ...settings,
+                                      model: m.id,
+                                    };
+                                    setSettings(updated);
+                                    saveSettings(updated);
+                                    setModelDropdownOpen(false);
+                                  }}
+                                >
+                                  <span className="managed-model-name">
+                                    {display.name}
+                                  </span>
+                                  <span
+                                    className="managed-model-tier"
+                                    style={{
+                                      background: tierColor.bg,
+                                      color: tierColor.fg,
+                                    }}
+                                  >
+                                    {display.tier}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
