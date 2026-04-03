@@ -125,7 +125,7 @@ export function buildUserPrompt(opts: {
 
   if (opts.recipe) {
     parts.push(
-      `<website-recipe description="Pre-built recipe for this website. Use these routes, selectors, and descriptions to execute actions quickly instead of scanning the page from scratch.">\n${opts.recipe}\n</website-recipe>`,
+      `<website-recipes description="Pre-built recipes for this website (may combine multiple sources). Use these routes, selectors, and descriptions to execute actions quickly instead of scanning the page from scratch.">\n${opts.recipe}\n</website-recipes>`,
     );
   }
 
