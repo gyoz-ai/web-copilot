@@ -18,7 +18,7 @@ export function createProvider(settings: ExtensionSettings): ProviderResult {
       baseURL: PLATFORM_URL,
       apiKey: settings.managedToken,
     });
-    return { type: "model", model: managed(settings.model) };
+    return { type: "model", model: managed.chat(settings.model) };
   }
 
   // BYOK mode → Vercel AI SDK model (direct to provider)
