@@ -128,11 +128,26 @@ export async function removeRecipe(id: string): Promise<void> {
 }
 
 /**
- * Check if a recipe with the same content hash already exists.
+ * Check if a recipe already exists for the domain in this content.
+ * Matches by domain (not content hash) so disabled or outdated recipes
+ * still block auto-import — prevents re-importing recipes the user turned off.
  */
 export async function recipeExists(recipeContent: string): Promise<boolean> {
-  const id = await hashContent(recipeContent);
+  // Extract domain from content
+  const domainMatch =
+    recipeContent.match(/^>\s*domain:\s*([^\s|]+)/m) ||
+    recipeContent.match(/domain="([^"]+)"/);
+  const domain = domainMatch?.[1]?.trim();
+
   const recipes = await getRecipes();
+
+  // If we can determine the domain, check by domain (includes disabled recipes)
+  if (domain) {
+    return recipes.some((r) => r.domain === domain);
+  }
+
+  // Fallback: check by content hash
+  const id = await hashContent(recipeContent);
   return recipes.some((r) => r.id === id);
 }
 
