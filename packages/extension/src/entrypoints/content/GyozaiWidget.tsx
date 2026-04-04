@@ -1550,14 +1550,25 @@ export function GyozaiWidget() {
             .find((m) => m.role === "assistant" && m.type !== "tool-status");
           const isThinking = loading;
 
-          // Determine what to show: status pill, speech bubble, or idle pill
-          const showPill =
-            (isThinking && lastStatus) || isThinking || !lastAssistantMsg;
-          const pillText = isThinking
-            ? lastStatus?.content || tr.widget_status_thinking
-            : tr.widget_status_idling;
+          // Check if the most recent message is a tool-status (action in progress)
+          const lastMsg = messages[messages.length - 1];
+          const activeStatus = lastMsg?.type === "tool-status" ? lastMsg : null;
 
-          if (showPill && !(lastAssistantMsg && !isThinking)) {
+          // Determine what to show: status pill, speech bubble, or idle pill
+          // Show pill when: loading, no assistant message yet, or a tool-status
+          // is the most recent message (action in progress).
+          const showPill =
+            (isThinking && lastStatus) ||
+            isThinking ||
+            !lastAssistantMsg ||
+            activeStatus;
+          const pillText = activeStatus
+            ? activeStatus.content
+            : isThinking
+              ? lastStatus?.content || tr.widget_status_thinking
+              : tr.widget_status_idling;
+
+          if (showPill && !(lastAssistantMsg && !isThinking && !activeStatus)) {
             return (
               <div
                 style={{
