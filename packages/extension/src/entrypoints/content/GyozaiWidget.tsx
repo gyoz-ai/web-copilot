@@ -1146,7 +1146,26 @@ export function GyozaiWidget() {
       msgs: string[],
     ) => {
       if (!toolCalls?.length) return false;
-      // Only needed if the model didn't end with a message.
+
+      const ACTION_TOOLS = [
+        "click",
+        "execute_js",
+        "fill_input",
+        "select_option",
+        "toggle_checkbox",
+        "submit_form",
+        "scroll_to",
+        "navigate",
+      ];
+      const hasDataGathering = toolCalls.some(
+        (tc) => tc.tool === "get_page_context",
+      );
+      const hasAction = toolCalls.some((tc) => ACTION_TOOLS.includes(tc.tool));
+
+      // Model gathered data but never acted on it — incomplete response
+      // even if show_message was called (e.g. "one moment..." + get_page_context)
+      if (hasDataGathering && !hasAction) return true;
+
       // If the last tool was show_message or there's final AI text, no need.
       const lastTool = toolCalls[toolCalls.length - 1];
       if (lastTool.tool === "show_message") return false;
@@ -1175,7 +1194,7 @@ export function GyozaiWidget() {
           // Best-effort — model will re-fetch if needed
         }
         const followUp = await sendQuery(
-          `Now answer the user's question using the page content provided below. The user asked: "${originalQ}". Use show_message to respond. Do NOT call get_page_context.`,
+          `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
           pageCtx || undefined,
         );
         await processAgentResult(followUp);
@@ -1207,7 +1226,7 @@ export function GyozaiWidget() {
         // Best-effort
       }
       const followUp = await sendQuery(
-        `Now answer the user's question using the page content provided below. The user asked: "${originalQ}". Use show_message to respond. Do NOT call get_page_context.`,
+        `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
         pageCtx || undefined,
       );
       await processAgentResult(followUp);
