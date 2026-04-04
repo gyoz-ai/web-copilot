@@ -145,6 +145,8 @@ export default defineBackground(() => {
   browser.runtime.onConnect.addListener((port) => {
     console.log("[gyoza:port] Connection received:", port.name);
     if (port.name !== "gyozai_query") return;
+    const abortController = new AbortController();
+    let portDisconnected = false;
     port.onMessage.addListener((message) => {
       console.log("[gyoza:port] Query message received via port");
       const sender = port.sender!;
@@ -152,17 +154,25 @@ export default defineBackground(() => {
         message,
         sender,
         (result) => {
+          if (portDisconnected) return;
           console.log(
             "[gyoza:port] Sending query result via port, error:",
             (result as Record<string, unknown>)?.error || "none",
           );
-          port.postMessage(result);
+          try {
+            port.postMessage(result);
+          } catch {
+            // Port already disconnected (navigation mid-stream)
+          }
         },
         engines,
+        abortController.signal,
       );
     });
     port.onDisconnect.addListener(() => {
-      console.log("[gyoza:port] Port disconnected");
+      console.log("[gyoza:port] Port disconnected — aborting stream");
+      portDisconnected = true;
+      abortController.abort();
     });
   });
 

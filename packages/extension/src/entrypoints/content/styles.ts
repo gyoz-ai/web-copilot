@@ -292,6 +292,13 @@ export const WIDGET_STYLES = `
     transform: none;
     box-shadow: none;
   }
+  .gyozai-stop-btn {
+    background: linear-gradient(135deg, oklch(0.55 0.2 25), oklch(0.48 0.22 25)) !important;
+    box-shadow: 0 2px 8px oklch(0.5 0.2 25 / 0.3) !important;
+  }
+  .gyozai-stop-btn:hover {
+    box-shadow: 0 4px 12px oklch(0.5 0.2 25 / 0.5) !important;
+  }
 
   /* ─── Error ─────────────────────────────────────────────── */
 
@@ -330,6 +337,15 @@ export const WIDGET_STYLES = `
     border-color: var(--g-brand-500);
     color: #fff;
     box-shadow: 0 2px 8px oklch(0.66 0.18 72 / 0.25);
+  }
+
+  /* ─── Confirmation (safeguard) ───────────────────────────── */
+
+  .gyozai-confirm-text {
+    font-size: 12px;
+    color: oklch(0.75 0.12 72);
+    font-weight: 500;
+    width: 100%;
   }
 
   /* ─── Status Pill ───────────────────────────────────────── */

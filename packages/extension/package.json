@@ -17,12 +17,12 @@
     "clean": "rm -rf .output .wxt dist"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.64",
-    "@ai-sdk/google": "^3.0.53",
-    "@ai-sdk/openai": "^3.0.48",
+    "@ai-sdk/anthropic": "^3.0.66",
+    "@ai-sdk/google": "^3.0.58",
+    "@ai-sdk/openai": "^3.0.50",
     "@gyoz-ai/engine": "workspace:*",
     "@wxt-dev/module-react": "^1.1.4",
-    "ai": "^6.0.141",
+    "ai": "^6.0.146",
     "preact": "^10.29.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
