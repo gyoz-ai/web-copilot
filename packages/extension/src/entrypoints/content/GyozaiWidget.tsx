@@ -1160,11 +1160,23 @@ export function GyozaiWidget() {
         needsAiConclusion(result.toolCalls, aiMessages) &&
         !autoFollowUpUsed
       ) {
-        // No message was shown — ask AI to answer using gathered info
+        // No message was shown — ask AI to answer using gathered info.
+        // Capture page context so the model doesn't need to call
+        // get_page_context again (multi-step doesn't continue through proxy).
         autoFollowUpUsed = true;
         const originalQ = lastUserQueryRef.current || "";
+        let pageCtx = "";
+        try {
+          const raw = capturePageContext(["all"] as SnapshotType[]);
+          const structured = formatPageContext(raw);
+          const html = captureCleanHtml();
+          pageCtx = [structured, html].filter(Boolean).join("\n\n");
+        } catch {
+          // Best-effort — model will re-fetch if needed
+        }
         const followUp = await sendQuery(
-          `Now answer the user's question using the information you gathered. The user asked: "${originalQ}". Use show_message.`,
+          `Now answer the user's question using the page content provided below. The user asked: "${originalQ}". Use show_message to respond. Do NOT call get_page_context.`,
+          pageCtx || undefined,
         );
         await processAgentResult(followUp);
       }
@@ -1185,8 +1197,18 @@ export function GyozaiWidget() {
     if (needsAiConclusion(result.toolCalls, aiMessages) && !autoFollowUpUsed) {
       autoFollowUpUsed = true;
       const originalQ = lastUserQueryRef.current || "";
+      let pageCtx = "";
+      try {
+        const raw = capturePageContext(["all"] as SnapshotType[]);
+        const structured = formatPageContext(raw);
+        const html = captureCleanHtml();
+        pageCtx = [structured, html].filter(Boolean).join("\n\n");
+      } catch {
+        // Best-effort
+      }
       const followUp = await sendQuery(
-        `Now answer the user's question using the information you gathered. The user asked: "${originalQ}". Use show_message.`,
+        `Now answer the user's question using the page content provided below. The user asked: "${originalQ}". Use show_message to respond. Do NOT call get_page_context.`,
+        pageCtx || undefined,
       );
       await processAgentResult(followUp);
     }
