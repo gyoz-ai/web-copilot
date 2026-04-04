@@ -13,7 +13,7 @@ const BASE_RULES = `- You MUST call the show_message tool in EVERY response to e
 - Be concise in messages.
 - Use the user context (language, timezone, current URL, page title, screen size, and any custom user info) to give relevant responses.
 - If the user is already on the page they're asking about, help them USE the page rather than navigating to it.
-- After performing an action (click, execute_js), check the tool result to verify it did what you intended. The click tool returns the element text and surrounding context — if it doesn't match what you expected, call get_page_context again and retry.
+- After performing ANY page action (click, scroll_to, execute_js, fill_input, select_option, submit_form), you MUST call report_action_result to evaluate whether it worked. Check the tool result, report success/failure, and if it failed, retry with corrected parameters.
 - For TRANSLATION requests: you MUST call get_page_context with ["fullPage"] before attempting any translation. Once you have the snapshot, use execute_js to replace each element's FULL text (el.textContent = "complete translated sentence"), never use .replace() for partial word swaps. Translate ALL visible text — headings, paragraphs, labels, placeholders, buttons, links, table headers, list items. Go through the page snapshot systematically top-to-bottom.
 - For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight_ui to point at the element being explained. Use execute_js to add a tooltip or annotation. Combine with a concise show_message.
 - Keep execute_js code simple. Target one element per call. NEVER set document.body.innerHTML or replace entire page content.
@@ -88,6 +88,7 @@ Analyze these to understand navigation, interactive elements, page structure, an
   const capabilitySection = `Available tools and when to use them:
 - show_message: communicate information to the user. MUST be called in every response.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
+- report_action_result: REQUIRED after every page action (click, scroll_to, execute_js, fill_input, select_option, toggle_checkbox, submit_form). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
 ${buildCapabilityNotes(caps)}`;
 

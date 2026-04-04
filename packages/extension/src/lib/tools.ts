@@ -137,6 +137,15 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 500,
   },
+  report_action_result: {
+    name: "report_action_result",
+    description: "Evaluate action result",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 500,
+  },
   find_text: {
     name: "find_text",
     description: "Find text on page",
@@ -551,6 +560,46 @@ export function createBrowserTools(
       ctx.expression = face;
       ctx.onStreamEvent?.({ kind: "expression", face });
       return { applied: true };
+    },
+  });
+
+  // ── Always available: report_action_result ───────────────────────────────
+  tools.report_action_result = tool<
+    { success: boolean; summary: string; message: string | null },
+    { acknowledged: boolean }
+  >({
+    description:
+      "REQUIRED after every page action (click, scroll_to, execute_js, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
+    inputSchema: jsonSchema<{
+      success: boolean;
+      summary: string;
+      message: string | null;
+    }>({
+      type: "object" as const,
+      properties: {
+        success: {
+          type: "boolean",
+          description: "Did the action achieve the intended result?",
+        },
+        summary: {
+          type: "string",
+          description:
+            "Brief evaluation of what happened (e.g. 'scrolled to features section', 'click failed — element not found')",
+        },
+        message: {
+          type: "string",
+          nullable: true,
+          description: "Message to show the user, or null if no message needed",
+        },
+      },
+      required: ["success", "summary", "message"],
+    }),
+    execute: async ({ message }) => {
+      if (message) {
+        ctx.messages.push(message);
+        ctx.onStreamEvent?.({ kind: "message", content: message });
+      }
+      return { acknowledged: true };
     },
   });
 
