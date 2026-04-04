@@ -519,12 +519,31 @@ export function GyozaiWidget() {
       log("Captured", ctxText.length, "chars from new page");
     }
 
-    // The model already showed a message before navigating.
-    // Tell it to only provide NEW information about this page,
-    // not repeat what it already said.
+    // Extract the real original user query — pending-nav queries can nest
+    // ("Navigation complete... Original: "Navigation complete... Original: "real query"")
+    // so we dig out the innermost one, or fall back to the first user message.
+    let realOriginalQuery = pendingNav.originalQuery;
+    const innerMatch = pendingNav.originalQuery.match(
+      /Original user request: "([^"]+)"/,
+    );
+    if (innerMatch) {
+      // Keep extracting until we get the innermost
+      let q = innerMatch[1];
+      let next = q.match(/Original user request: "([^"]+)"/);
+      while (next) {
+        q = next[1];
+        next = q.match(/Original user request: "([^"]+)"/);
+      }
+      realOriginalQuery = q;
+    } else if (conv) {
+      // Fallback: use the first user message from conversation
+      const firstUser = conv.messages.find((m) => m.role === "user");
+      if (firstUser) realOriginalQuery = firstUser.content;
+    }
+
     const followUpQuery =
       `Navigation complete — now on ${window.location.href}. ` +
-      `Original user request: "${pendingNav.originalQuery}". ` +
+      `Original user request: "${realOriginalQuery}". ` +
       `The current page content is included below — do NOT call get_page_context. ` +
       `Verify the result, then take next actions to fulfill the request. ` +
       `Use show_message to tell the user what you see and what you're doing next.`;
@@ -1192,6 +1211,10 @@ export function GyozaiWidget() {
     };
 
     if (result.streamed) {
+      // If navigation occurred, pending-nav will handle continuation on the new
+      // page — don't also fire needsAiConclusion (prevents duplicate queries).
+      if (result.navigated) return;
+
       const aiMessages = result.messages?.filter((m) => m.trim()) || [];
       if (
         needsAiConclusion(result.toolCalls, aiMessages) &&
