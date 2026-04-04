@@ -12,12 +12,14 @@ import {
 import { createProvider } from "../../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../../lib/prompts";
 import { createBrowserTools, type ToolExecContext } from "../../lib/tools";
+import { getTranslations, type LocaleCode } from "../../lib/i18n";
 
 export async function handleQuery(
   message: QueryInput & { conversationId?: string; queryId?: string },
   sender: chrome.runtime.MessageSender,
   sendResponse: (result: unknown) => void,
   engines: Map<string, QueryEngine>,
+  externalSignal?: AbortSignal,
 ): Promise<void> {
   const settings = await getSettings();
   const providerResult = createProvider(settings);
@@ -132,7 +134,11 @@ export async function handleQuery(
     };
 
     // AbortController — tools can abort the stream when navigation occurs
+    // Also linked to external signal (port disconnect = user clicked Stop)
     const abortController = new AbortController();
+    if (externalSignal) {
+      externalSignal.addEventListener("abort", () => abortController.abort());
+    }
 
     const ctx: ToolExecContext = {
       tabId,
@@ -146,7 +152,8 @@ export async function handleQuery(
       abortStream: () => abortController.abort(),
     };
 
-    const tools = createBrowserTools(ctx, caps, settings.yoloMode);
+    const tr = getTranslations(settings.language as LocaleCode);
+    const tools = createBrowserTools(ctx, caps, settings.yoloMode, tr);
 
     const aiMessages: Array<{ role: "user" | "assistant"; content: string }> = [
       ...history.map((m) => ({
@@ -192,7 +199,7 @@ export async function handleQuery(
           );
         }
       },
-      onStepFinish: ({ toolCalls }) => {
+      onStepFinish: ({ text, toolCalls }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
             const tcInput =
@@ -206,6 +213,12 @@ export async function handleQuery(
               "color: #9ca3af",
             );
           }
+        }
+        // Stream text from pure-text steps (follow-up after tool results).
+        // In tool-calling steps, show_message already handles user-facing text.
+        if (text && text.trim() && !toolCalls?.length) {
+          ctx.messages.push(text.trim());
+          sendStreamEvent({ kind: "message", content: text.trim() });
         }
       },
     });
