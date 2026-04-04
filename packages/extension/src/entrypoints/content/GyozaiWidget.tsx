@@ -525,9 +525,9 @@ export function GyozaiWidget() {
     const followUpQuery =
       `Navigation complete — now on ${window.location.href}. ` +
       `Original user request: "${pendingNav.originalQuery}". ` +
-      `Continue executing this task. Use get_page_context to understand the current page, ` +
-      `then take the next actions to fulfill the original request. ` +
-      `Do NOT repeat that you navigated here — just keep working.`;
+      `The current page content is included below — do NOT call get_page_context. ` +
+      `Verify the result, then take next actions to fulfill the request. ` +
+      `Use show_message to tell the user what you see and what you're doing next.`;
     log("Follow-up query:", followUpQuery);
 
     try {

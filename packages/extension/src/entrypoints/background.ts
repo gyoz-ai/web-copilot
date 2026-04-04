@@ -25,6 +25,39 @@ export default defineBackground(() => {
 
   const engines = new Map<string, QueryEngine>();
 
+  // ─── Active query tracking for pending-nav on navigation ──────
+  // When a tab navigates while a query is running, save pending-nav
+  // so the content script on the new page can auto-continue.
+  const activeQueries = new Map<
+    number,
+    { conversationId: string; originalQuery: string }
+  >();
+
+  browser.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId !== 0) return; // Only main frame
+    const query = activeQueries.get(details.tabId);
+    if (!query) return;
+
+    console.log(
+      "[gyoza:nav] Tab",
+      details.tabId,
+      "navigating while query active — saving pending-nav",
+    );
+    const navKey = `gyozai_pending_nav_${details.tabId}`;
+    browser.storage.local
+      .set({
+        [navKey]: {
+          snapshotTypes: ["fullPage"],
+          originalQuery: query.originalQuery,
+          conversationId: query.conversationId,
+          tabId: details.tabId,
+          timestamp: Date.now(),
+        },
+      })
+      .catch(() => {});
+    activeQueries.delete(details.tabId);
+  });
+
   // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
   // When user logs in/out on gyoz.ai, the extension picks it up instantly.
   browser.cookies.onChanged.addListener(async (changeInfo) => {
@@ -150,10 +183,23 @@ export default defineBackground(() => {
     port.onMessage.addListener((message) => {
       console.log("[gyoza:port] Query message received via port");
       const sender = port.sender!;
+      const tabId = sender.tab?.id;
+
+      // Track active query for webNavigation pending-nav
+      if (tabId && message.conversationId) {
+        activeQueries.set(tabId, {
+          conversationId: message.conversationId,
+          originalQuery: message.query,
+        });
+      }
+
       handleQuery(
         message,
         sender,
         (result) => {
+          // Query complete — clear active tracking
+          if (tabId) activeQueries.delete(tabId);
+
           if (portDisconnected) return;
           console.log(
             "[gyoza:port] Sending query result via port, error:",
@@ -173,6 +219,9 @@ export default defineBackground(() => {
       console.log("[gyoza:port] Port disconnected — aborting stream");
       portDisconnected = true;
       abortController.abort();
+      // Don't clear activeQueries here — webNavigation listener needs it
+      // It gets cleared when the query completes (sendResponse) or
+      // when webNavigation fires and consumes it
     });
   });
 

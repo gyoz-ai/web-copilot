@@ -187,14 +187,6 @@ export async function handleQuery(
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
-        const prevTools = steps.flatMap(
-          (s) => s.toolCalls?.map((tc) => tc.toolName) || [],
-        );
-        console.log(
-          `%c  [gyoza] prepareStep → step ${steps.length}, prev tools: [${prevTools.join(", ")}]`,
-          "color: #f59e0b; font-weight: bold",
-        );
-
         // Check if any step so far produced user-facing output
         const hasUserOutput = steps.some((s) =>
           s.toolCalls?.some(
@@ -204,13 +196,7 @@ export async function handleQuery(
           ),
         );
 
-        if (hasUserOutput) {
-          console.log(
-            "%c  [gyoza] prepareStep → user output found, no override",
-            "color: #22c55e",
-          );
-          return {};
-        }
+        if (hasUserOutput) return {};
 
         // No user output yet — force the model to call a tool
         const alreadySetExpression = steps.some((s) =>
@@ -224,10 +210,6 @@ export async function handleQuery(
             ) as (keyof typeof tools)[])
           : undefined;
 
-        console.log(
-          `%c  [gyoza] prepareStep → forcing toolChoice=required, activeTools=${active ? active.length + " tools (excl set_expression)" : "all"}`,
-          "color: #ef4444; font-weight: bold",
-        );
         return { toolChoice: "required" as const, activeTools: active };
       },
       onError: ({ error }) => {

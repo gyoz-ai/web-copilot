@@ -404,27 +404,11 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     const beforeText = await capturePageState(ctx.tabId);
     const preUrl = (await getPageUrl(ctx.tabId)) || "";
 
-    // Pre-save pending-nav BEFORE the action — in case it triggers navigation,
-    // the new page's widget will find this immediately on mount.
-    // If no navigation occurs, we delete it after verification.
-    const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-    await browser.storage.local.set({
-      [pendingNavKey]: {
-        snapshotTypes: ["all"],
-        originalQuery: ctx.originalQuery,
-        conversationId: ctx.conversationId || "",
-        tabId: ctx.tabId,
-        timestamp: Date.now(),
-        preNavMessageCount: ctx.messages.length,
-      },
-    });
-
     // Run the original tool
     const result = await executeFn(args);
 
-    // If the tool already failed, clean up pending-nav and skip verification
+    // If the tool already failed, skip verification
     if ("success" in result && result.success === false) {
-      await browser.storage.local.remove(pendingNavKey);
       return result;
     }
 
@@ -434,11 +418,25 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     if (verify.navigated) {
       ctx.navigated = true;
 
-      // pending-nav already saved — just log and abort
       console.log(
-        "%c  [gyoza:verify] Navigation detected — aborting stream (pending-nav was pre-saved)",
+        "%c  [gyoza:verify] Navigation detected — aborting stream",
         "color: #ef4444; font-weight: bold",
       );
+
+      // For SPA navigations (pushState/replaceState), webNavigation doesn't
+      // fire, so save pending-nav here as fallback.
+      const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+      await browser.storage.local
+        .set({
+          [pendingNavKey]: {
+            snapshotTypes: ["fullPage"],
+            originalQuery: ctx.originalQuery,
+            conversationId: ctx.conversationId || "",
+            tabId: ctx.tabId,
+            timestamp: Date.now(),
+          },
+        })
+        .catch(() => {});
 
       // Abort the AI stream so it doesn't keep calling tools on a dead page
       ctx.abortStream?.();
@@ -454,9 +452,6 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
         verification: `Page navigated to ${verify.newUrl}. Execution stopped — the widget will resume on the new page.`,
       };
     }
-
-    // No navigation occurred — clean up the pre-saved pending-nav
-    await browser.storage.local.remove(pendingNavKey);
 
     if (verify.actionIncomplete) {
       return {
@@ -639,20 +634,8 @@ export function createBrowserTools(
               : `Navigating to ${resolved}`,
           });
 
-          // Save pending-nav state so the widget auto-resumes on the new page
-          const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-          await browser.storage.local.set({
-            [pendingNavKey]: {
-              snapshotTypes: ["all"],
-              originalQuery: ctx.originalQuery,
-              conversationId: ctx.conversationId || "",
-              tabId: ctx.tabId,
-              timestamp: Date.now(),
-              // Store messages shown before navigation so the follow-up
-              // can avoid repeating them
-              preNavMessageCount: ctx.messages.length,
-            },
-          });
+          // pending-nav is saved by background's webNavigation.onBeforeNavigate
+          // listener — no need to save here.
 
           await execIsolated(
             ctx.tabId,

@@ -60,6 +60,7 @@ export default defineConfig({
       "scripting",
       "notifications",
       "cookies",
+      "webNavigation",
     ],
     host_permissions: ["https://gyoz.ai/*"],
     web_accessible_resources: [
