@@ -260,15 +260,25 @@ export async function handleQuery(
             );
           }
         }
-        // Stream text unless show_message already handled user-facing output.
-        // Other tools (set_expression, report_action_result, etc.) don't produce
-        // messages, so text alongside them is genuine content.
+        // Stream text from steps that didn't already show a message.
+        // Skip if: (a) this step has show_message, OR (b) a prior show_message
+        // already communicated and no data-gathering happened (text is just a
+        // rephrasing). Keep text when data was gathered — it's the actual answer.
         const hasShowMessage = toolCalls?.some(
           (tc) =>
             tc.toolName === "show_message" ||
             tc.toolName === "report_action_result",
         );
-        if (text && text.trim() && !hasShowMessage) {
+        const alreadyCommunicated = ctx.messages.length > 0;
+        const hadDataGathering = allToolCalls.some(
+          (tc) => tc.tool === "get_page_context",
+        );
+        if (
+          text &&
+          text.trim() &&
+          !hasShowMessage &&
+          !(alreadyCommunicated && !hadDataGathering)
+        ) {
           ctx.messages.push(text.trim());
           sendStreamEvent({ kind: "message", content: text.trim() });
         }
