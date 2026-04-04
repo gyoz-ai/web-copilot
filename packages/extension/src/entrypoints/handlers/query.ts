@@ -184,6 +184,34 @@ export async function handleQuery(
       tools,
       abortSignal: abortController.signal,
       stopWhen: stepCountIs(10),
+      prepareStep: ({ steps }) => {
+        if (steps.length === 0) return {};
+
+        // Check if any step so far produced user-facing output
+        const hasUserOutput = steps.some((s) =>
+          s.toolCalls?.some(
+            (tc) =>
+              tc.toolName === "show_message" ||
+              tc.toolName === "report_action_result",
+          ),
+        );
+
+        if (hasUserOutput) return {};
+
+        // No user output yet — force the model to call a tool
+        const alreadySetExpression = steps.some((s) =>
+          s.toolCalls?.some((tc) => tc.toolName === "set_expression"),
+        );
+
+        // Exclude set_expression if already used (prevent escape hatch)
+        const active = alreadySetExpression
+          ? (Object.keys(tools).filter(
+              (t) => t !== "set_expression",
+            ) as (keyof typeof tools)[])
+          : undefined;
+
+        return { toolChoice: "required" as const, activeTools: active };
+      },
       onError: ({ error }) => {
         if (error instanceof Error) {
           streamError = error;
