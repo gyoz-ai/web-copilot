@@ -214,9 +214,15 @@ export async function handleQuery(
             );
           }
         }
-        // Stream text from pure-text steps (follow-up after tool results).
-        // In tool-calling steps, show_message already handles user-facing text.
-        if (text && text.trim() && !toolCalls?.length) {
+        // Stream text unless show_message already handled user-facing output.
+        // Other tools (set_expression, report_action_result, etc.) don't produce
+        // messages, so text alongside them is genuine content.
+        const hasShowMessage = toolCalls?.some(
+          (tc) =>
+            tc.toolName === "show_message" ||
+            tc.toolName === "report_action_result",
+        );
+        if (text && text.trim() && !hasShowMessage) {
           ctx.messages.push(text.trim());
           sendStreamEvent({ kind: "message", content: text.trim() });
         }
