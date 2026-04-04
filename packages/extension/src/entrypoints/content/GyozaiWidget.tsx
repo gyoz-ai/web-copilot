@@ -1156,11 +1156,15 @@ export function GyozaiWidget() {
 
     if (result.streamed) {
       const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-      if (needsAiConclusion(result.toolCalls, aiMessages)) {
-        // No message was shown — ask AI to summarize
-        autoFollowUpUsed = false;
+      if (
+        needsAiConclusion(result.toolCalls, aiMessages) &&
+        !autoFollowUpUsed
+      ) {
+        // No message was shown — ask AI to answer using gathered info
+        autoFollowUpUsed = true;
+        const originalQ = lastUserQueryRef.current || "";
         const followUp = await sendQuery(
-          "Briefly confirm what you just did in one short sentence. Use show_message.",
+          `Now answer the user's question using the information you gathered. The user asked: "${originalQ}". Use show_message.`,
         );
         await processAgentResult(followUp);
       }
@@ -1178,10 +1182,11 @@ export function GyozaiWidget() {
       addAssistantMessage(msg);
     }
 
-    if (needsAiConclusion(result.toolCalls, aiMessages)) {
-      autoFollowUpUsed = false;
+    if (needsAiConclusion(result.toolCalls, aiMessages) && !autoFollowUpUsed) {
+      autoFollowUpUsed = true;
+      const originalQ = lastUserQueryRef.current || "";
       const followUp = await sendQuery(
-        "Briefly confirm what you just did in one short sentence. Use show_message.",
+        `Now answer the user's question using the information you gathered. The user asked: "${originalQ}". Use show_message.`,
       );
       await processAgentResult(followUp);
     }
@@ -1328,6 +1333,12 @@ export function GyozaiWidget() {
       ...prev,
       { id: crypto.randomUUID(), role: "user", content: trimmed },
     ]);
+
+    // Ensure a conversation ID exists before the first query so the
+    // background worker can persist LLM history for follow-up calls.
+    if (!activeConvIdRef.current) {
+      activeConvIdRef.current = crypto.randomUUID();
+    }
 
     try {
       autoFollowUpUsed = false;

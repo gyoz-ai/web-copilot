@@ -217,8 +217,21 @@ export async function saveConversationLlmHistory(
   conversationId: string,
   history: Array<{ role: string; content: string }>,
 ): Promise<void> {
-  const conv = await getConversation(conversationId);
-  if (!conv) return;
+  let conv = await getConversation(conversationId);
+  if (!conv) {
+    // Create a placeholder — saveCurrentConversation will fill in details later.
+    // This allows the background worker to persist LLM history even before the
+    // widget's useEffect creates the full conversation record.
+    conv = {
+      id: conversationId,
+      title: "",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      domain: "",
+      messages: [],
+      llmHistory: [],
+    };
+  }
 
   // Keep at most 50 messages
   const beforeCount = history.length;
