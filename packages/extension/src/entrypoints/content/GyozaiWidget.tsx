@@ -1147,6 +1147,14 @@ export function GyozaiWidget() {
     ) => {
       if (!toolCalls?.length) return false;
 
+      // If the model ended with show_message or report_action_result, it concluded
+      const lastTool = toolCalls[toolCalls.length - 1];
+      if (
+        lastTool.tool === "show_message" ||
+        lastTool.tool === "report_action_result"
+      )
+        return false;
+
       const ACTION_TOOLS = [
         "click",
         "execute_js",
@@ -1163,12 +1171,8 @@ export function GyozaiWidget() {
       const hasAction = toolCalls.some((tc) => ACTION_TOOLS.includes(tc.tool));
 
       // Model gathered data but never acted on it — incomplete response
-      // even if show_message was called (e.g. "one moment..." + get_page_context)
       if (hasDataGathering && !hasAction) return true;
 
-      // If the last tool was show_message or there's final AI text, no need.
-      const lastTool = toolCalls[toolCalls.length - 1];
-      if (lastTool.tool === "show_message") return false;
       if (msgs.some((m) => m.trim())) return false;
       return true;
     };
