@@ -1206,8 +1206,11 @@ export function GyozaiWidget() {
       );
       const hasAction = toolCalls.some((tc) => ACTION_TOOLS.includes(tc.tool));
 
-      // Model gathered data but never acted on it — incomplete response
-      if (hasDataGathering && !hasAction) return true;
+      // Model gathered data but never acted on it — incomplete response.
+      // BUT if show_message was called anywhere, the model already communicated
+      // and is working (e.g. "let me check the page" + get_page_context).
+      const hasShowMessage = toolCalls.some((tc) => tc.tool === "show_message");
+      if (hasDataGathering && !hasAction && !hasShowMessage) return true;
 
       if (msgs.some((m) => m.trim())) return false;
       return true;
