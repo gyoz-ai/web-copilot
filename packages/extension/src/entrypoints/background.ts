@@ -230,8 +230,13 @@ export default defineBackground(() => {
         message,
         sender,
         (result) => {
-          // Query complete — clear active tracking
-          if (tabId) activeQueries.delete(tabId);
+          // Don't clear activeQueries here — keep it alive so
+          // webNavigation.onBeforeNavigate can save pending-nav if the page
+          // navigates after the model finishes (e.g. Stripe processing a
+          // confirmation then redirecting). It gets cleaned up when:
+          // - webNavigation.onBeforeNavigate consumes it
+          // - A new query overwrites it
+          // - Tab closes (tabs.onRemoved)
 
           if (portDisconnected) return;
           console.log(
@@ -323,6 +328,7 @@ export default defineBackground(() => {
   });
 
   browser.tabs.onRemoved.addListener((tabId) => {
+    activeQueries.delete(tabId);
     clearWidgetSession(tabId).catch(() => {});
   });
 });

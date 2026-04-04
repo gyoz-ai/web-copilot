@@ -502,7 +502,10 @@ export function GyozaiWidget() {
       {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Navigated to ${window.location.pathname}`,
+        content: getTranslations(locale).status_navigated_to.replace(
+          "{path}",
+          window.location.pathname,
+        ),
         type: "tool-status" as const,
       },
     ]);

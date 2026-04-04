@@ -86,6 +86,7 @@ export interface Translations {
 
   // Status pill — tool actions
   status_navigating: string; // "Navigating to {url}"
+  status_navigated_to: string; // "Navigated to {path}"
   status_clicked: string; // "Clicked element"
   status_highlighted: string; // "Highlighted element"
   status_reading_page: string; // "Reading page"
@@ -152,6 +153,7 @@ const en: Translations = {
   widget_confirm_deny: "Deny",
   widget_shortcut_tip: "Tip: press {shortcut} to talk to me anytime",
   status_navigating: "Navigating to {url}",
+  status_navigated_to: "Navigated to {path}",
   status_clicked: "Clicked element",
   status_highlighted: "Highlighted element",
   status_reading_page: "Reading page",
@@ -219,6 +221,7 @@ const ptBR: Translations = {
   widget_shortcut_tip:
     "Dica: pressione {shortcut} para falar comigo a qualquer momento",
   status_navigating: "Navegando para {url}",
+  status_navigated_to: "Navegou para {path}",
   status_clicked: "Elemento clicado",
   status_highlighted: "Elemento destacado",
   status_reading_page: "Lendo a página",
@@ -303,6 +306,7 @@ const es: Translations = {
   widget_shortcut_tip:
     "Consejo: pulsa {shortcut} para hablar conmigo en cualquier momento",
   status_navigating: "Navegando a {url}",
+  status_navigated_to: "Navegó a {path}",
   status_clicked: "Elemento clicado",
   status_highlighted: "Elemento resaltado",
   status_reading_page: "Leyendo p\u00e1gina",
@@ -370,6 +374,7 @@ const fr: Translations = {
   widget_shortcut_tip:
     "Astuce\u00a0: appuyez sur {shortcut} pour me parler \u00e0 tout moment",
   status_navigating: "Navigation vers {url}",
+  status_navigated_to: "Navigu\u00e9 vers {path}",
   status_clicked: "\u00c9l\u00e9ment cliqu\u00e9",
   status_highlighted: "\u00c9l\u00e9ment surlign\u00e9",
   status_reading_page: "Lecture de la page",
@@ -437,6 +442,7 @@ const de: Translations = {
   widget_shortcut_tip:
     "Tipp: Dr\u00fccke {shortcut}, um jederzeit mit mir zu sprechen",
   status_navigating: "Navigiert zu {url}",
+  status_navigated_to: "Navigiert zu {path}",
   status_clicked: "Element angeklickt",
   status_highlighted: "Element hervorgehoben",
   status_reading_page: "Seite wird gelesen",
@@ -504,6 +510,7 @@ const it: Translations = {
   widget_shortcut_tip:
     "Suggerimento: premi {shortcut} per parlarmi in qualsiasi momento",
   status_navigating: "Navigazione verso {url}",
+  status_navigated_to: "Navigato a {path}",
   status_clicked: "Elemento cliccato",
   status_highlighted: "Elemento evidenziato",
   status_reading_page: "Lettura pagina",
@@ -570,6 +577,7 @@ const nl: Translations = {
   widget_confirm_deny: "Weigeren",
   widget_shortcut_tip: "Tip: druk op {shortcut} om altijd met me te praten",
   status_navigating: "Navigeren naar {url}",
+  status_navigated_to: "Genavigeerd naar {path}",
   status_clicked: "Element aangeklikt",
   status_highlighted: "Element gemarkeerd",
   status_reading_page: "Pagina lezen",
@@ -637,6 +645,7 @@ const pl: Translations = {
   widget_shortcut_tip:
     "Wskaz\u00f3wka: naci\u015bnij {shortcut}, aby porozmawiaj ze mn\u0105 w dowolnym momencie",
   status_navigating: "Przechodzenie do {url}",
+  status_navigated_to: "Przeszed\u0142 do {path}",
   status_clicked: "Klikni\u0119to element",
   status_highlighted: "Wyr\u00f3\u017cniono element",
   status_reading_page: "Czytanie strony",
@@ -713,6 +722,8 @@ const ru: Translations = {
     "\u0421\u043e\u0432\u0435\u0442: \u043d\u0430\u0436\u043c\u0438\u0442\u0435 {shortcut}, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u0441\u043e \u043c\u043d\u043e\u0439 \u0432 \u043b\u044e\u0431\u043e\u0435 \u0432\u0440\u0435\u043c\u044f",
   status_navigating:
     "\u041f\u0435\u0440\u0435\u0445\u043e\u0434 \u043d\u0430 {url}",
+  status_navigated_to:
+    "\u041f\u0435\u0440\u0435\u0448\u0451\u043b \u043d\u0430 {path}",
   status_clicked:
     "\u042d\u043b\u0435\u043c\u0435\u043d\u0442 \u043d\u0430\u0436\u0430\u0442",
   status_highlighted:
@@ -807,6 +818,8 @@ const uk: Translations = {
     "\u041f\u043e\u0440\u0430\u0434\u0430: \u043d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c {shortcut}, \u0449\u043e\u0431 \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u0438 \u0437\u0456 \u043c\u043d\u043e\u044e \u0431\u0443\u0434\u044c-\u043a\u043e\u043b\u0438",
   status_navigating:
     "\u041f\u0435\u0440\u0435\u0445\u0456\u0434 \u043d\u0430 {url}",
+  status_navigated_to:
+    "\u041f\u0435\u0440\u0435\u0439\u0448\u043e\u0432 \u043d\u0430 {path}",
   status_clicked:
     "\u0415\u043b\u0435\u043c\u0435\u043d\u0442 \u043d\u0430\u0442\u0438\u0441\u043d\u0443\u0442\u043e",
   status_highlighted:
@@ -902,6 +915,8 @@ const el: Translations = {
     "\u03a3\u03c5\u03bc\u03b2\u03bf\u03c5\u03bb\u03ae: \u03c0\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 {shortcut} \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03bc\u03bf\u03c5 \u03bc\u03b9\u03bb\u03ae\u03c3\u03b5\u03c4\u03b5 \u03bf\u03c0\u03bf\u03c4\u03b5\u03b4\u03ae\u03c0\u03bf\u03c4\u03b5",
   status_navigating:
     "\u039c\u03b5\u03c4\u03ac\u03b2\u03b1\u03c3\u03b7 \u03c3\u03c4\u03bf {url}",
+  status_navigated_to:
+    "\u039c\u03b5\u03c4\u03b1\u03b2\u03ae\u03ba\u03b5 \u03c3\u03c4\u03bf {path}",
   status_clicked:
     "\u039a\u03bb\u03b9\u03ba \u03c3\u03b5 \u03c3\u03c4\u03bf\u03b9\u03c7\u03b5\u03af\u03bf",
   status_highlighted:
@@ -989,6 +1004,7 @@ const tr: Translations = {
   widget_shortcut_tip:
     "\u0130pucu: her zaman benimle konu\u015fmak i\u00e7in {shortcut} tu\u015funa bas\u0131n",
   status_navigating: "{url} adresine gidiliyor",
+  status_navigated_to: "{path} sayfas\u0131na gidildi",
   status_clicked: "\u00d6\u011feye t\u0131kland\u0131",
   status_highlighted: "\u00d6\u011fe vurguland\u0131",
   status_reading_page: "Sayfa okunuyor",
@@ -1065,6 +1081,8 @@ const ar: Translations = {
     "\u0646\u0635\u064a\u062d\u0629: \u0627\u0636\u063a\u0637 {shortcut} \u0644\u0644\u062a\u062d\u062f\u062b \u0645\u0639\u064a \u0641\u064a \u0623\u064a \u0648\u0642\u062a",
   status_navigating:
     "\u0627\u0644\u0627\u0646\u062a\u0642\u0627\u0644 \u0625\u0644\u0649 {url}",
+  status_navigated_to:
+    "\u062a\u0645 \u0627\u0644\u0627\u0646\u062a\u0642\u0627\u0644 \u0625\u0644\u0649 {path}",
   status_clicked:
     "\u062a\u0645 \u0627\u0644\u0646\u0642\u0631 \u0639\u0644\u0649 \u0627\u0644\u0639\u0646\u0635\u0631",
   status_highlighted:
@@ -1160,6 +1178,7 @@ const hi: Translations = {
     "\u0938\u0941\u091d\u093e\u0935: \u0915\u093f\u0938\u0940 \u092d\u0940 \u0938\u092e\u092f \u092e\u0941\u091d\u0938\u0947 \u092c\u093e\u0924 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f {shortcut} \u0926\u092c\u093e\u090f\u0902",
   status_navigating:
     "{url} \u092a\u0930 \u091c\u093e \u0930\u0939\u093e \u0939\u0948",
+  status_navigated_to: "{path} \u092a\u0930 \u0917\u092f\u093e",
   status_clicked:
     "\u0924\u0924\u094d\u0935 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u093f\u092f\u093e",
   status_highlighted:
@@ -1248,6 +1267,7 @@ const ja: Translations = {
   widget_shortcut_tip:
     "\u30d2\u30f3\u30c8: {shortcut} \u3092\u62bc\u3057\u3066\u3044\u3064\u3067\u3082\u8a71\u3057\u304b\u3051\u3066\u304f\u3060\u3055\u3044",
   status_navigating: "{url}\u306b\u79fb\u52d5\u4e2d",
+  status_navigated_to: "{path} \u306b\u79fb\u52d5\u3057\u307e\u3057\u305f",
   status_clicked: "\u8981\u7d20\u3092\u30af\u30ea\u30c3\u30af",
   status_highlighted: "\u8981\u7d20\u3092\u30cf\u30a4\u30e9\u30a4\u30c8",
   status_reading_page: "\u30da\u30fc\u30b8\u3092\u8aad\u307f\u53d6\u308a\u4e2d",
@@ -1324,6 +1344,7 @@ const ko: Translations = {
   widget_shortcut_tip:
     "\ud301: {shortcut}\uc744 \ub20c\ub7ec \uc5b8\uc81c\ub4e0 \uc800\uc640 \ub300\ud654\ud558\uc138\uc694",
   status_navigating: "{url}\uc73c\ub85c \uc774\ub3d9 \uc911",
+  status_navigated_to: "{path}(\uc73c)\ub85c \uc774\ub3d9\ud568",
   status_clicked: "\uc694\uc18c \ud074\ub9ad\ub428",
   status_highlighted: "\uc694\uc18c \uac15\uc870\ub428",
   status_reading_page: "\ud398\uc774\uc9c0 \uc77d\ub294 \uc911",
@@ -1395,6 +1416,7 @@ const zhCN: Translations = {
   widget_shortcut_tip:
     "\u63d0\u793a\uff1a\u6309 {shortcut} \u968f\u65f6\u4e0e\u6211\u5bf9\u8bdd",
   status_navigating: "\u6b63\u5728\u5bfc\u822a\u5230 {url}",
+  status_navigated_to: "\u5df2\u5bfc\u822a\u5230 {path}",
   status_clicked: "\u5df2\u70b9\u51fb\u5143\u7d20",
   status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
   status_reading_page: "\u6b63\u5728\u8bfb\u53d6\u9875\u9762",
@@ -1453,6 +1475,7 @@ const zhTW: Translations = {
   widget_shortcut_tip:
     "\u63d0\u793a\uff1a\u6309 {shortcut} \u96a8\u6642\u8207\u6211\u5c0d\u8a71",
   status_navigating: "\u6b63\u5728\u5c0e\u822a\u81f3 {url}",
+  status_navigated_to: "\u5df2\u5c0e\u822a\u81f3 {path}",
   status_clicked: "\u5df2\u9ede\u64ca\u5143\u7d20",
   status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
   status_reading_page: "\u6b63\u5728\u8b80\u53d6\u9801\u9762",
@@ -1526,6 +1549,8 @@ const th: Translations = {
     "\u0e40\u0e04\u0e25\u0e47\u0e14\u0e25\u0e31\u0e1a: \u0e01\u0e14 {shortcut} \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1e\u0e39\u0e14\u0e04\u0e38\u0e22\u0e01\u0e31\u0e1a\u0e09\u0e31\u0e19\u0e44\u0e14\u0e49\u0e17\u0e38\u0e01\u0e40\u0e21\u0e37\u0e48\u0e2d",
   status_navigating:
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e19\u0e33\u0e17\u0e32\u0e07\u0e44\u0e1b {url}",
+  status_navigated_to:
+    "\u0e44\u0e1b\u0e17\u0e35\u0e48 {path} \u0e41\u0e25\u0e49\u0e27",
   status_clicked:
     "\u0e04\u0e25\u0e34\u0e01\u0e2d\u0e07\u0e04\u0e4c\u0e1b\u0e23\u0e30\u0e01\u0e2d\u0e1a",
   status_highlighted:
@@ -1616,6 +1641,7 @@ const vi: Translations = {
   widget_shortcut_tip:
     "M\u1eb9o: nh\u1ea5n {shortcut} \u0111\u1ec3 n\u00f3i chuy\u1ec7n v\u1edbi t\u00f4i b\u1ea5t c\u1ee9 l\u00fac n\u00e0o",
   status_navigating: "\u0110ang chuy\u1ec3n \u0111\u1ebfn {url}",
+  status_navigated_to: "\u0110\u00e3 chuy\u1ec3n \u0111\u1ebfn {path}",
   status_clicked: "\u0110\u00e3 nh\u1ea5p ph\u1ea7n t\u1eed",
   status_highlighted: "\u0110\u00e3 \u0111\u00e1nh d\u1ea5u ph\u1ea7n t\u1eed",
   status_reading_page: "\u0110ang \u0111\u1ecdc trang",
@@ -1685,6 +1711,7 @@ const id: Translations = {
   widget_shortcut_tip:
     "Tips: tekan {shortcut} untuk berbicara dengan saya kapan saja",
   status_navigating: "Menavigasi ke {url}",
+  status_navigated_to: "Dinavigasi ke {path}",
   status_clicked: "Elemen diklik",
   status_highlighted: "Elemen disorot",
   status_reading_page: "Membaca halaman",
@@ -1837,6 +1864,7 @@ const cs: Translations = {
   popup_light: "Sv\u011btl\u00fd",
   popup_language: "Jazyk",
   popup_language_auto: "Automaticky (prohl\u00ed\u017ee\u010d)",
+  status_navigated_to: "P\u0159e\u0161el na {path}",
 };
 
 const ro: Translations = {

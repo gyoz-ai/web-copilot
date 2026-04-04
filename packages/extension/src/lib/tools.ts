@@ -605,7 +605,7 @@ export function createBrowserTools(
       required: ["success", "summary", "message"],
     }),
     execute: async ({ message }) => {
-      if (message) {
+      if (message && message !== "null") {
         ctx.messages.push(message);
         ctx.onStreamEvent?.({ kind: "message", content: message });
       }
