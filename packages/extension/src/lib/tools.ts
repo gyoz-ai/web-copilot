@@ -322,6 +322,21 @@ async function verifyPostAction(
     if (!currentUrl) break;
 
     if (currentUrl !== preUrl) {
+      // Ignore same-origin + same-path changes (e.g. hash, query param updates)
+      try {
+        const pre = new URL(preUrl);
+        const cur = new URL(currentUrl);
+        if (pre.origin === cur.origin && pre.pathname === cur.pathname) {
+          console.log(
+            `%c  [gyoza:verify] Poll ${poll}: same-path URL change, ignoring`,
+            "color: #9ca3af",
+          );
+          continue;
+        }
+      } catch {
+        // Invalid URL — treat as navigation
+      }
+
       console.log(
         `%c  [gyoza:verify] Poll ${poll}: navigation → ${currentUrl}`,
         "color: #22c55e; font-weight: bold",

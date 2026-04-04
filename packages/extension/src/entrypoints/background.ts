@@ -30,13 +30,31 @@ export default defineBackground(() => {
   // so the content script on the new page can auto-continue.
   const activeQueries = new Map<
     number,
-    { conversationId: string; originalQuery: string }
+    { conversationId: string; originalQuery: string; currentUrl?: string }
   >();
 
   browser.webNavigation.onBeforeNavigate.addListener((details) => {
     if (details.frameId !== 0) return; // Only main frame
     const query = activeQueries.get(details.tabId);
     if (!query) return;
+
+    // Ignore same-page navigations (e.g. Stripe reloading itself)
+    const currentUrl = (query as { currentUrl?: string }).currentUrl;
+    if (currentUrl && details.url) {
+      try {
+        const cur = new URL(currentUrl);
+        const nav = new URL(details.url);
+        if (cur.origin === nav.origin && cur.pathname === nav.pathname) {
+          console.log(
+            "[gyoza:nav] Same-path navigation, ignoring:",
+            details.url.slice(0, 80),
+          );
+          return;
+        }
+      } catch {
+        // Invalid URL — proceed with save
+      }
+    }
 
     console.log(
       "[gyoza:nav] Tab",
@@ -190,6 +208,7 @@ export default defineBackground(() => {
         activeQueries.set(tabId, {
           conversationId: message.conversationId,
           originalQuery: message.query,
+          currentUrl: sender.tab?.url,
         });
       }
 
