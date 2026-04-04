@@ -30,7 +30,12 @@ export default defineBackground(() => {
   // so the content script on the new page can auto-continue.
   const activeQueries = new Map<
     number,
-    { conversationId: string; originalQuery: string; currentUrl?: string }
+    {
+      conversationId: string;
+      originalQuery: string;
+      currentUrl?: string;
+      abortController: AbortController;
+    }
   >();
 
   browser.webNavigation.onBeforeNavigate.addListener((details) => {
@@ -59,8 +64,12 @@ export default defineBackground(() => {
     console.log(
       "[gyoza:nav] Tab",
       details.tabId,
-      "navigating while query active — saving pending-nav",
+      "navigating while query active — aborting stream + saving pending-nav",
     );
+
+    // Abort the running stream immediately so it stops calling tools
+    query.abortController.abort();
+
     const navKey = `gyozai_pending_nav_${details.tabId}`;
     browser.storage.local
       .set({
@@ -203,12 +212,17 @@ export default defineBackground(() => {
       const sender = port.sender!;
       const tabId = sender.tab?.id;
 
-      // Track active query for webNavigation pending-nav
+      // Track active query for webNavigation pending-nav + stream abort
       if (tabId && message.conversationId) {
+        // Abort any previous query still running for this tab
+        const prev = activeQueries.get(tabId);
+        if (prev) prev.abortController.abort();
+
         activeQueries.set(tabId, {
           conversationId: message.conversationId,
           originalQuery: message.query,
           currentUrl: sender.tab?.url,
+          abortController,
         });
       }
 

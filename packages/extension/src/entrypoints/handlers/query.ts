@@ -243,23 +243,30 @@ export async function handleQuery(
           }
         }
         // Stream text from steps that didn't already show a message.
-        // Skip if: (a) this step has show_message, OR (b) a prior show_message
-        // already communicated and no data-gathering happened (text is just a
-        // rephrasing). Keep text when data was gathered — it's the actual answer.
+        // Skip if: (a) this step has show_message, OR (b) show_message was
+        // already called AFTER the last get_page_context (the model already
+        // communicated the result — follow-up text is just a rephrasing).
         const hasShowMessage = toolCalls?.some(
           (tc) =>
             tc.toolName === "show_message" ||
             tc.toolName === "report_action_result",
         );
         const alreadyCommunicated = ctx.messages.length > 0;
-        const hadDataGathering = allToolCalls.some(
-          (tc) => tc.tool === "get_page_context",
-        );
+        let lastPageCtxIdx = -1;
+        let lastShowMsgIdx = -1;
+        for (let i = allToolCalls.length - 1; i >= 0; i--) {
+          if (lastPageCtxIdx < 0 && allToolCalls[i].tool === "get_page_context")
+            lastPageCtxIdx = i;
+          if (lastShowMsgIdx < 0 && allToolCalls[i].tool === "show_message")
+            lastShowMsgIdx = i;
+          if (lastPageCtxIdx >= 0 && lastShowMsgIdx >= 0) break;
+        }
+        const answeredAfterData = lastShowMsgIdx > lastPageCtxIdx;
         if (
           text &&
           text.trim() &&
           !hasShowMessage &&
-          !(alreadyCommunicated && !hadDataGathering)
+          !(alreadyCommunicated && answeredAfterData)
         ) {
           ctx.messages.push(text.trim());
           sendStreamEvent({ kind: "message", content: text.trim() });
