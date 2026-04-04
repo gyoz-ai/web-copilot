@@ -6,6 +6,7 @@ import type {
   ToolRegistry,
 } from "@gyoz-ai/engine";
 import { EXPRESSIONS } from "./expressions";
+import type { Translations } from "./i18n";
 
 // ─── Tool Descriptors ─────────────────────────────────────────────────────────
 
@@ -463,12 +464,49 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
   };
 }
 
+/**
+ * Wrap a tool's execute function with a pre-execution confirmation step.
+ * Sends a message to the content script asking the user to Allow/Deny.
+ * Only applied when yolo mode is OFF.
+ */
+function withConfirmation<TArgs, TResult extends Record<string, unknown>>(
+  ctx: ToolExecContext,
+  actionDescription: (args: TArgs) => string,
+  executeFn: (args: TArgs) => Promise<TResult>,
+): (args: TArgs) => Promise<TResult> {
+  return async (args: TArgs) => {
+    const description = actionDescription(args);
+    ctx.onStreamEvent?.({ kind: "tool-status", content: description });
+
+    try {
+      const confirmed = await browser.tabs.sendMessage(ctx.tabId, {
+        type: "gyozai_confirm_action",
+        description,
+      });
+
+      if (!confirmed) {
+        ctx.messages.push("Action cancelled.");
+        ctx.onStreamEvent?.({ kind: "message", content: "Action cancelled." });
+        return {
+          success: false,
+          error: "User cancelled the action",
+        } as unknown as TResult;
+      }
+    } catch {
+      // Content script not reachable — proceed without confirmation
+    }
+
+    return executeFn(args);
+  };
+}
+
 // ─── Tool Factory ──────────────────────────────────────────────────────────────
 
 export function createBrowserTools(
   ctx: ToolExecContext,
   caps: Capabilities,
   yoloMode: boolean,
+  tr?: Translations,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tools: Record<string, any> = {};
@@ -547,7 +585,9 @@ export function createBrowserTools(
 
           ctx.onStreamEvent?.({
             kind: "tool-status",
-            content: `Navigating to ${resolved}`,
+            content: tr
+              ? tr.status_navigating.replace("{url}", resolved)
+              : `Navigating to ${resolved}`,
           });
 
           // Save pending-nav state so the widget auto-resumes on the new page
@@ -900,7 +940,7 @@ export function createBrowserTools(
           }
           ctx.onStreamEvent?.({
             kind: "tool-status",
-            content: "Clicked element",
+            content: tr?.status_clicked || "Clicked element",
           });
           return {
             success: true as const,
@@ -915,7 +955,6 @@ export function createBrowserTools(
         }
       },
     });
-    // Wrap click execute with post-action verification
     tools.click.execute = withVerification(ctx, tools.click.execute);
   }
 
@@ -1012,6 +1051,13 @@ export function createBrowserTools(
         }
       },
     });
+    if (!yoloMode) {
+      tools.execute_js.execute = withConfirmation(
+        ctx,
+        () => "Run JavaScript on page",
+        tools.execute_js.execute,
+      );
+    }
     tools.execute_js.execute = withVerification(ctx, tools.execute_js.execute);
   }
 
@@ -1054,7 +1100,7 @@ export function createBrowserTools(
           if (found) {
             ctx.onStreamEvent?.({
               kind: "tool-status",
-              content: "Highlighted element",
+              content: tr?.status_highlighted || "Highlighted element",
             });
           }
           return found
@@ -1100,7 +1146,10 @@ export function createBrowserTools(
       required: ["types"],
     }),
     execute: async ({ types }: { types: string[] }) => {
-      ctx.onStreamEvent?.({ kind: "tool-status", content: "Reading page" });
+      ctx.onStreamEvent?.({
+        kind: "tool-status",
+        content: tr?.status_reading_page || "Reading page",
+      });
       try {
         const result = await browser.tabs.sendMessage(ctx.tabId, {
           type: "gyozai_tool_capture_context",
@@ -1151,7 +1200,10 @@ export function createBrowserTools(
         required: ["url"],
       }),
       execute: async ({ url, method }: { url: string; method?: string }) => {
-        ctx.onStreamEvent?.({ kind: "tool-status", content: "Fetching data" });
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: tr?.status_fetching || "Fetching data",
+        });
         try {
           const response = await fetch(url, { method: method || "GET" });
           const text = await response.text();
@@ -1246,7 +1298,7 @@ export function createBrowserTools(
       }) => {
         ctx.onStreamEvent?.({
           kind: "tool-status",
-          content: "Filling input",
+          content: tr?.status_filling || "Filling input",
         });
         try {
           const result = await execInPage(
@@ -1394,7 +1446,7 @@ export function createBrowserTools(
       }) => {
         ctx.onStreamEvent?.({
           kind: "tool-status",
-          content: "Selecting option",
+          content: tr?.status_selecting || "Selecting option",
         });
         try {
           const result = await execInPage(
@@ -1527,7 +1579,7 @@ export function createBrowserTools(
       }) => {
         ctx.onStreamEvent?.({
           kind: "tool-status",
-          content: "Toggling checkbox",
+          content: tr?.status_toggling || "Toggling checkbox",
         });
         try {
           const result = await execInPage(
@@ -1623,7 +1675,7 @@ export function createBrowserTools(
       }) => {
         ctx.onStreamEvent?.({
           kind: "tool-status",
-          content: "Submitting form",
+          content: tr?.status_submitting || "Submitting form",
         });
         try {
           const result = await execInPage(
@@ -1683,6 +1735,14 @@ export function createBrowserTools(
         }
       },
     });
+    if (!yoloMode) {
+      tools.submit_form.execute = withConfirmation(
+        ctx,
+        (args: { selector?: string }) =>
+          `Submit form "${args.selector || "on page"}"`,
+        tools.submit_form.execute,
+      );
+    }
     tools.submit_form.execute = withVerification(
       ctx,
       tools.submit_form.execute,
@@ -1692,7 +1752,8 @@ export function createBrowserTools(
   // ── scroll_to ─────────────────────────────────────────────────────────
   if (caps.click || caps.executeJs) {
     tools.scroll_to = tool({
-      description: "Scroll an element into view.",
+      description:
+        "Scroll an element into view. IMPORTANT: Use the ACTUAL text visible on the page (from get_page_context), not a translated or assumed version. The page language may differ from yours.",
       inputSchema: jsonSchema<{
         selector?: string;
         text?: string;
@@ -1703,7 +1764,8 @@ export function createBrowserTools(
           selector: { type: "string", description: "CSS selector" },
           text: {
             type: "string",
-            description: "Text content to find and scroll to",
+            description:
+              "Text content to find and scroll to. Must match the ACTUAL text on the page — use get_page_context first to get real text.",
           },
           direction: {
             type: "string",
@@ -1721,11 +1783,15 @@ export function createBrowserTools(
         text?: string;
         direction?: string;
       }) => {
-        ctx.onStreamEvent?.({ kind: "tool-status", content: "Scrolling" });
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: tr?.status_scrolling || "Scrolling",
+        });
         try {
           const result = await execInPage(
             ctx.tabId,
             ((sel: string | null, txt: string | null, dir: string | null) => {
+              // 1. Try CSS selector first
               if (sel) {
                 const el = document.querySelector(sel) as HTMLElement | null;
                 if (el) {
@@ -1734,18 +1800,53 @@ export function createBrowserTools(
                 }
               }
               if (txt) {
+                const lower = txt.toLowerCase();
+                // 2. Exact text content match (case-insensitive)
                 const walker = document.createTreeWalker(
                   document.body,
                   NodeFilter.SHOW_TEXT,
                 );
                 while (walker.nextNode()) {
-                  if (walker.currentNode.textContent?.includes(txt)) {
+                  if (
+                    walker.currentNode.textContent
+                      ?.toLowerCase()
+                      .includes(lower)
+                  ) {
                     const parent = walker.currentNode.parentElement;
                     parent?.scrollIntoView({
                       behavior: "smooth",
                       block: "center",
                     });
                     return { scrolled: true, target: `text: "${txt}"` };
+                  }
+                }
+                // 3. Fallback: search element attributes (id, class, aria-label, name, data-section)
+                const attrCandidates = document.querySelectorAll(
+                  `[id*="${CSS.escape(lower)}" i], [class*="${CSS.escape(lower)}" i], [aria-label*="${CSS.escape(lower)}" i], [name*="${CSS.escape(lower)}" i], [data-section*="${CSS.escape(lower)}" i]`,
+                );
+                if (attrCandidates.length > 0) {
+                  const el = attrCandidates[0] as HTMLElement;
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return {
+                    scrolled: true,
+                    target: `attr match: "${txt}" on <${el.tagName.toLowerCase()}>`,
+                  };
+                }
+                // 4. Fallback: search headings and section-like elements for partial match
+                const sectionEls = document.querySelectorAll(
+                  "h1, h2, h3, h4, h5, h6, section, [role='region'], [role='heading']",
+                );
+                for (const el of sectionEls) {
+                  const elText = (el as HTMLElement).textContent || "";
+                  if (elText.toLowerCase().includes(lower)) {
+                    (el as HTMLElement).scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                    return {
+                      scrolled: true,
+                      target: `heading/section: "${elText.trim().slice(0, 60)}"`,
+                    };
                   }
                 }
               }
@@ -1762,7 +1863,10 @@ export function createBrowserTools(
             [selector || null, text || null, direction || null],
           );
           if (!result?.scrolled)
-            return { success: false, error: "Nothing to scroll to" };
+            return {
+              success: false,
+              error: `Could not find "${text || selector || direction}" on the page. The page may use a different language than expected. Call get_page_context first to see the actual text/selectors, then retry with the real page content.`,
+            };
           return { success: true, scrolledTo: result.target };
         } catch (e) {
           return {
@@ -1800,7 +1904,10 @@ export function createBrowserTools(
         query: string;
         max_results?: number;
       }) => {
-        ctx.onStreamEvent?.({ kind: "tool-status", content: "Searching page" });
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: tr?.status_searching || "Searching page",
+        });
         try {
           const result = await execInPage(
             ctx.tabId,
@@ -1875,7 +1982,7 @@ export function createBrowserTools(
       }) => {
         ctx.onStreamEvent?.({
           kind: "tool-status",
-          content: "Extracting table",
+          content: tr?.status_extracting || "Extracting table",
         });
         try {
           const result = await execInPage(
