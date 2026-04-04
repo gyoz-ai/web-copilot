@@ -128,6 +128,7 @@ export function GyozaiWidget() {
   const [historyList, setHistoryList] = useState<ConversationSummary[]>([]);
   const [agentSize, setAgentSize] =
     useState<ExtensionSettings["agentSize"]>("medium");
+  const [typingAnimation, setTypingAnimation] = useState(true);
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
@@ -257,6 +258,10 @@ export function GyozaiWidget() {
         setExpanded(_preloadedSession.expanded);
         setInput(_preloadedSession.input);
         setMessages(_preloadedSession.messages);
+        // Mark all restored messages as already animated — don't replay on refresh
+        for (const m of _preloadedSession.messages) {
+          animatedMsgIdsRef.current.add(m.id);
+        }
         setViewMode(_preloadedSession.viewMode);
         setAvatarPosition(_preloadedSession.avatarPosition ?? null);
         if (
@@ -430,6 +435,8 @@ export function GyozaiWidget() {
         .sendMessage({ type: "gyozai_get_settings" })
         .then((s: ExtensionSettings | undefined) => {
           if (s?.agentSize) setAgentSize(s.agentSize);
+          if (typeof s?.typingAnimation === "boolean")
+            setTypingAnimation(s.typingAnimation);
           if (typeof s?.typingSound === "boolean")
             setTypingSound(s.typingSound);
           if (typeof s?.bubbleOpacity === "number")
@@ -450,6 +457,9 @@ export function GyozaiWidget() {
       }
       if (newSettings?.agentSize) {
         setAgentSize(newSettings.agentSize);
+      }
+      if (typeof newSettings?.typingAnimation === "boolean") {
+        setTypingAnimation(newSettings.typingAnimation);
       }
       if (typeof newSettings?.typingSound === "boolean") {
         setTypingSound(newSettings.typingSound);
@@ -776,6 +786,10 @@ export function GyozaiWidget() {
     if (!conv) return;
     activeConvIdRef.current = conv.id;
     setMessages(conv.messages);
+    // Mark all loaded messages as already animated — don't replay on history load
+    for (const m of conv.messages) {
+      animatedMsgIdsRef.current.add(m.id);
+    }
     setError(null);
     setClarify(conv.pendingClarify || null);
     setViewMode("chat");
@@ -1564,8 +1578,9 @@ export function GyozaiWidget() {
                 text={lastAssistantMsg!.content}
                 isThinking={false}
                 autoDismissMs={0}
-                soundEnabled={typingSound}
+                soundEnabled={typingAnimation && typingSound}
                 typewriterEnabled={
+                  typingAnimation &&
                   !animatedMsgIdsRef.current.has(lastAssistantMsg!.id)
                 }
                 onTypingChange={(typing) => {
@@ -1745,13 +1760,14 @@ export function GyozaiWidget() {
                     {isToolStatus ? (
                       msg.content
                     ) : msg.role === "assistant" ? (
+                      typingAnimation &&
                       isLatestAssistant &&
                       !animatedMsgIdsRef.current.has(msg.id) ? (
                         <TypewriterText
                           text={msg.content}
                           speed={5}
                           enabled={true}
-                          soundEnabled={typingSound}
+                          soundEnabled={typingAnimation && typingSound}
                           onTypingChange={(typing) => {
                             setIsTypewriting(typing);
                             if (!typing) animatedMsgIdsRef.current.add(msg.id);

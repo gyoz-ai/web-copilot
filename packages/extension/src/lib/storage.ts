@@ -36,6 +36,7 @@ export interface ExtensionSettings {
   theme: "dark" | "light";
   language: string; // locale code or "auto" for browser detection
   agentSize: "small" | "medium" | "big";
+  typingAnimation: boolean;
   typingSound: boolean;
   /** Opacity of chat speech bubbles (0.0–1.0). */
   bubbleOpacity: number;
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   theme: "dark",
   language: "auto",
   agentSize: "medium",
+  typingAnimation: true,
   typingSound: true,
   bubbleOpacity: 0.85,
 };

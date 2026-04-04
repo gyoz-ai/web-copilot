@@ -751,28 +751,55 @@ export function App() {
               </div>
             </div>
 
-            {/* Typing Sound */}
+            {/* Typing Animation */}
             <div className="setting-row">
               <div className="setting-info">
-                <div className="setting-label">Typing Sound</div>
+                <div className="setting-label">Typing Animation</div>
                 <div className="setting-desc">
-                  Play a subtle click sound during message typing animation
+                  Animate messages character-by-character with typing effect
                 </div>
               </div>
               <button
-                className={`toggle-btn ${settings.typingSound ? "active" : ""}`}
+                className={`toggle-btn ${settings.typingAnimation ? "active" : ""}`}
                 onClick={() => {
                   const updated = {
                     ...settings,
-                    typingSound: !settings.typingSound,
+                    typingAnimation: !settings.typingAnimation,
+                    // Auto-disable sound when animation is off
+                    ...(settings.typingAnimation ? { typingSound: false } : {}),
                   };
                   setSettings(updated);
                   saveSettings(updated);
                 }}
               >
-                {settings.typingSound ? "ON" : "OFF"}
+                {settings.typingAnimation ? "ON" : "OFF"}
               </button>
             </div>
+
+            {/* Typing Sound */}
+            {settings.typingAnimation && (
+              <div className="setting-row">
+                <div className="setting-info">
+                  <div className="setting-label">Typing Sound</div>
+                  <div className="setting-desc">
+                    Play a subtle click sound during typing animation
+                  </div>
+                </div>
+                <button
+                  className={`toggle-btn ${settings.typingSound ? "active" : ""}`}
+                  onClick={() => {
+                    const updated = {
+                      ...settings,
+                      typingSound: !settings.typingSound,
+                    };
+                    setSettings(updated);
+                    saveSettings(updated);
+                  }}
+                >
+                  {settings.typingSound ? "ON" : "OFF"}
+                </button>
+              </div>
+            )}
 
             {/* Bubble Opacity */}
             <div className="setting-row">
