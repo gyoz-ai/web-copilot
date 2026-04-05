@@ -14,7 +14,6 @@ export interface Capabilities {
   navigate?: boolean; // default: true
   showMessage?: boolean; // default: true
   click?: boolean; // default: false
-  executeJs?: boolean; // default: false — security sensitive
   highlightUi?: boolean; // default: true — point at elements with glow
   fetch?: boolean; // default: false
   clarify?: boolean; // default: true
@@ -24,7 +23,6 @@ export const DEFAULT_CAPABILITIES: Required<Capabilities> = {
   navigate: true,
   showMessage: true,
   click: false,
-  executeJs: false,
   highlightUi: true,
   fetch: false,
   clarify: true,
@@ -227,7 +225,6 @@ export function createEngine(config: EngineConfig) {
       navigate: caps.navigate,
       "show-message": caps.showMessage,
       click: caps.click,
-      "execute-js": caps.executeJs,
       "highlight-ui": caps.highlightUi,
       fetch: caps.fetch,
       clarify: caps.clarify,

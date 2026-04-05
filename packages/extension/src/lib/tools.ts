@@ -47,15 +47,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: false,
     maxResultChars: 1_000,
   },
-  execute_js: {
-    name: "execute_js",
-    description: "Execute JavaScript",
-    pageChange: true,
-    mutatesPage: true,
-    requiresFreshContext: false,
-    isConcurrencySafe: false,
-    maxResultChars: 10_000,
-  },
   highlight_ui: {
     name: "highlight_ui",
     description: "Highlight an element",
@@ -602,7 +593,7 @@ export function createBrowserTools(
     { acknowledged: boolean }
   >({
     description:
-      "REQUIRED after every page action (click, scroll_to, execute_js, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
+      "REQUIRED after every page action (click, scroll_to, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
     inputSchema: jsonSchema<{
       success: boolean;
       summary: string;
@@ -1057,109 +1048,6 @@ export function createBrowserTools(
     tools.click.execute = withVerification(ctx, tools.click.execute);
   }
 
-  // ── execute_js ──────────────────────────────────────────────────────────
-  if (caps.executeJs) {
-    tools.execute_js = tool<
-      { code: string; description: string },
-      { success: boolean; error?: string }
-    >({
-      description:
-        'Execute JavaScript code in the page context. Use for: filling forms, clicking buttons, editing text content (translation), changing styles. Target elements with querySelector. Keep code simple — one element per action when possible. NEVER modify body, html, or framework wrapper elements. SELECTOR RULES: prefer #id or [name="..."], then unique class, then find by text content with Array.from(). Always null-check elements.',
-      inputSchema: jsonSchema<{ code: string; description: string }>({
-        type: "object" as const,
-        properties: {
-          code: {
-            type: "string",
-            description: "JavaScript code to execute in the page",
-          },
-          description: {
-            type: "string",
-            description:
-              "Brief description of what this code does (for the user)",
-          },
-        },
-        required: ["code", "description"],
-      }),
-      execute: async ({
-        code,
-        description,
-      }: {
-        code: string;
-        description: string;
-      }) => {
-        try {
-          ctx.onStreamEvent?.({
-            kind: "tool-status",
-            content: description.length > 40 ? "Ran code" : description,
-          });
-          // Auto-fix selectors with special characters
-          const fixedCode = code.replace(
-            /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
-            (match: string, selector: string) => {
-              const fixed = selector.replace(
-                /#([^.\s#\[>~+,]+)/g,
-                (_: string, id: string) => {
-                  if (/[^a-zA-Z0-9_-]/.test(id)) {
-                    return "#" + CSS.escape(id);
-                  }
-                  return "#" + id;
-                },
-              );
-              if (fixed !== selector) {
-                return match.replace(selector, fixed);
-              }
-              return match;
-            },
-          );
-
-          const result = await execInPage(
-            ctx.tabId,
-            ((jsCode: string) => {
-              try {
-                const ret = new Function(jsCode)();
-                // Return stringified result so the model can see what happened
-                return {
-                  error: null,
-                  result: ret === undefined ? null : String(ret).slice(0, 500),
-                };
-              } catch (e) {
-                return {
-                  error: e instanceof Error ? e.message : String(e),
-                  result: null,
-                };
-              }
-            }) as (...args: never[]) => {
-              error: string | null;
-              result: string | null;
-            },
-            [fixedCode],
-          );
-
-          if (result?.error) {
-            return { success: false, error: result.error };
-          }
-          return {
-            success: true,
-            ...(result?.result != null ? { result: result.result } : {}),
-          };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
-    if (!yoloMode) {
-      tools.execute_js.execute = withConfirmation(
-        ctx,
-        () => "Run JavaScript on page",
-        tools.execute_js.execute,
-      );
-    }
-    tools.execute_js.execute = withVerification(ctx, tools.execute_js.execute);
-  }
-
   // ── highlight_ui ────────────────────────────────────────────────────────
   if (caps.highlightUi !== false) {
     tools.highlight_ui = tool<
@@ -1360,10 +1248,10 @@ export function createBrowserTools(
   }
 
   // ── fill_input ──────────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.fill_input = tool({
       description:
-        "Fill an input field with a value. Prefer this over execute_js for form filling. Use label text or placeholder to identify the field.",
+        "Fill an input field with a value. Use label text or placeholder to identify the field.",
       inputSchema: jsonSchema<{
         selector?: string;
         label?: string;
@@ -1502,7 +1390,7 @@ export function createBrowserTools(
   }
 
   // ── select_option ─────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.select_option = tool({
       description:
         "Select an option in a <select> dropdown. Identify by label, selector, or option text.",
@@ -1646,7 +1534,7 @@ export function createBrowserTools(
   }
 
   // ── toggle_checkbox ───────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.toggle_checkbox = tool({
       description: "Check or uncheck a checkbox or radio button.",
       inputSchema: jsonSchema<{
@@ -1748,7 +1636,7 @@ export function createBrowserTools(
   }
 
   // ── submit_form ───────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.submit_form = tool({
       description:
         "Submit a form on the page. This may cause a page navigation.",
@@ -1849,7 +1737,7 @@ export function createBrowserTools(
   }
 
   // ── scroll_to ─────────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.scroll_to = tool({
       description:
         "Scroll an element into view. IMPORTANT: Use the ACTUAL text visible on the page (from get_page_context), not a translated or assumed version. The page language may differ from yours.",
@@ -1978,7 +1866,7 @@ export function createBrowserTools(
   }
 
   // ── find_text ─────────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.find_text = tool({
       description:
         "Search for text on the page. Returns matching elements and their context.",
@@ -2056,7 +1944,7 @@ export function createBrowserTools(
   }
 
   // ── extract_table ─────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.extract_table = tool({
       description: "Extract data from a <table> element as JSON.",
       inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({

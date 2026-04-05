@@ -911,7 +911,6 @@ export function GyozaiWidget() {
         navigate: true,
         showMessage: true,
         click: true,
-        executeJs: true,
         highlightUi: true,
         fetch: false,
         clarify: !extSettings?.yoloMode,
@@ -1085,12 +1084,6 @@ export function GyozaiWidget() {
         case "click":
           lines.push("Clicked element");
           break;
-        case "execute_js": {
-          const desc =
-            (tc.args as { description?: string }).description || "Ran code";
-          lines.push(desc.length > 40 ? "Ran code" : desc);
-          break;
-        }
         case "highlight_ui":
           lines.push("Highlighted element");
           break;
@@ -1829,7 +1822,7 @@ export function GyozaiWidget() {
               </div>
             )}
 
-            {/* Action confirmation (safeguard for submit_form / execute_js) */}
+            {/* Action confirmation (safeguard for submit_form) */}
             {confirmation && (
               <div className="gyozai-clarify">
                 <span className="gyozai-confirm-text">

@@ -269,7 +269,6 @@ export default defineBackground(() => {
             if (entry && entry.abortController === abortController) {
               const MUTATING_TOOLS = [
                 "click",
-                "execute_js",
                 "fill_input",
                 "select_option",
                 "toggle_checkbox",
