@@ -216,12 +216,12 @@ export async function handleQuery(
         const lastToolCalls = lastStep?.toolCalls || [];
         const lastToolName = lastToolCalls[lastToolCalls.length - 1]?.toolName;
 
-        // Let the model stop after: no tool calls, clarify,
-        // report_action_result (completed action cycle), or task_complete.
+        // Let the model stop after: no tool calls, clarify, or task_complete.
+        // report_action_result is NOT a stop point — the model must follow up
+        // with verification (get_page_context) or completion (task_complete).
         if (
           !lastToolCalls.length ||
           lastToolName === "clarify" ||
-          lastToolName === "report_action_result" ||
           lastToolName === "task_complete"
         )
           return {};
