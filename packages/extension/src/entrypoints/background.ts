@@ -45,12 +45,13 @@ export default defineBackground(() => {
     const query = activeQueries.get(details.tabId);
     if (!query) return;
 
-    // Skip completed queries that had no mutating actions (click, submit, etc.)
-    // These are read-only queries (get_page_context + show_message) — any
-    // navigation after them is user-initiated, not model-caused.
-    if (query.completed && !query.hadMutatingAction) {
+    // Skip queries that have no mutating actions (click, submit, etc.)
+    // If the model hasn't clicked or filled anything, navigation is NOT
+    // model-caused — it's user-initiated or a third-party redirect (e.g.
+    // Stripe session refresh). Don't save pending-nav.
+    if (!query.hadMutatingAction) {
       console.log(
-        "[gyoza:nav] Completed non-mutating query, skipping pending-nav",
+        "[gyoza:nav] No mutating actions in this query, skipping pending-nav",
       );
       activeQueries.delete(details.tabId);
       return;
@@ -252,35 +253,29 @@ export default defineBackground(() => {
           originalQuery: message.query,
           currentUrl: sender.tab?.url,
           abortController,
+          hadMutatingAction: false,
         });
       }
+
+      // Callback for tools to notify that a mutating action occurred
+      const onMutatingAction = () => {
+        if (!tabId) return;
+        const entry = activeQueries.get(tabId);
+        if (entry && entry.abortController === abortController) {
+          entry.hadMutatingAction = true;
+        }
+      };
 
       handleQuery(
         message,
         sender,
         (result) => {
-          // Mark query as completed. Check if the model performed mutating
-          // actions (click, submit, etc.) — only those might cause delayed
-          // navigation (e.g. Stripe processing then redirecting). Non-mutating
-          // queries get skipped by onBeforeNavigate to prevent unwanted
-          // auto-continues on manual navigation.
+          // Mark query as completed. hadMutatingAction is already set
+          // in real-time by onMutatingAction callback from tools.
           if (tabId) {
             const entry = activeQueries.get(tabId);
             if (entry && entry.abortController === abortController) {
-              const MUTATING_TOOLS = [
-                "click",
-                "fill_input",
-                "select_option",
-                "toggle_checkbox",
-                "submit_form",
-                "navigate",
-              ];
-              const toolCalls =
-                (result as { toolCalls?: { tool: string }[] }).toolCalls || [];
               entry.completed = true;
-              entry.hadMutatingAction = toolCalls.some((tc) =>
-                MUTATING_TOOLS.includes(tc.tool),
-              );
               // If no mutating actions, clear immediately — any future
               // navigation is user-initiated
               if (!entry.hadMutatingAction) {
@@ -302,6 +297,7 @@ export default defineBackground(() => {
         },
         engines,
         abortController.signal,
+        onMutatingAction,
       );
     });
     port.onDisconnect.addListener(() => {

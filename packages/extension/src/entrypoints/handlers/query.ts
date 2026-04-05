@@ -20,6 +20,7 @@ export async function handleQuery(
   sendResponse: (result: unknown) => void,
   engines: Map<string, QueryEngine>,
   externalSignal?: AbortSignal,
+  onMutatingAction?: () => void,
 ): Promise<void> {
   const settings = await getSettings();
   const providerResult = createProvider(settings);
@@ -152,6 +153,7 @@ export async function handleQuery(
       abortStream: () => abortController.abort(),
       abortSignal: abortController.signal,
       actionCount: 0,
+      onMutatingAction,
     };
 
     const tr = getTranslations(settings.language as LocaleCode);

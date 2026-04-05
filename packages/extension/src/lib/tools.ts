@@ -196,6 +196,8 @@ export interface ToolExecContext {
   abortSignal?: AbortSignal;
   /** Count of mutating actions performed (click, fill_input, etc.) */
   actionCount: number;
+  /** Callback to notify background that a mutating action occurred (for pending-nav decisions) */
+  onMutatingAction?: () => void;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -426,6 +428,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
   return async (args: TArgs) => {
     // Track that a mutating action was attempted
     ctx.actionCount++;
+    ctx.onMutatingAction?.();
 
     // Capture before state
     const beforeText = await capturePageState(ctx.tabId);
