@@ -35,7 +35,8 @@ export default defineBackground(() => {
       originalQuery: string;
       currentUrl?: string;
       abortController: AbortController;
-      completedAt?: number;
+      completed?: boolean;
+      hadMutatingAction?: boolean;
     }
   >();
 
@@ -44,13 +45,12 @@ export default defineBackground(() => {
     const query = activeQueries.get(details.tabId);
     if (!query) return;
 
-    // Skip stale entries — query completed > 15s ago means user navigated
-    // manually, not a model-caused redirect (e.g. Stripe async processing)
-    if (query.completedAt && Date.now() - query.completedAt > 5000) {
+    // Skip completed queries that had no mutating actions (click, submit, etc.)
+    // These are read-only queries (get_page_context + show_message) — any
+    // navigation after them is user-initiated, not model-caused.
+    if (query.completed && !query.hadMutatingAction) {
       console.log(
-        "[gyoza:nav] Stale activeQuery (completed",
-        Math.round((Date.now() - query.completedAt) / 1000),
-        "s ago), skipping",
+        "[gyoza:nav] Completed non-mutating query, skipping pending-nav",
       );
       activeQueries.delete(details.tabId);
       return;
@@ -101,6 +101,17 @@ export default defineBackground(() => {
       })
       .catch(() => {});
     activeQueries.delete(details.tabId);
+  });
+
+  // Clean up completed mutating entries after the new page finishes loading.
+  // At this point, any model-caused redirect has already been handled by
+  // onBeforeNavigate → pending-nav saved. The entry is no longer needed.
+  browser.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId !== 0) return;
+    const entry = activeQueries.get(details.tabId);
+    if (entry?.completed) {
+      activeQueries.delete(details.tabId);
+    }
   });
 
   // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
@@ -248,15 +259,34 @@ export default defineBackground(() => {
         message,
         sender,
         (result) => {
-          // Mark query as completed — don't delete yet. The entry stays
-          // alive so webNavigation can save pending-nav if the page redirects
-          // shortly after (e.g. Stripe processing). Stale entries (> 15s) are
-          // ignored by onBeforeNavigate to prevent unwanted auto-continues
-          // on manual navigation.
+          // Mark query as completed. Check if the model performed mutating
+          // actions (click, submit, etc.) — only those might cause delayed
+          // navigation (e.g. Stripe processing then redirecting). Non-mutating
+          // queries get skipped by onBeforeNavigate to prevent unwanted
+          // auto-continues on manual navigation.
           if (tabId) {
             const entry = activeQueries.get(tabId);
             if (entry && entry.abortController === abortController) {
-              entry.completedAt = Date.now();
+              const MUTATING_TOOLS = [
+                "click",
+                "execute_js",
+                "fill_input",
+                "select_option",
+                "toggle_checkbox",
+                "submit_form",
+                "navigate",
+              ];
+              const toolCalls =
+                (result as { toolCalls?: { tool: string }[] }).toolCalls || [];
+              entry.completed = true;
+              entry.hadMutatingAction = toolCalls.some((tc) =>
+                MUTATING_TOOLS.includes(tc.tool),
+              );
+              // If no mutating actions, clear immediately — any future
+              // navigation is user-initiated
+              if (!entry.hadMutatingAction) {
+                activeQueries.delete(tabId);
+              }
             }
           }
 
