@@ -1,7 +1,7 @@
 // ─── Supported locales ──────────────────────────────────────────────────────
 
 export const SUPPORTED_LOCALES = [
-  { code: "en", name: "\ud83c\uddec\ud83c\udde7 English" },
+  { code: "en", name: "\ud83c\uddfa\ud83c\uddf8 English" },
   { code: "pt-BR", name: "\ud83c\udde7\ud83c\uddf7 Portugu\u00eas (Brasil)" },
   { code: "pt-PT", name: "\ud83c\uddf5\ud83c\uddf9 Portugu\u00eas (Portugal)" },
   { code: "es", name: "\ud83c\uddea\ud83c\uddf8 Espa\u00f1ol" },
