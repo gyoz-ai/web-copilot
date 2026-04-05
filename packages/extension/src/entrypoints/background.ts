@@ -56,15 +56,20 @@ export default defineBackground(() => {
       return;
     }
 
-    // Ignore same-page navigations (e.g. Stripe reloading itself)
-    const currentUrl = (query as { currentUrl?: string }).currentUrl;
+    // Ignore hash-only navigations (same origin+path+search, different hash)
+    // Query param changes like ?lang=pt-BR ARE real navigation.
+    const currentUrl = query.currentUrl;
     if (currentUrl && details.url) {
       try {
         const cur = new URL(currentUrl);
         const nav = new URL(details.url);
-        if (cur.origin === nav.origin && cur.pathname === nav.pathname) {
+        if (
+          cur.origin === nav.origin &&
+          cur.pathname === nav.pathname &&
+          cur.search === nav.search
+        ) {
           console.log(
-            "[gyoza:nav] Same-path navigation, ignoring:",
+            "[gyoza:nav] Hash-only navigation, ignoring:",
             details.url.slice(0, 80),
           );
           return;

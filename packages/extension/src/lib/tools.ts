@@ -322,13 +322,17 @@ async function verifyPostAction(
     if (!currentUrl) break;
 
     if (currentUrl !== preUrl) {
-      // Ignore same-origin + same-path changes (e.g. hash, query param updates)
+      // Ignore hash-only changes (same origin+path+search, different hash)
       try {
         const pre = new URL(preUrl);
         const cur = new URL(currentUrl);
-        if (pre.origin === cur.origin && pre.pathname === cur.pathname) {
+        if (
+          pre.origin === cur.origin &&
+          pre.pathname === cur.pathname &&
+          pre.search === cur.search
+        ) {
           console.log(
-            `%c  [gyoza:verify] Poll ${poll}: same-path URL change, ignoring`,
+            `%c  [gyoza:verify] Poll ${poll}: hash-only URL change, ignoring`,
             "color: #9ca3af",
           );
           continue;
