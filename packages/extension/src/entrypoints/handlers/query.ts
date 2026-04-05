@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from "ai";
+import { streamText } from "ai";
 import {
   QueryEngine,
   type QueryInput,
@@ -184,7 +184,15 @@ export async function handleQuery(
       messages: aiMessages,
       tools,
       abortSignal: abortController.signal,
-      stopWhen: stepCountIs(100),
+      stopWhen: ({ steps }) => {
+        if (steps.length >= 100) return true;
+        // Stop when the model calls task_complete
+        const lastStep = steps[steps.length - 1];
+        return (
+          lastStep?.toolCalls?.some((tc) => tc.toolName === "task_complete") ??
+          false
+        );
+      },
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
@@ -192,14 +200,15 @@ export async function handleQuery(
         const lastToolCalls = lastStep?.toolCalls || [];
         const lastToolName = lastToolCalls[lastToolCalls.length - 1]?.toolName;
 
-        // If the model stopped calling tools entirely or used clarify,
-        // let it stop naturally.
-        if (!lastToolCalls.length || lastToolName === "clarify") return {};
-
-        // If the last step ended with report_action_result, the model
-        // completed an action cycle. Let it decide whether to continue
-        // (auto) — it will keep going if more work remains.
-        if (lastToolName === "report_action_result") return {};
+        // Let the model stop after: no tool calls, clarify,
+        // report_action_result (completed action cycle), or task_complete.
+        if (
+          !lastToolCalls.length ||
+          lastToolName === "clarify" ||
+          lastToolName === "report_action_result" ||
+          lastToolName === "task_complete"
+        )
+          return {};
 
         // Otherwise (show_message narration, get_page_context, etc.),
         // force tool use so the model keeps working instead of stopping

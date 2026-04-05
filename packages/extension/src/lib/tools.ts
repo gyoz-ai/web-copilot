@@ -164,6 +164,15 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 10_000,
   },
+  task_complete: {
+    name: "task_complete",
+    description: "Signal task completion",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 200,
+  },
 };
 
 // ─── Tool Result Types ─────────────────────────────────────────────────────────
@@ -624,6 +633,35 @@ export function createBrowserTools(
         ctx.onStreamEvent?.({ kind: "message", content: message });
       }
       return { acknowledged: true };
+    },
+  });
+
+  // ── task_complete — signals the task is done, stops the tool loop ──────
+  tools.task_complete = tool<
+    { success: boolean; summary: string },
+    { stopped: boolean }
+  >({
+    description:
+      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST call this tool when you are done — do not keep calling show_message after completing the task. Include a brief summary of what was accomplished.",
+    inputSchema: jsonSchema<{ success: boolean; summary: string }>({
+      type: "object" as const,
+      properties: {
+        success: {
+          type: "boolean",
+          description: "Was the task completed successfully?",
+        },
+        summary: {
+          type: "string",
+          description:
+            "Final summary of what was done (shown to user as the last message)",
+        },
+      },
+      required: ["success", "summary"],
+    }),
+    execute: async ({ summary }) => {
+      ctx.messages.push(summary);
+      ctx.onStreamEvent?.({ kind: "message", content: summary });
+      return { stopped: true };
     },
   });
 

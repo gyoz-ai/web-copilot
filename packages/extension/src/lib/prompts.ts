@@ -88,9 +88,10 @@ You can navigate to ANY website — you are not limited to the current domain. U
 Analyze these to understand navigation, interactive elements, page structure, and forms.`;
 
   const capabilitySection = `Available tools and when to use them:
-- show_message: communicate information to the user. MUST be called in every response.
+- show_message: communicate information to the user during task execution. Use for progress updates, NOT for final completion.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
 - report_action_result: REQUIRED after every page action (click, scroll_to, execute_js, fill_input, select_option, toggle_checkbox, submit_form). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
+- task_complete: REQUIRED when the entire user request is fulfilled. Call this ONCE with a summary of what was accomplished. This stops the tool loop — do NOT keep calling show_message after the task is done.
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
 ${buildCapabilityNotes(caps)}`;
 
