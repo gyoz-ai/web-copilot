@@ -33,7 +33,7 @@ export default defineConfig({
   manifest: {
     name: "gyoza",
     description:
-      "gyoza can see your screen, understand any website, and do things for you — clicks, forms, navigation, all by just asking.",
+      "AI companion for the browser. Ask questions, get answers, let AI click and navigate for you.",
     version: "0.0.9",
     browser_specific_settings: {
       gecko: {
