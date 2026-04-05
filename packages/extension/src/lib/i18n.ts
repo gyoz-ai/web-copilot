@@ -107,6 +107,8 @@ export interface Translations {
   popup_model: string;
   popup_save: string;
   popup_saved: string;
+  popup_mode_pro: string;
+  popup_mode_own_key: string;
   popup_managed_connected: string;
   popup_managed_sign_out: string;
   popup_managed_subscribe_desc: string;
@@ -172,11 +174,13 @@ const en: Translations = {
   popup_model: "Model",
   popup_save: "Save Settings",
   popup_saved: "Saved",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Own key",
   popup_managed_connected: "Connected to gyoza platform",
   popup_managed_sign_out: "Sign Out",
   popup_managed_subscribe_desc:
-    "Subscribe to use gyoza without your own API key.",
-  popup_managed_subscribe_btn: "Subscribe & Sign In",
+    "Get started with gyoza Pro — no API key needed.",
+  popup_managed_subscribe_btn: "Get Started",
   popup_recipes: "Recipes",
   popup_all_recipes: "All Recipes",
   popup_recipes_for: "Recipes \u2014 {domain}",
@@ -240,11 +244,13 @@ const ptBR: Translations = {
   popup_model: "Modelo",
   popup_save: "Salvar Configura\u00e7\u00f5es",
   popup_saved: "Salvo",
-  popup_managed_connected: "Conectado \u00e0 plataforma gyoza",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Própria chave",
+  popup_managed_connected: "Conectado à plataforma gyoza",
   popup_managed_sign_out: "Sair",
   popup_managed_subscribe_desc:
-    "Assine para usar o gyoza sem sua pr\u00f3pria chave de API.",
-  popup_managed_subscribe_btn: "Assinar e Entrar",
+    "Comece com o gyoza Pro — sem chave de API necessária.",
+  popup_managed_subscribe_btn: "Começar",
   popup_recipes: "Receitas",
   popup_all_recipes: "Todas as Receitas",
   popup_recipes_for: "Receitas \u2014 {domain}",
@@ -273,10 +279,11 @@ const ptPT: Translations = {
   widget_no_conversations: "Ainda sem conversas",
   widget_recipe_imported: "Receita importada automaticamente de {name}",
   widget_delete_conversation: "Eliminar conversa",
-  popup_managed_sign_out: "Terminar Sess\u00e3o",
+  popup_mode_own_key: "Própria chave",
+  popup_managed_sign_out: "Terminar Sessão",
   popup_managed_subscribe_desc:
-    "Subscreva para usar o gyoza sem a sua pr\u00f3pria chave de API.",
-  popup_managed_subscribe_btn: "Subscrever e Iniciar Sess\u00e3o",
+    "Comece com o gyoza Pro — sem chave de API necessária.",
+  popup_managed_subscribe_btn: "Começar",
   popup_no_recipes_site:
     "Sem receitas para {domain}. Importe uma receita para melhorar a navega\u00e7\u00e3o com IA.",
   popup_import: "+ Importar",
@@ -325,11 +332,13 @@ const es: Translations = {
   popup_model: "Modelo",
   popup_save: "Guardar Ajustes",
   popup_saved: "Guardado",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Tu propia clave",
   popup_managed_connected: "Conectado a la plataforma gyoza",
   popup_managed_sign_out: "Cerrar Sesi\u00f3n",
   popup_managed_subscribe_desc:
-    "Suscr\u00edbete para usar gyoza sin tu propia clave de API.",
-  popup_managed_subscribe_btn: "Suscribirse e Iniciar Sesi\u00f3n",
+    "Empieza con gyoza Pro \u2014 sin clave de API.",
+  popup_managed_subscribe_btn: "Empezar",
   popup_recipes: "Recetas",
   popup_all_recipes: "Todas las Recetas",
   popup_recipes_for: "Recetas \u2014 {domain}",
@@ -393,11 +402,13 @@ const fr: Translations = {
   popup_model: "Mod\u00e8le",
   popup_save: "Enregistrer",
   popup_saved: "Enregistr\u00e9",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Ta propre cl\u00e9",
   popup_managed_connected: "Connect\u00e9 \u00e0 la plateforme gyoza",
   popup_managed_sign_out: "Se D\u00e9connecter",
   popup_managed_subscribe_desc:
-    "Abonnez-vous pour utiliser gyoza sans votre propre cl\u00e9 API.",
-  popup_managed_subscribe_btn: "S'abonner et Se Connecter",
+    "Commencez avec gyoza Pro \u2014 pas besoin de cl\u00e9 API.",
+  popup_managed_subscribe_btn: "Commencer",
   popup_recipes: "Recettes",
   popup_all_recipes: "Toutes les Recettes",
   popup_recipes_for: "Recettes \u2014 {domain}",
@@ -461,11 +472,13 @@ const de: Translations = {
   popup_model: "Modell",
   popup_save: "Einstellungen Speichern",
   popup_saved: "Gespeichert",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Eigener Schl\u00fcssel",
   popup_managed_connected: "Verbunden mit der gyoza-Plattform",
   popup_managed_sign_out: "Abmelden",
   popup_managed_subscribe_desc:
-    "Abonnieren, um gyoza ohne eigenen API-Schl\u00fcssel zu nutzen.",
-  popup_managed_subscribe_btn: "Abonnieren & Anmelden",
+    "Starte mit gyoza Pro \u2014 kein API-Schl\u00fcssel n\u00f6tig.",
+  popup_managed_subscribe_btn: "Loslegen",
   popup_recipes: "Rezepte",
   popup_all_recipes: "Alle Rezepte",
   popup_recipes_for: "Rezepte \u2014 {domain}",
@@ -529,11 +542,13 @@ const it: Translations = {
   popup_model: "Modello",
   popup_save: "Salva Impostazioni",
   popup_saved: "Salvato",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "La tua chiave",
   popup_managed_connected: "Connesso alla piattaforma gyoza",
   popup_managed_sign_out: "Esci",
   popup_managed_subscribe_desc:
-    "Abbonati per usare gyoza senza la tua chiave API.",
-  popup_managed_subscribe_btn: "Abbonati e Accedi",
+    "Inizia con gyoza Pro — nessuna chiave API necessaria.",
+  popup_managed_subscribe_btn: "Inizia",
   popup_recipes: "Ricette",
   popup_all_recipes: "Tutte le Ricette",
   popup_recipes_for: "Ricette \u2014 {domain}",
@@ -596,11 +611,12 @@ const nl: Translations = {
   popup_model: "Model",
   popup_save: "Instellingen Opslaan",
   popup_saved: "Opgeslagen",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Eigen sleutel",
   popup_managed_connected: "Verbonden met gyoza-platform",
   popup_managed_sign_out: "Uitloggen",
-  popup_managed_subscribe_desc:
-    "Abonneer om gyoza te gebruiken zonder eigen API-sleutel.",
-  popup_managed_subscribe_btn: "Abonneren & Inloggen",
+  popup_managed_subscribe_desc: "Begin met gyoza Pro — geen API-sleutel nodig.",
+  popup_managed_subscribe_btn: "Beginnen",
   popup_recipes: "Recepten",
   popup_all_recipes: "Alle Recepten",
   popup_recipes_for: "Recepten \u2014 {domain}",
@@ -664,11 +680,12 @@ const pl: Translations = {
   popup_model: "Model",
   popup_save: "Zapisz Ustawienia",
   popup_saved: "Zapisano",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "W\u0142asny klucz",
   popup_managed_connected: "Po\u0142\u0105czono z platform\u0105 gyoza",
   popup_managed_sign_out: "Wyloguj",
-  popup_managed_subscribe_desc:
-    "Subskrybuj, aby u\u017cywa\u0107 gyoza bez w\u0142asnego klucza API.",
-  popup_managed_subscribe_btn: "Subskrybuj i Zaloguj",
+  popup_managed_subscribe_desc: "Zacznij z gyoza Pro \u2014 bez klucza API.",
+  popup_managed_subscribe_btn: "Rozpocznij",
   popup_recipes: "Przepisy",
   popup_all_recipes: "Wszystkie Przepisy",
   popup_recipes_for: "Przepisy \u2014 {domain}",
@@ -753,13 +770,14 @@ const ru: Translations = {
   popup_model: "\u041c\u043e\u0434\u0435\u043b\u044c",
   popup_save: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c",
   popup_saved: "\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\u0421\u0432\u043e\u0439 \u043a\u043b\u044e\u0447",
   popup_managed_connected:
     "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u043a \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435 gyoza",
   popup_managed_sign_out: "\u0412\u044b\u0439\u0442\u0438",
   popup_managed_subscribe_desc:
-    "\u041f\u043e\u0434\u043f\u0438\u0448\u0438\u0442\u0435\u0441\u044c, \u0447\u0442\u043e\u0431\u044b \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c gyoza \u0431\u0435\u0437 \u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e API-\u043a\u043b\u044e\u0447\u0430.",
-  popup_managed_subscribe_btn:
-    "\u041f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c\u0441\u044f \u0438 \u0412\u043e\u0439\u0442\u0438",
+    "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0441 gyoza Pro \u2014 \u043a\u043b\u044e\u0447 API \u043d\u0435 \u043d\u0443\u0436\u0435\u043d.",
+  popup_managed_subscribe_btn: "\u041d\u0430\u0447\u0430\u0442\u044c",
   popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u044b",
   popup_all_recipes:
     "\u0412\u0441\u0435 \u0420\u0435\u0446\u0435\u043f\u0442\u044b",
@@ -850,13 +868,15 @@ const uk: Translations = {
   popup_model: "\u041c\u043e\u0434\u0435\u043b\u044c",
   popup_save: "\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438",
   popup_saved: "\u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043d\u043e",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key:
+    "\u0412\u043b\u0430\u0441\u043d\u0438\u0439 \u043a\u043b\u044e\u0447",
   popup_managed_connected:
     "\u041f\u0456\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u0434\u043e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0438 gyoza",
   popup_managed_sign_out: "\u0412\u0438\u0439\u0442\u0438",
   popup_managed_subscribe_desc:
-    "\u041f\u0456\u0434\u043f\u0438\u0448\u0456\u0442\u044c\u0441\u044f, \u0449\u043e\u0431 \u0432\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u043e\u0432\u0443\u0432\u0430\u0442\u0438 gyoza \u0431\u0435\u0437 \u0432\u043b\u0430\u0441\u043d\u043e\u0433\u043e API-\u043a\u043b\u044e\u0447\u0430.",
-  popup_managed_subscribe_btn:
-    "\u041f\u0456\u0434\u043f\u0438\u0441\u0430\u0442\u0438\u0441\u044f \u0442\u0430 \u0412\u0432\u0456\u0439\u0442\u0438",
+    "\u041f\u043e\u0447\u043d\u0456\u0442\u044c \u0437 gyoza Pro \u2014 \u043a\u043b\u044e\u0447 API \u043d\u0435 \u043f\u043e\u0442\u0440\u0456\u0431\u0435\u043d.",
+  popup_managed_subscribe_btn: "\u041f\u043e\u0447\u0430\u0442\u0438",
   popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u0438",
   popup_all_recipes:
     "\u0423\u0441\u0456 \u0420\u0435\u0446\u0435\u043f\u0442\u0438",
@@ -946,14 +966,17 @@ const el: Translations = {
   popup_save: "\u0391\u03c0\u03bf\u03b8\u03ae\u03ba\u03b5\u03c5\u03c3\u03b7",
   popup_saved:
     "\u0391\u03c0\u03bf\u03b8\u03b7\u03ba\u03b5\u03cd\u03c4\u03b7\u03ba\u03b5",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key:
+    "\u0394\u03b9\u03ba\u03cc \u03c3\u03bf\u03c5 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af",
   popup_managed_connected:
     "\u03a3\u03c5\u03bd\u03b4\u03b5\u03b4\u03b5\u03bc\u03ad\u03bd\u03bf \u03c3\u03c4\u03b7\u03bd \u03c0\u03bb\u03b1\u03c4\u03c6\u03cc\u03c1\u03bc\u03b1 gyoza",
   popup_managed_sign_out:
     "\u0391\u03c0\u03bf\u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7",
   popup_managed_subscribe_desc:
-    "\u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03b5\u03af\u03c4\u03b5 \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03c7\u03c1\u03b7\u03c3\u03b9\u03bc\u03bf\u03c0\u03bf\u03b9\u03ae\u03c3\u03b5\u03c4\u03b5 \u03c4\u03bf gyoza \u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API.",
+    "\u039e\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03c4\u03b5 \u03bc\u03b5 \u03c4\u03bf gyoza Pro \u2014 \u03b4\u03b5\u03bd \u03c7\u03c1\u03b5\u03b9\u03ac\u03b6\u03b5\u03c4\u03b1\u03b9 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API.",
   popup_managed_subscribe_btn:
-    "\u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03ae & \u03a3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7",
+    "\u039e\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03c4\u03b5",
   popup_recipes: "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
   popup_all_recipes:
     "\u038c\u03bb\u03b5\u03c2 \u03bf\u03b9 \u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
@@ -1023,11 +1046,13 @@ const tr: Translations = {
   popup_model: "Model",
   popup_save: "Ayarlar\u0131 Kaydet",
   popup_saved: "Kaydedildi",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Kendi anahtar\u0131n",
   popup_managed_connected: "gyoza platformuna ba\u011fl\u0131",
   popup_managed_sign_out: "\u00c7\u0131k\u0131\u015f Yap",
   popup_managed_subscribe_desc:
-    "Kendi API anahtar\u0131n\u0131z olmadan gyoza kullanmak i\u00e7in abone olun.",
-  popup_managed_subscribe_btn: "Abone Ol ve Giri\u015f Yap",
+    "gyoza Pro ile ba\u015flay\u0131n \u2014 API anahtar\u0131 gerekmez.",
+  popup_managed_subscribe_btn: "Ba\u015flay\u0131n",
   popup_recipes: "Tarifler",
   popup_all_recipes: "T\u00fcm Tarifler",
   popup_recipes_for: "Tarifler \u2014 {domain}",
@@ -1113,14 +1138,16 @@ const ar: Translations = {
   popup_save:
     "\u062d\u0641\u0638 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
   popup_saved: "\u062a\u0645 \u0627\u0644\u062d\u0641\u0638",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key:
+    "\u0645\u0641\u062a\u0627\u062d\u0643 \u0627\u0644\u062e\u0627\u0635",
   popup_managed_connected:
     "\u0645\u062a\u0635\u0644 \u0628\u0645\u0646\u0635\u0629 gyoza",
   popup_managed_sign_out:
     "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c",
   popup_managed_subscribe_desc:
-    "\u0627\u0634\u062a\u0631\u0643 \u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645 gyoza \u0628\u062f\u0648\u0646 \u0645\u0641\u062a\u0627\u062d API \u062e\u0627\u0635 \u0628\u0643.",
-  popup_managed_subscribe_btn:
-    "\u0627\u0634\u062a\u0631\u0627\u0643 \u0648\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
+    "\u0627\u0628\u062f\u0623 \u0645\u0639 gyoza Pro \u2014 \u0644\u0627 \u062d\u0627\u062c\u0629 \u0644\u0645\u0641\u062a\u0627\u062d API.",
+  popup_managed_subscribe_btn: "\u0627\u0628\u062f\u0623",
   popup_recipes: "\u0627\u0644\u0648\u0635\u0641\u0627\u062a",
   popup_all_recipes:
     "\u062c\u0645\u064a\u0639 \u0627\u0644\u0648\u0635\u0641\u0627\u062a",
@@ -1210,13 +1237,15 @@ const hi: Translations = {
   popup_save:
     "\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0938\u0939\u0947\u091c\u0947\u0902",
   popup_saved: "\u0938\u0939\u0947\u091c\u093e \u0917\u092f\u093e",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u0940",
   popup_managed_connected:
     "gyoza \u092a\u094d\u0932\u0947\u091f\u092b\u0949\u0930\u094d\u092e \u0938\u0947 \u091c\u0941\u0921\u093c\u093e",
   popup_managed_sign_out: "\u0938\u093e\u0907\u0928 \u0906\u0909\u091f",
   popup_managed_subscribe_desc:
-    "\u0905\u092a\u0928\u0940 API \u0915\u0941\u0902\u091c\u0940 \u0915\u0947 \u092c\u093f\u0928\u093e gyoza \u0909\u092a\u092f\u094b\u0917 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0938\u092c\u094d\u0938\u0915\u094d\u0930\u093e\u0907\u092c \u0915\u0930\u0947\u0902\u0964",
+    "gyoza Pro \u0915\u0947 \u0938\u093e\u0925 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902 \u2014 API \u0915\u0941\u0902\u091c\u0940 \u0915\u0940 \u091c\u093c\u0930\u0942\u0930\u0924 \u0928\u0939\u0940\u0902\u0964",
   popup_managed_subscribe_btn:
-    "\u0938\u092c\u094d\u0938\u0915\u094d\u0930\u093e\u0907\u092c \u0914\u0930 \u0938\u093e\u0907\u0928 \u0907\u0928",
+    "\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902",
   popup_recipes: "\u0930\u0947\u0938\u093f\u092a\u0940",
   popup_all_recipes: "\u0938\u092d\u0940 \u0930\u0947\u0938\u093f\u092a\u0940",
   popup_recipes_for: "\u0930\u0947\u0938\u093f\u092a\u0940 \u2014 {domain}",
@@ -1288,13 +1317,14 @@ const ja: Translations = {
   popup_model: "\u30e2\u30c7\u30eb",
   popup_save: "\u8a2d\u5b9a\u3092\u4fdd\u5b58",
   popup_saved: "\u4fdd\u5b58\u6e08\u307f",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\u81ea\u5206\u306e\u30ad\u30fc",
   popup_managed_connected:
     "gyoza\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u306b\u63a5\u7d9a\u6e08\u307f",
   popup_managed_sign_out: "\u30b5\u30a4\u30f3\u30a2\u30a6\u30c8",
   popup_managed_subscribe_desc:
-    "API\u30ad\u30fc\u306a\u3057\u3067gyoza\u3092\u4f7f\u7528\u3059\u308b\u306b\u306f\u767b\u9332\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  popup_managed_subscribe_btn:
-    "\u767b\u9332\u3057\u3066\u30b5\u30a4\u30f3\u30a4\u30f3",
+    "gyoza Pro\u3067\u59cb\u3081\u307e\u3057\u3087\u3046 \u2014 API\u30ad\u30fc\u4e0d\u8981\u3002",
+  popup_managed_subscribe_btn: "\u59cb\u3081\u308b",
   popup_recipes: "\u30ec\u30b7\u30d4",
   popup_all_recipes: "\u3059\u3079\u3066\u306e\u30ec\u30b7\u30d4",
   popup_recipes_for: "\u30ec\u30b7\u30d4 \u2014 {domain}",
@@ -1364,11 +1394,13 @@ const ko: Translations = {
   popup_model: "\ubaa8\ub378",
   popup_save: "\uc124\uc815 \uc800\uc7a5",
   popup_saved: "\uc800\uc7a5\ub428",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\ub0b4 \ud0a4 \uc0ac\uc6a9",
   popup_managed_connected: "gyoza \ud50c\ub7ab\ud3fc\uc5d0 \uc5f0\uacb0\ub428",
   popup_managed_sign_out: "\ub85c\uadf8\uc544\uc6c3",
   popup_managed_subscribe_desc:
-    "API \ud0a4 \uc5c6\uc774 gyoza\ub97c \uc0ac\uc6a9\ud558\ub824\uba74 \uad6c\ub3c5\ud558\uc138\uc694.",
-  popup_managed_subscribe_btn: "\uad6c\ub3c5 \ubc0f \ub85c\uadf8\uc778",
+    "gyoza Pro\ub85c \uc2dc\uc791\ud558\uc138\uc694 \u2014 API \ud0a4\uac00 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.",
+  popup_managed_subscribe_btn: "\uc2dc\uc791\ud558\uae30",
   popup_recipes: "\ub808\uc2dc\ud53c",
   popup_all_recipes: "\ubaa8\ub4e0 \ub808\uc2dc\ud53c",
   popup_recipes_for: "\ub808\uc2dc\ud53c \u2014 {domain}",
@@ -1435,11 +1467,13 @@ const zhCN: Translations = {
   popup_model: "\u6a21\u578b",
   popup_save: "\u4fdd\u5b58\u8bbe\u7f6e",
   popup_saved: "\u5df2\u4fdd\u5b58",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\u81ea\u6709\u5bc6\u94a5",
   popup_managed_connected: "\u5df2\u8fde\u63a5\u5230gyoza\u5e73\u53f0",
   popup_managed_sign_out: "\u9000\u51fa",
   popup_managed_subscribe_desc:
-    "\u8ba2\u9605\u540e\u65e0\u9700\u81ea\u5df1\u7684API\u5bc6\u94a5\u5373\u53ef\u4f7f\u7528gyoza\u3002",
-  popup_managed_subscribe_btn: "\u8ba2\u9605\u5e76\u767b\u5f55",
+    "\u5f00\u59cb\u4f7f\u7528gyoza Pro \u2014 \u65e0\u9700API\u5bc6\u94a5\u3002",
+  popup_managed_subscribe_btn: "\u5f00\u59cb\u4f7f\u7528",
   popup_recipes: "\u914d\u65b9",
   popup_all_recipes: "\u6240\u6709\u914d\u65b9",
   popup_recipes_for: "\u914d\u65b9 \u2014 {domain}",
@@ -1492,11 +1526,13 @@ const zhTW: Translations = {
   popup_api_key_placeholder: "\u8f38\u5165{provider} API\u91d1\u9470",
   popup_save: "\u5132\u5b58\u8a2d\u5b9a",
   popup_saved: "\u5df2\u5132\u5b58",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "\u81ea\u6709\u91d1\u9470",
   popup_managed_connected: "\u5df2\u9023\u63a5\u5230gyoza\u5e73\u53f0",
   popup_managed_sign_out: "\u767b\u51fa",
   popup_managed_subscribe_desc:
-    "\u8a02\u95b1\u5f8c\u7121\u9700\u81ea\u5df1\u7684API\u91d1\u9470\u5373\u53ef\u4f7f\u7528gyoza\u3002",
-  popup_managed_subscribe_btn: "\u8a02\u95b1\u4e26\u767b\u5165",
+    "\u958b\u59cb\u4f7f\u7528gyoza Pro \u2014 \u7121\u9700API\u91d1\u9470\u3002",
+  popup_managed_subscribe_btn: "\u958b\u59cb\u4f7f\u7528",
   popup_recipes: "\u914d\u65b9",
   popup_all_recipes: "\u6240\u6709\u914d\u65b9",
   popup_no_recipes_all: "\u5c1a\u672a\u5b89\u88dd\u914d\u65b9\u3002",
@@ -1583,14 +1619,17 @@ const th: Translations = {
   popup_save:
     "\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e01\u0e32\u0e23\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32",
   popup_saved: "\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e41\u0e25\u0e49\u0e27",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key:
+    "\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13",
   popup_managed_connected:
     "\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d\u0e41\u0e1e\u0e25\u0e15\u0e1f\u0e2d\u0e23\u0e4c\u0e21 gyoza",
   popup_managed_sign_out:
     "\u0e2d\u0e2d\u0e01\u0e08\u0e32\u0e01\u0e23\u0e30\u0e1a\u0e1a",
   popup_managed_subscribe_desc:
-    "\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e43\u0e0a\u0e49 gyoza \u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e21\u0e35\u0e04\u0e35\u0e22\u0e4c API",
+    "\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19\u0e01\u0e31\u0e1a gyoza Pro \u2014 \u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e43\u0e0a\u0e49\u0e04\u0e35\u0e22\u0e4c API",
   popup_managed_subscribe_btn:
-    "\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e41\u0e25\u0e30\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48\u0e23\u0e30\u0e1a\u0e1a",
+    "\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19",
   popup_recipes: "\u0e2a\u0e39\u0e15\u0e23",
   popup_all_recipes:
     "\u0e2a\u0e39\u0e15\u0e23\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14",
@@ -1660,13 +1699,14 @@ const vi: Translations = {
   popup_model: "M\u00f4 h\u00ecnh",
   popup_save: "L\u01b0u C\u00e0i \u0110\u1eb7t",
   popup_saved: "\u0110\u00e3 l\u01b0u",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Kh\u00f3a ri\u00eang",
   popup_managed_connected:
     "\u0110\u00e3 k\u1ebft n\u1ed1i v\u1edbi n\u1ec1n t\u1ea3ng gyoza",
   popup_managed_sign_out: "\u0110\u0103ng xu\u1ea5t",
   popup_managed_subscribe_desc:
-    "\u0110\u0103ng k\u00fd \u0111\u1ec3 d\u00f9ng gyoza m\u00e0 kh\u00f4ng c\u1ea7n kh\u00f3a API.",
-  popup_managed_subscribe_btn:
-    "\u0110\u0103ng k\u00fd & \u0110\u0103ng nh\u1eadp",
+    "B\u1eaft \u0111\u1ea7u v\u1edbi gyoza Pro \u2014 kh\u00f4ng c\u1ea7n kh\u00f3a API.",
+  popup_managed_subscribe_btn: "B\u1eaft \u0111\u1ea7u",
   popup_recipes: "C\u00f4ng th\u1ee9c",
   popup_all_recipes: "T\u1ea5t c\u1ea3 C\u00f4ng th\u1ee9c",
   popup_recipes_for: "C\u00f4ng th\u1ee9c \u2014 {domain}",
@@ -1730,11 +1770,13 @@ const id: Translations = {
   popup_model: "Model",
   popup_save: "Simpan Pengaturan",
   popup_saved: "Tersimpan",
+  popup_mode_pro: "gyoza Pro",
+  popup_mode_own_key: "Kunci sendiri",
   popup_managed_connected: "Terhubung ke platform gyoza",
   popup_managed_sign_out: "Keluar",
   popup_managed_subscribe_desc:
-    "Berlangganan untuk menggunakan gyoza tanpa kunci API sendiri.",
-  popup_managed_subscribe_btn: "Berlangganan & Masuk",
+    "Mulai dengan gyoza Pro \u2014 tanpa kunci API.",
+  popup_managed_subscribe_btn: "Mulai",
   popup_recipes: "Resep",
   popup_all_recipes: "Semua Resep",
   popup_recipes_for: "Resep \u2014 {domain}",
