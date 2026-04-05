@@ -56,7 +56,7 @@ export interface QueryEngineConfig {
   userPromptBuilder: (params: UserPromptParams) => string;
   /** Tool definitions — passed to BYOK provider. */
   tools?: Record<string, unknown>;
-  /** Max tool calling steps per query (default: 10) */
+  /** Max tool calling steps per query (default: 100) */
   maxToolSteps?: number;
   /** Yolo mode toggle */
   yoloMode?: boolean;
@@ -257,7 +257,7 @@ export class QueryEngine {
       systemPrompt,
       messages,
       tools,
-      this.config.maxToolSteps ?? 10,
+      this.config.maxToolSteps ?? 100,
       onStepFinish,
     );
 

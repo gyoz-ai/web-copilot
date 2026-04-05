@@ -25,7 +25,9 @@ const BASE_RULES = `- You MUST call the show_message tool in EVERY response to e
   - Always null-check: if (el) el.textContent = '...'
 - After calling navigate, do NOT call any more tools — the page will reload and your context will be lost.
 - Call set_expression at the start of your response to set the avatar mood.
-- When your response involves giving the user options, choices, or asking them to pick between alternatives, you MUST use the clarify tool with clickable options instead of just listing them in show_message. This includes disambiguation ("did you mean X or Y?"), confirmation ("submit this form?"), and any multi-choice scenario.`;
+- When your response involves giving the user options, choices, or asking them to pick between alternatives, you MUST use the clarify tool with clickable options instead of just listing them in show_message. This includes disambiguation ("did you mean X or Y?"), confirmation ("submit this form?"), and any multi-choice scenario.
+- TASK COMPLETION: Before telling the user a task is complete, VERIFY it by reading the page content with get_page_context. Do not assume success from URL changes alone — always check that the page actually reflects the expected result. If verification fails, retry or tell the user what went wrong. Never claim success without evidence from the page content.
+- MULTI-STEP TASKS: When the user asks you to do multiple things (e.g. "change language AND upgrade plan"), complete ALL parts before stopping. Do not stop after the first part. Keep working through each step until every part of the request is fulfilled.`;
 
 function buildCapabilityNotes(caps: Capabilities): string {
   const notes: string[] = [];

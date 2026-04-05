@@ -184,7 +184,7 @@ export async function handleQuery(
       messages: aiMessages,
       tools,
       abortSignal: abortController.signal,
-      stopWhen: stepCountIs(10),
+      stopWhen: stepCountIs(100),
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
