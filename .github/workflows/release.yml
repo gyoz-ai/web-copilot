@@ -150,10 +150,8 @@ jobs:
           web-ext sign \
             --api-key="${{ secrets.FIREFOX_JWT_ISSUER }}" \
             --api-secret="${{ secrets.FIREFOX_JWT_SECRET }}" \
-            --id="${{ secrets.FIREFOX_EXTENSION_GUID }}" \
             --channel=listed \
             --source-dir=packages/extension/.output/firefox-mv2/ \
-            --upload-source-code=packages/extension/src/ \
             || echo "Firefox upload submitted (may need manual review)"
         env:
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
