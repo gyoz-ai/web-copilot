@@ -37,4 +37,48 @@
 - BYOK mode: LLM called directly from background worker (key stored locally)
 - Managed mode: calls platform API at gyoz.ai/v1/ai
 - Provider abstraction: same interface for Claude, OpenAI, Gemini, and managed proxy
-- No morph-ui action — use execute-js instead for all DOM manipulation
+
+## Type Safety
+
+- NEVER use `any`. No `as any`, no `Record<string, any>`, no `eslint-disable @typescript-eslint/no-explicit-any`.
+- Use proper types from libraries. For `Error.cause`, use `(err as Error & { cause?: Error }).cause`.
+- When working with Vercel AI SDK (`ai` package), use its exported types:
+
+### Vercel AI SDK Key Types (package: `ai`)
+
+```
+StepResult<TOOLS>
+  .toolCalls: Array<TypedToolCall<TOOLS>>
+  .toolResults: Array<TypedToolResult<TOOLS>>
+  .text: string
+  .finishReason: FinishReason
+
+TypedToolCall<TOOLS> = StaticToolCall<TOOLS> | DynamicToolCall
+  .type: 'tool-call'
+  .toolCallId: string
+  .toolName: string
+  .input: unknown (typed per-tool for StaticToolCall)
+
+TypedToolResult<TOOLS> = StaticToolResult<TOOLS> | DynamicToolResult
+  .type: 'tool-result'
+  .toolCallId: string
+  .toolName: string
+  .input: unknown
+  .output: unknown (typed per-tool for StaticToolResult)
+
+StopCondition<TOOLS> = (options: { steps: Array<StepResult<TOOLS>> }) => boolean | PromiseLike<boolean>
+
+PrepareStepFunction<TOOLS> = (options: {
+  steps: Array<StepResult<NoInfer<TOOLS>>>;
+  stepNumber: number;
+  model: LanguageModel;
+  messages: Array<ModelMessage>;
+}) => PrepareStepResult<TOOLS>
+
+OnStepFinishEvent<TOOLS> = StepResult<TOOLS>
+  (onStepFinish callback receives the full StepResult)
+  .toolCalls[].input — tool input params (NOT .args)
+  .toolResults[].output — tool return value (NOT .result)
+
+ToolSet — base type for the tools record
+```

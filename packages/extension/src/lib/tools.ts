@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import { tool, jsonSchema } from "ai";
+import { tool, jsonSchema, type ToolSet } from "ai";
 import type {
   Capabilities,
   BrowserToolDescriptor,
@@ -420,8 +420,9 @@ async function verifyPostAction(
  */
 function withVerification<TArgs, TResult extends Record<string, unknown>>(
   ctx: ToolExecContext,
-  executeFn: (args: TArgs) => Promise<TResult>,
-): (args: TArgs) => Promise<TResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ToolSet execute uses any for the options param
+  executeFn: (args: TArgs, ...rest: any[]) => Promise<TResult>,
+): typeof executeFn {
   return async (args: TArgs) => {
     // Track that a mutating action was attempted
     ctx.actionCount++;
@@ -510,8 +511,9 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
 function withConfirmation<TArgs, TResult extends Record<string, unknown>>(
   ctx: ToolExecContext,
   actionDescription: (args: TArgs) => string,
-  executeFn: (args: TArgs) => Promise<TResult>,
-): (args: TArgs) => Promise<TResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ToolSet execute uses any for the options param
+  executeFn: (args: TArgs, ...rest: any[]) => Promise<TResult>,
+): typeof executeFn {
   return async (args: TArgs) => {
     const description = actionDescription(args);
     ctx.onStreamEvent?.({ kind: "tool-status", content: description });
@@ -546,8 +548,7 @@ export function createBrowserTools(
   yoloMode: boolean,
   tr?: Translations,
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tools: Record<string, any> = {};
+  const tools: ToolSet = {};
 
   // ── Always available: show_message ──────────────────────────────────────
   tools.show_message = tool<{ message: string }, { displayed: boolean }>({
@@ -1058,7 +1059,7 @@ export function createBrowserTools(
         }
       },
     });
-    tools.click.execute = withVerification(ctx, tools.click.execute);
+    tools.click.execute = withVerification(ctx, tools.click.execute!);
   }
 
   // ── highlight_ui ────────────────────────────────────────────────────────
@@ -1399,7 +1400,7 @@ export function createBrowserTools(
         }
       },
     });
-    tools.fill_input.execute = withVerification(ctx, tools.fill_input.execute);
+    tools.fill_input.execute = withVerification(ctx, tools.fill_input.execute!);
   }
 
   // ── select_option ─────────────────────────────────────────────────────
@@ -1542,7 +1543,7 @@ export function createBrowserTools(
     });
     tools.select_option.execute = withVerification(
       ctx,
-      tools.select_option.execute,
+      tools.select_option.execute!,
     );
   }
 
@@ -1644,7 +1645,7 @@ export function createBrowserTools(
     });
     tools.toggle_checkbox.execute = withVerification(
       ctx,
-      tools.toggle_checkbox.execute,
+      tools.toggle_checkbox.execute!,
     );
   }
 
@@ -1740,12 +1741,12 @@ export function createBrowserTools(
         ctx,
         (args: { selector?: string }) =>
           `Submit form "${args.selector || "on page"}"`,
-        tools.submit_form.execute,
+        tools.submit_form.execute!,
       );
     }
     tools.submit_form.execute = withVerification(
       ctx,
-      tools.submit_form.execute,
+      tools.submit_form.execute!,
     );
   }
 

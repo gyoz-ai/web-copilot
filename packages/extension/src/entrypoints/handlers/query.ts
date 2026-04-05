@@ -257,8 +257,7 @@ export async function handleQuery(
       onStepFinish: ({ text, toolCalls }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
-            const tcInput =
-              "input" in tc ? (tc.input as Record<string, unknown>) : {};
+            const tcInput = (tc.input ?? {}) as Record<string, unknown>;
             allToolCalls.push({ tool: tc.toolName, args: tcInput });
 
             const inputStr = JSON.stringify(tcInput);
@@ -410,8 +409,14 @@ export async function handleQuery(
     let errorMessage = err instanceof Error ? err.message : "Unknown error";
     let errorType: string | undefined;
     let statusCode: number | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let cause = err instanceof Error ? (err as any).cause : undefined;
+    interface ErrorWithCause {
+      message?: string;
+      statusCode?: number;
+      status?: number;
+      cause?: ErrorWithCause;
+    }
+    let cause: ErrorWithCause | undefined =
+      err instanceof Error ? (err as ErrorWithCause).cause : undefined;
     while (cause) {
       if (cause.message) errorMessage = cause.message;
       if (cause.statusCode) statusCode = cause.statusCode;
