@@ -34,7 +34,7 @@ export default defineConfig({
     name: "gyoza",
     description:
       "AI companion for the browser. Ask questions, get answers, let AI click and navigate for you.",
-    version: "0.0.10",
+    version: "0.0.11",
     browser_specific_settings: {
       gecko: {
         id: "gyoza@gyoz.ai",
