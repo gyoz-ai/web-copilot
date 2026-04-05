@@ -1201,26 +1201,9 @@ export function GyozaiWidget() {
       )
         return false;
 
-      const ACTION_TOOLS = [
-        "click",
-        "execute_js",
-        "fill_input",
-        "select_option",
-        "toggle_checkbox",
-        "submit_form",
-        "scroll_to",
-        "navigate",
-      ];
-      const hasDataGathering = toolCalls.some(
-        (tc) => tc.tool === "get_page_context",
-      );
-      const hasAction = toolCalls.some((tc) => ACTION_TOOLS.includes(tc.tool));
-
-      // Model gathered data but never acted on it — incomplete response.
-      // BUT if show_message was called anywhere, the model already communicated
-      // and is working (e.g. "let me check the page" + get_page_context).
-      const hasShowMessage = toolCalls.some((tc) => tc.tool === "show_message");
-      if (hasDataGathering && !hasAction && !hasShowMessage) return true;
+      // If the response ended with get_page_context, the model was checking
+      // its work but never reported the result — always needs a follow-up.
+      if (lastTool.tool === "get_page_context") return true;
 
       if (msgs.some((m) => m.trim())) return false;
       return true;
