@@ -34,7 +34,7 @@ export default defineConfig({
     name: "gyoza — AI companion for the browser",
     description:
       "gyoza can see your screen, understand any website, and do things for you — clicks, forms, navigation, all by just asking.",
-    version: "0.0.7",
+    version: "0.0.8",
     browser_specific_settings: {
       gecko: {
         id: "gyoza@gyoz.ai",
