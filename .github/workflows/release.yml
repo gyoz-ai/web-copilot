@@ -102,6 +102,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
           git add packages/extension/wxt.config.ts packages/extension/package.json
           git commit -m "release: v${{ steps.version.outputs.version }}"
           git tag "${{ steps.version.outputs.tag }}"
