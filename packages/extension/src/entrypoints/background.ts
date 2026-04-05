@@ -35,6 +35,7 @@ export default defineBackground(() => {
       originalQuery: string;
       currentUrl?: string;
       abortController: AbortController;
+      completedAt?: number;
     }
   >();
 
@@ -42,6 +43,18 @@ export default defineBackground(() => {
     if (details.frameId !== 0) return; // Only main frame
     const query = activeQueries.get(details.tabId);
     if (!query) return;
+
+    // Skip stale entries — query completed > 15s ago means user navigated
+    // manually, not a model-caused redirect (e.g. Stripe async processing)
+    if (query.completedAt && Date.now() - query.completedAt > 15000) {
+      console.log(
+        "[gyoza:nav] Stale activeQuery (completed",
+        Math.round((Date.now() - query.completedAt) / 1000),
+        "s ago), skipping",
+      );
+      activeQueries.delete(details.tabId);
+      return;
+    }
 
     // Ignore same-page navigations (e.g. Stripe reloading itself)
     const currentUrl = (query as { currentUrl?: string }).currentUrl;
@@ -230,13 +243,17 @@ export default defineBackground(() => {
         message,
         sender,
         (result) => {
-          // Don't clear activeQueries here — keep it alive so
-          // webNavigation.onBeforeNavigate can save pending-nav if the page
-          // navigates after the model finishes (e.g. Stripe processing a
-          // confirmation then redirecting). It gets cleaned up when:
-          // - webNavigation.onBeforeNavigate consumes it
-          // - A new query overwrites it
-          // - Tab closes (tabs.onRemoved)
+          // Mark query as completed — don't delete yet. The entry stays
+          // alive so webNavigation can save pending-nav if the page redirects
+          // shortly after (e.g. Stripe processing). Stale entries (> 15s) are
+          // ignored by onBeforeNavigate to prevent unwanted auto-continues
+          // on manual navigation.
+          if (tabId) {
+            const entry = activeQueries.get(tabId);
+            if (entry && entry.abortController === abortController) {
+              entry.completedAt = Date.now();
+            }
+          }
 
           if (portDisconnected) return;
           console.log(
