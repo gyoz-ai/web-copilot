@@ -1514,20 +1514,37 @@ export function GyozaiWidget() {
             : -1;
           const assistantIsNewer = lastAssistantIdx > lastStatusIdx;
 
-          // Determine what to show: status pill, speech bubble, or idle pill
-          // Show speech bubble if there's a newer assistant message than the
-          // last status, even while loading. Show pill otherwise.
+          // When loading: always show the status pill (with loading animation)
+          // When idle: show whichever is newer — assistant message (speech
+          // bubble) or tool-status (pill). Fall back to idle pill.
+          if (isThinking) {
+            const thinkingText = activeStatus
+              ? activeStatus.content
+              : lastStatus?.content || tr.widget_status_thinking;
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  zIndex: 2147483647,
+                  pointerEvents: "none",
+                  left: avatarCenterX,
+                  transform: "translateX(-50%)",
+                  ...verticalPos,
+                }}
+              >
+                <div className="gyozai-status-pill">{thinkingText}</div>
+              </div>
+            );
+          }
+
+          // Not loading — show newest of assistant message vs tool-status
           const showPill =
             activeStatus ||
-            (isThinking && !assistantIsNewer) ||
+            (!assistantIsNewer && lastStatus) ||
             !lastAssistantMsg;
           const pillText = activeStatus
             ? activeStatus.content
-            : isThinking
-              ? assistantIsNewer
-                ? tr.widget_status_thinking
-                : lastStatus?.content || tr.widget_status_thinking
-              : tr.widget_status_idling;
+            : lastStatus?.content || tr.widget_status_idling;
 
           if (showPill) {
             return (
