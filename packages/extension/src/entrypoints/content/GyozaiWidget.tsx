@@ -479,12 +479,16 @@ export function GyozaiWidget() {
     if (resumingRef.current) return;
     resumingRef.current = true;
     try {
-      // Loop: after a navigated result, a NEW pending-nav may be waiting.
+      // Loop: after a navigated SPA result, a NEW pending-nav may be waiting.
       // The SPA check message can't re-enter (resumingRef blocks it),
-      // so we must re-check here.
+      // so we must re-check here. For full-page navigations, break —
+      // the new content script's mount effect will handle it.
       while (true) {
         const pendingNav = await loadAndClearPendingNav(tid);
         if (!pendingNav) break;
+
+        // Remember the URL before this iteration — used to detect SPA vs full-page nav
+        const urlBeforeQuery = window.location.href;
 
         log(
           "Resuming after navigation — pending-nav state:",
@@ -508,6 +512,9 @@ export function GyozaiWidget() {
         setLoading(true);
 
         // Show navigate status so user sees what happened
+        const displayPath =
+          window.location.pathname +
+          (window.location.search ? window.location.search : "");
         setMessages((prev) => [
           ...prev,
           {
@@ -515,7 +522,7 @@ export function GyozaiWidget() {
             role: "assistant",
             content: getTranslations(locale).status_navigated_to.replace(
               "{path}",
-              window.location.pathname,
+              displayPath,
             ),
             type: "tool-status" as const,
           },
@@ -555,12 +562,16 @@ export function GyozaiWidget() {
           if (firstUser) realOriginalQuery = firstUser.content;
         }
 
+        // Persist the original user query so auto-follow-ups have context
+        lastUserQueryRef.current = realOriginalQuery;
+
         const followUpQuery =
           `Navigation complete — now on ${window.location.href}. ` +
           `Original user request: "${realOriginalQuery}". ` +
           `The current page content is included below — do NOT call get_page_context. ` +
-          `Verify the result, then take next actions to fulfill the request. ` +
-          `Use show_message to tell the user what you see and what you're doing next.`;
+          `Verify the result, then take the next actions to fulfill the request. ` +
+          `Do NOT just describe the page — perform clicks, form fills, or other actions needed. ` +
+          `Use report_action_result when you have completed an action.`;
         log("Follow-up query:", followUpQuery);
 
         let navigated = false;
@@ -579,10 +590,11 @@ export function GyozaiWidget() {
           setLoading(false);
         }
 
-        // If the query caused another navigation, the background saved a new
-        // pending-nav but the SPA check was blocked by resumingRef. Loop to
-        // consume it.
+        // Only loop for SPA navigations (URL changed in-place).
+        // For full-page navigations, the URL hasn't changed yet (page is
+        // unloading) — break and let the new content script handle it.
         if (!navigated) break;
+        if (window.location.href === urlBeforeQuery) break;
       }
     } finally {
       resumingRef.current = false;
