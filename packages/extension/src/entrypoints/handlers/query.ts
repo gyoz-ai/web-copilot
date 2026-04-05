@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from "ai";
+import { streamText } from "ai";
 import {
   QueryEngine,
   type QueryInput,
@@ -20,6 +20,7 @@ export async function handleQuery(
   sendResponse: (result: unknown) => void,
   engines: Map<string, QueryEngine>,
   externalSignal?: AbortSignal,
+  onMutatingAction?: () => void,
 ): Promise<void> {
   const settings = await getSettings();
   const providerResult = createProvider(settings);
@@ -150,6 +151,9 @@ export async function handleQuery(
       originalQuery: message.query,
       onStreamEvent: sendStreamEvent,
       abortStream: () => abortController.abort(),
+      abortSignal: abortController.signal,
+      actionCount: 0,
+      onMutatingAction,
     };
 
     const tr = getTranslations(settings.language as LocaleCode);
@@ -183,51 +187,58 @@ export async function handleQuery(
       messages: aiMessages,
       tools,
       abortSignal: abortController.signal,
-      stopWhen: stepCountIs(10),
+      stopWhen: ({ steps }) => {
+        if (steps.length >= 100) return true;
+        // Stop when the model calls task_complete
+        const lastStep = steps[steps.length - 1];
+        const calledTaskComplete = lastStep?.toolCalls?.some(
+          (tc) => tc.toolName === "task_complete",
+        );
+        if (!calledTaskComplete) return false;
+        // If the AI performed actions OR is reporting failure, stop normally.
+        // If it claims success without any actions, the tool itself returns
+        // a warning (stopped: false) — let the model continue working.
+        if (ctx.actionCount > 0) return true;
+        // Check if it was a failure report (always allowed)
+        const tcCall = allToolCalls[allToolCalls.length - 1];
+        if (
+          tcCall?.tool === "task_complete" &&
+          (tcCall.args as { success?: boolean })?.success === false
+        )
+          return true;
+        // No actions + claimed success → tool rejected it, keep going
+        return false;
+      },
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
-        const prevTools = steps.flatMap(
-          (s) => s.toolCalls?.map((tc) => tc.toolName) || [],
-        );
-        console.log(
-          `%c  [gyoza] prepareStep → step ${steps.length}, prev tools: [${prevTools.join(", ")}]`,
-          "color: #f59e0b; font-weight: bold",
-        );
+        const lastStep = steps[steps.length - 1];
+        const lastToolCalls = lastStep?.toolCalls || [];
+        const lastToolName = lastToolCalls[lastToolCalls.length - 1]?.toolName;
 
-        // Check if any step so far produced user-facing output
-        const hasUserOutput = steps.some((s) =>
-          s.toolCalls?.some(
-            (tc) =>
-              tc.toolName === "show_message" ||
-              tc.toolName === "report_action_result",
-          ),
-        );
-
-        if (hasUserOutput) {
-          console.log(
-            "%c  [gyoza] prepareStep → user output found, no override",
-            "color: #22c55e",
-          );
+        // Let the model stop after: no tool calls, clarify, or task_complete.
+        // report_action_result is NOT a stop point — the model must follow up
+        // with verification (get_page_context) or completion (task_complete).
+        if (
+          !lastToolCalls.length ||
+          lastToolName === "clarify" ||
+          lastToolName === "task_complete"
+        )
           return {};
-        }
 
-        // No user output yet — force the model to call a tool
-        const alreadySetExpression = steps.some((s) =>
-          s.toolCalls?.some((tc) => tc.toolName === "set_expression"),
+        // Otherwise (show_message narration, get_page_context, etc.),
+        // force tool use so the model keeps working instead of stopping
+        // after just describing what it sees.
+        const usedTools = new Set(
+          steps.flatMap((s) => s.toolCalls?.map((tc) => tc.toolName) || []),
         );
+        const exclude = new Set<string>();
+        if (usedTools.has("set_expression")) exclude.add("set_expression");
 
-        // Exclude set_expression if already used (prevent escape hatch)
-        const active = alreadySetExpression
-          ? (Object.keys(tools).filter(
-              (t) => t !== "set_expression",
-            ) as (keyof typeof tools)[])
-          : undefined;
+        const active = Object.keys(tools).filter(
+          (t) => !exclude.has(t),
+        ) as (keyof typeof tools)[];
 
-        console.log(
-          `%c  [gyoza] prepareStep → forcing toolChoice=required, activeTools=${active ? active.length + " tools (excl set_expression)" : "all"}`,
-          "color: #ef4444; font-weight: bold",
-        );
         return { toolChoice: "required" as const, activeTools: active };
       },
       onError: ({ error }) => {
@@ -248,8 +259,7 @@ export async function handleQuery(
       onStepFinish: ({ text, toolCalls }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
-            const tcInput =
-              "input" in tc ? (tc.input as Record<string, unknown>) : {};
+            const tcInput = (tc.input ?? {}) as Record<string, unknown>;
             allToolCalls.push({ tool: tc.toolName, args: tcInput });
 
             const inputStr = JSON.stringify(tcInput);
@@ -261,23 +271,30 @@ export async function handleQuery(
           }
         }
         // Stream text from steps that didn't already show a message.
-        // Skip if: (a) this step has show_message, OR (b) a prior show_message
-        // already communicated and no data-gathering happened (text is just a
-        // rephrasing). Keep text when data was gathered — it's the actual answer.
+        // Skip if: (a) this step has show_message, OR (b) show_message was
+        // already called AFTER the last get_page_context (the model already
+        // communicated the result — follow-up text is just a rephrasing).
         const hasShowMessage = toolCalls?.some(
           (tc) =>
             tc.toolName === "show_message" ||
             tc.toolName === "report_action_result",
         );
         const alreadyCommunicated = ctx.messages.length > 0;
-        const hadDataGathering = allToolCalls.some(
-          (tc) => tc.tool === "get_page_context",
-        );
+        let lastPageCtxIdx = -1;
+        let lastShowMsgIdx = -1;
+        for (let i = allToolCalls.length - 1; i >= 0; i--) {
+          if (lastPageCtxIdx < 0 && allToolCalls[i].tool === "get_page_context")
+            lastPageCtxIdx = i;
+          if (lastShowMsgIdx < 0 && allToolCalls[i].tool === "show_message")
+            lastShowMsgIdx = i;
+          if (lastPageCtxIdx >= 0 && lastShowMsgIdx >= 0) break;
+        }
+        const answeredAfterData = lastShowMsgIdx > lastPageCtxIdx;
         if (
           text &&
           text.trim() &&
           !hasShowMessage &&
-          !(alreadyCommunicated && !hadDataGathering)
+          !(alreadyCommunicated && answeredAfterData)
         ) {
           ctx.messages.push(text.trim());
           sendStreamEvent({ kind: "message", content: text.trim() });
@@ -394,8 +411,14 @@ export async function handleQuery(
     let errorMessage = err instanceof Error ? err.message : "Unknown error";
     let errorType: string | undefined;
     let statusCode: number | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let cause = err instanceof Error ? (err as any).cause : undefined;
+    interface ErrorWithCause {
+      message?: string;
+      statusCode?: number;
+      status?: number;
+      cause?: ErrorWithCause;
+    }
+    let cause: ErrorWithCause | undefined =
+      err instanceof Error ? (err as ErrorWithCause).cause : undefined;
     while (cause) {
       if (cause.message) errorMessage = cause.message;
       if (cause.statusCode) statusCode = cause.statusCode;

@@ -25,6 +25,96 @@ export default defineBackground(() => {
 
   const engines = new Map<string, QueryEngine>();
 
+  // ─── Active query tracking for pending-nav on navigation ──────
+  // When a tab navigates while a query is running, save pending-nav
+  // so the content script on the new page can auto-continue.
+  const activeQueries = new Map<
+    number,
+    {
+      conversationId: string;
+      originalQuery: string;
+      currentUrl?: string;
+      abortController: AbortController;
+      completed?: boolean;
+      hadMutatingAction?: boolean;
+    }
+  >();
+
+  browser.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId !== 0) return; // Only main frame
+    const query = activeQueries.get(details.tabId);
+    if (!query) return;
+
+    // Skip queries that have no mutating actions (click, submit, etc.)
+    // If the model hasn't clicked or filled anything, navigation is NOT
+    // model-caused — it's user-initiated or a third-party redirect (e.g.
+    // Stripe session refresh). Don't save pending-nav.
+    if (!query.hadMutatingAction) {
+      console.log(
+        "[gyoza:nav] No mutating actions in this query, skipping pending-nav",
+      );
+      activeQueries.delete(details.tabId);
+      return;
+    }
+
+    // Ignore hash-only navigations (same origin+path+search, different hash)
+    // Query param changes like ?lang=pt-BR ARE real navigation.
+    const currentUrl = query.currentUrl;
+    if (currentUrl && details.url) {
+      try {
+        const cur = new URL(currentUrl);
+        const nav = new URL(details.url);
+        if (
+          cur.origin === nav.origin &&
+          cur.pathname === nav.pathname &&
+          cur.search === nav.search
+        ) {
+          console.log(
+            "[gyoza:nav] Hash-only navigation, ignoring:",
+            details.url.slice(0, 80),
+          );
+          return;
+        }
+      } catch {
+        // Invalid URL — proceed with save
+      }
+    }
+
+    console.log(
+      "[gyoza:nav] Tab",
+      details.tabId,
+      "navigating while query active — aborting stream + saving pending-nav",
+    );
+
+    // Abort the running stream immediately so it stops calling tools
+    query.abortController.abort();
+
+    const navKey = `gyozai_pending_nav_${details.tabId}`;
+    browser.storage.local
+      .set({
+        [navKey]: {
+          snapshotTypes: ["fullPage"],
+          originalQuery: query.originalQuery,
+          conversationId: query.conversationId,
+          tabId: details.tabId,
+          timestamp: Date.now(),
+        },
+      })
+      .catch(() => {});
+    activeQueries.delete(details.tabId);
+  });
+
+  // Clean up completed mutating entries after the new page finishes loading.
+  // At this point, any model-caused redirect has already been handled by
+  // onBeforeNavigate → pending-nav saved. The entry is no longer needed.
+  browser.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId !== 0) return;
+    const entry = activeQueries.get(details.tabId);
+    if (entry?.completed) {
+      activeQueries.delete(details.tabId);
+    }
+  });
+
   // ─── Auto-sync session cookie from gyoz.ai → managedToken ──────
   // When user logs in/out on gyoz.ai, the extension picks it up instantly.
   browser.cookies.onChanged.addListener(async (changeInfo) => {
@@ -150,10 +240,53 @@ export default defineBackground(() => {
     port.onMessage.addListener((message) => {
       console.log("[gyoza:port] Query message received via port");
       const sender = port.sender!;
+      const tabId = sender.tab?.id;
+
+      // Track active query for webNavigation pending-nav + stream abort
+      if (tabId && message.conversationId) {
+        // Abort any previous query still running for this tab
+        const prev = activeQueries.get(tabId);
+        if (prev) prev.abortController.abort();
+
+        activeQueries.set(tabId, {
+          conversationId: message.conversationId,
+          originalQuery: message.query,
+          currentUrl: sender.tab?.url,
+          abortController,
+          hadMutatingAction: false,
+        });
+      }
+
+      // Callback for tools to notify that a mutating action occurred
+      const onMutatingAction = () => {
+        if (!tabId) return;
+        const entry = activeQueries.get(tabId);
+        if (entry && entry.abortController === abortController) {
+          entry.hadMutatingAction = true;
+        }
+      };
+
       handleQuery(
         message,
         sender,
         (result) => {
+          // Mark query as completed. hadMutatingAction is already set
+          // in real-time by onMutatingAction callback from tools.
+          if (tabId) {
+            const entry = activeQueries.get(tabId);
+            if (entry && entry.abortController === abortController) {
+              entry.completed = true;
+              // Clean up after a short delay. We keep the entry briefly
+              // so that model-caused navigations (e.g. Stripe redirecting
+              // after checkout) can still trigger pending-nav. After 3s,
+              // any navigation is user-initiated.
+              setTimeout(() => {
+                const current = activeQueries.get(tabId);
+                if (current === entry) activeQueries.delete(tabId);
+              }, 3000);
+            }
+          }
+
           if (portDisconnected) return;
           console.log(
             "[gyoza:port] Sending query result via port, error:",
@@ -167,12 +300,16 @@ export default defineBackground(() => {
         },
         engines,
         abortController.signal,
+        onMutatingAction,
       );
     });
     port.onDisconnect.addListener(() => {
       console.log("[gyoza:port] Port disconnected — aborting stream");
       portDisconnected = true;
       abortController.abort();
+      // Don't clear activeQueries here — webNavigation listener needs it
+      // It gets cleared when the query completes (sendResponse) or
+      // when webNavigation fires and consumes it
     });
   });
 
@@ -241,6 +378,7 @@ export default defineBackground(() => {
   });
 
   browser.tabs.onRemoved.addListener((tabId) => {
+    activeQueries.delete(tabId);
     clearWidgetSession(tabId).catch(() => {});
   });
 });

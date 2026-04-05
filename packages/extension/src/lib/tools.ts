@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import { tool, jsonSchema } from "ai";
+import { tool, jsonSchema, type ToolSet } from "ai";
 import type {
   Capabilities,
   BrowserToolDescriptor,
@@ -46,15 +46,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     requiresFreshContext: true,
     isConcurrencySafe: false,
     maxResultChars: 1_000,
-  },
-  execute_js: {
-    name: "execute_js",
-    description: "Execute JavaScript",
-    pageChange: true,
-    mutatesPage: true,
-    requiresFreshContext: false,
-    isConcurrencySafe: false,
-    maxResultChars: 10_000,
   },
   highlight_ui: {
     name: "highlight_ui",
@@ -164,6 +155,15 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 10_000,
   },
+  task_complete: {
+    name: "task_complete",
+    description: "Signal task completion",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 200,
+  },
 };
 
 // ─── Tool Result Types ─────────────────────────────────────────────────────────
@@ -192,6 +192,14 @@ export interface ToolExecContext {
   }) => void;
   /** Abort the AI stream — called when navigation occurs mid-execution */
   abortStream?: () => void;
+  /** Signal from the query's AbortController — used to check if stream was already aborted */
+  abortSignal?: AbortSignal;
+  /** Count of mutating actions performed (click, fill_input, etc.) */
+  actionCount: number;
+  /** Callback to notify background that a mutating action occurred (for pending-nav decisions) */
+  onMutatingAction?: () => void;
+  /** Last page context snapshot — used to validate task_complete evidence */
+  lastPageContext?: string;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -322,6 +330,25 @@ async function verifyPostAction(
     if (!currentUrl) break;
 
     if (currentUrl !== preUrl) {
+      // Ignore hash-only changes (same origin+path+search, different hash)
+      try {
+        const pre = new URL(preUrl);
+        const cur = new URL(currentUrl);
+        if (
+          pre.origin === cur.origin &&
+          pre.pathname === cur.pathname &&
+          pre.search === cur.search
+        ) {
+          console.log(
+            `%c  [gyoza:verify] Poll ${poll}: hash-only URL change, ignoring`,
+            "color: #9ca3af",
+          );
+          continue;
+        }
+      } catch {
+        // Invalid URL — treat as navigation
+      }
+
       console.log(
         `%c  [gyoza:verify] Poll ${poll}: navigation → ${currentUrl}`,
         "color: #22c55e; font-weight: bold",
@@ -397,34 +424,23 @@ async function verifyPostAction(
  */
 function withVerification<TArgs, TResult extends Record<string, unknown>>(
   ctx: ToolExecContext,
-  executeFn: (args: TArgs) => Promise<TResult>,
-): (args: TArgs) => Promise<TResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ToolSet execute uses any for the options param
+  executeFn: (args: TArgs, ...rest: any[]) => Promise<TResult>,
+): typeof executeFn {
   return async (args: TArgs) => {
+    // Track that a mutating action was attempted
+    ctx.actionCount++;
+    ctx.onMutatingAction?.();
+
     // Capture before state
     const beforeText = await capturePageState(ctx.tabId);
     const preUrl = (await getPageUrl(ctx.tabId)) || "";
 
-    // Pre-save pending-nav BEFORE the action — in case it triggers navigation,
-    // the new page's widget will find this immediately on mount.
-    // If no navigation occurs, we delete it after verification.
-    const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-    await browser.storage.local.set({
-      [pendingNavKey]: {
-        snapshotTypes: ["all"],
-        originalQuery: ctx.originalQuery,
-        conversationId: ctx.conversationId || "",
-        tabId: ctx.tabId,
-        timestamp: Date.now(),
-        preNavMessageCount: ctx.messages.length,
-      },
-    });
-
     // Run the original tool
     const result = await executeFn(args);
 
-    // If the tool already failed, clean up pending-nav and skip verification
+    // If the tool already failed, skip verification
     if ("success" in result && result.success === false) {
-      await browser.storage.local.remove(pendingNavKey);
       return result;
     }
 
@@ -434,29 +450,48 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     if (verify.navigated) {
       ctx.navigated = true;
 
-      // pending-nav already saved — just log and abort
       console.log(
-        "%c  [gyoza:verify] Navigation detected — aborting stream (pending-nav was pre-saved)",
+        "%c  [gyoza:verify] Navigation detected — aborting stream",
         "color: #ef4444; font-weight: bold",
       );
+
+      // For SPA navigations (pushState/replaceState), webNavigation doesn't
+      // fire, so save pending-nav here as fallback. Skip if the stream was
+      // already aborted — onBeforeNavigate already saved pending-nav for
+      // full-page navigations and the mount effect will consume it.
+      const alreadyAborted = ctx.abortSignal?.aborted;
+
+      if (!alreadyAborted) {
+        const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+        await browser.storage.local
+          .set({
+            [pendingNavKey]: {
+              snapshotTypes: ["fullPage"],
+              originalQuery: ctx.originalQuery,
+              conversationId: ctx.conversationId || "",
+              tabId: ctx.tabId,
+              timestamp: Date.now(),
+            },
+          })
+          .catch(() => {});
+      }
 
       // Abort the AI stream so it doesn't keep calling tools on a dead page
       ctx.abortStream?.();
 
       // Notify content script to check pending-nav — needed for SPA navigations
       // where the content script stays alive and the mount useEffect won't re-fire.
-      browser.tabs
-        .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
-        .catch(() => {});
+      if (!alreadyAborted) {
+        browser.tabs
+          .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
+          .catch(() => {});
+      }
 
       return {
         ...result,
         verification: `Page navigated to ${verify.newUrl}. Execution stopped — the widget will resume on the new page.`,
       };
     }
-
-    // No navigation occurred — clean up the pre-saved pending-nav
-    await browser.storage.local.remove(pendingNavKey);
 
     if (verify.actionIncomplete) {
       return {
@@ -481,8 +516,9 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
 function withConfirmation<TArgs, TResult extends Record<string, unknown>>(
   ctx: ToolExecContext,
   actionDescription: (args: TArgs) => string,
-  executeFn: (args: TArgs) => Promise<TResult>,
-): (args: TArgs) => Promise<TResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ToolSet execute uses any for the options param
+  executeFn: (args: TArgs, ...rest: any[]) => Promise<TResult>,
+): typeof executeFn {
   return async (args: TArgs) => {
     const description = actionDescription(args);
     ctx.onStreamEvent?.({ kind: "tool-status", content: description });
@@ -517,8 +553,7 @@ export function createBrowserTools(
   yoloMode: boolean,
   tr?: Translations,
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tools: Record<string, any> = {};
+  const tools: ToolSet = {};
 
   // ── Always available: show_message ──────────────────────────────────────
   tools.show_message = tool<{ message: string }, { displayed: boolean }>({
@@ -569,7 +604,7 @@ export function createBrowserTools(
     { acknowledged: boolean }
   >({
     description:
-      "REQUIRED after every page action (click, scroll_to, execute_js, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
+      "REQUIRED after every page action (click, scroll_to, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
     inputSchema: jsonSchema<{
       success: boolean;
       summary: string;
@@ -595,11 +630,73 @@ export function createBrowserTools(
       required: ["success", "summary", "message"],
     }),
     execute: async ({ message }) => {
-      if (message) {
+      if (message && message !== "null") {
         ctx.messages.push(message);
         ctx.onStreamEvent?.({ kind: "message", content: message });
       }
       return { acknowledged: true };
+    },
+  });
+
+  // ── task_complete — signals the task is done, stops the tool loop ──────
+  tools.task_complete = tool<
+    { success: boolean; summary: string; page_evidence?: string },
+    { stopped: boolean; warning?: string }
+  >({
+    description:
+      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST include page_evidence: quote EXACT text from the page that proves the task succeeded (copy-paste from get_page_context, not paraphrased). If you cannot quote evidence, the task is not verified.",
+    inputSchema: jsonSchema<{
+      success: boolean;
+      summary: string;
+      page_evidence?: string;
+    }>({
+      type: "object" as const,
+      properties: {
+        success: {
+          type: "boolean",
+          description: "Was the task completed successfully?",
+        },
+        summary: {
+          type: "string",
+          description:
+            "Final summary of what was done (shown to user as the last message)",
+        },
+        page_evidence: {
+          type: "string",
+          description:
+            "REQUIRED for success=true. Exact text copied from the page (from get_page_context) that proves the task was completed. Must be a verbatim quote, not paraphrased.",
+        },
+      },
+      required: ["success", "summary"],
+    }),
+    execute: async ({ success, summary, page_evidence }) => {
+      // If the AI claims success but never performed any action, reject it
+      if (success && ctx.actionCount === 0) {
+        return {
+          stopped: false,
+          warning:
+            "You marked the task as complete but you have NOT performed any page actions (click, fill_input, etc.) in this session. Reading a page is not completing a task. Go back and actually interact with the page to fulfill the request, or call task_complete with success=false if the task cannot be done.",
+        };
+      }
+      // Validate evidence against last page context
+      if (success && page_evidence && ctx.lastPageContext) {
+        const normalizedEvidence = page_evidence
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
+        const normalizedPage = ctx.lastPageContext
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+        if (!normalizedPage.includes(normalizedEvidence)) {
+          return {
+            stopped: false,
+            warning: `Your page_evidence "${page_evidence}" was NOT found on the page. You may be hallucinating. Call get_page_context to re-read the page, then look for the ACTUAL text that confirms your task, or call task_complete with success=false.`,
+          };
+        }
+      }
+      ctx.messages.push(summary);
+      ctx.onStreamEvent?.({ kind: "message", content: summary });
+      return { stopped: true };
     },
   });
 
@@ -639,20 +736,8 @@ export function createBrowserTools(
               : `Navigating to ${resolved}`,
           });
 
-          // Save pending-nav state so the widget auto-resumes on the new page
-          const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-          await browser.storage.local.set({
-            [pendingNavKey]: {
-              snapshotTypes: ["all"],
-              originalQuery: ctx.originalQuery,
-              conversationId: ctx.conversationId || "",
-              tabId: ctx.tabId,
-              timestamp: Date.now(),
-              // Store messages shown before navigation so the follow-up
-              // can avoid repeating them
-              preNavMessageCount: ctx.messages.length,
-            },
-          });
+          // pending-nav is saved by background's webNavigation.onBeforeNavigate
+          // listener — no need to save here.
 
           await execIsolated(
             ctx.tabId,
@@ -1004,110 +1089,7 @@ export function createBrowserTools(
         }
       },
     });
-    tools.click.execute = withVerification(ctx, tools.click.execute);
-  }
-
-  // ── execute_js ──────────────────────────────────────────────────────────
-  if (caps.executeJs) {
-    tools.execute_js = tool<
-      { code: string; description: string },
-      { success: boolean; error?: string }
-    >({
-      description:
-        'Execute JavaScript code in the page context. Use for: filling forms, clicking buttons, editing text content (translation), changing styles. Target elements with querySelector. Keep code simple — one element per action when possible. NEVER modify body, html, or framework wrapper elements. SELECTOR RULES: prefer #id or [name="..."], then unique class, then find by text content with Array.from(). Always null-check elements.',
-      inputSchema: jsonSchema<{ code: string; description: string }>({
-        type: "object" as const,
-        properties: {
-          code: {
-            type: "string",
-            description: "JavaScript code to execute in the page",
-          },
-          description: {
-            type: "string",
-            description:
-              "Brief description of what this code does (for the user)",
-          },
-        },
-        required: ["code", "description"],
-      }),
-      execute: async ({
-        code,
-        description,
-      }: {
-        code: string;
-        description: string;
-      }) => {
-        try {
-          ctx.onStreamEvent?.({
-            kind: "tool-status",
-            content: description.length > 40 ? "Ran code" : description,
-          });
-          // Auto-fix selectors with special characters
-          const fixedCode = code.replace(
-            /querySelector(?:All)?\(\s*['"]([^'"]+)['"]\s*\)/g,
-            (match: string, selector: string) => {
-              const fixed = selector.replace(
-                /#([^.\s#\[>~+,]+)/g,
-                (_: string, id: string) => {
-                  if (/[^a-zA-Z0-9_-]/.test(id)) {
-                    return "#" + CSS.escape(id);
-                  }
-                  return "#" + id;
-                },
-              );
-              if (fixed !== selector) {
-                return match.replace(selector, fixed);
-              }
-              return match;
-            },
-          );
-
-          const result = await execInPage(
-            ctx.tabId,
-            ((jsCode: string) => {
-              try {
-                const ret = new Function(jsCode)();
-                // Return stringified result so the model can see what happened
-                return {
-                  error: null,
-                  result: ret === undefined ? null : String(ret).slice(0, 500),
-                };
-              } catch (e) {
-                return {
-                  error: e instanceof Error ? e.message : String(e),
-                  result: null,
-                };
-              }
-            }) as (...args: never[]) => {
-              error: string | null;
-              result: string | null;
-            },
-            [fixedCode],
-          );
-
-          if (result?.error) {
-            return { success: false, error: result.error };
-          }
-          return {
-            success: true,
-            ...(result?.result != null ? { result: result.result } : {}),
-          };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
-    if (!yoloMode) {
-      tools.execute_js.execute = withConfirmation(
-        ctx,
-        () => "Run JavaScript on page",
-        tools.execute_js.execute,
-      );
-    }
-    tools.execute_js.execute = withVerification(ctx, tools.execute_js.execute);
+    tools.click.execute = withVerification(ctx, tools.click.execute!);
   }
 
   // ── highlight_ui ────────────────────────────────────────────────────────
@@ -1217,6 +1199,8 @@ export function createBrowserTools(
           );
           console.log(ctx_text.slice(0, 2000));
           console.groupEnd();
+          // Store for evidence validation in task_complete
+          ctx.lastPageContext = ctx_text;
           return { context: ctx_text };
         }
         return { context: "No page context captured (page may be loading)." };
@@ -1310,10 +1294,10 @@ export function createBrowserTools(
   }
 
   // ── fill_input ──────────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.fill_input = tool({
       description:
-        "Fill an input field with a value. Prefer this over execute_js for form filling. Use label text or placeholder to identify the field.",
+        "Fill an input field with a value. Use label text or placeholder to identify the field.",
       inputSchema: jsonSchema<{
         selector?: string;
         label?: string;
@@ -1448,11 +1432,11 @@ export function createBrowserTools(
         }
       },
     });
-    tools.fill_input.execute = withVerification(ctx, tools.fill_input.execute);
+    tools.fill_input.execute = withVerification(ctx, tools.fill_input.execute!);
   }
 
   // ── select_option ─────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.select_option = tool({
       description:
         "Select an option in a <select> dropdown. Identify by label, selector, or option text.",
@@ -1591,12 +1575,12 @@ export function createBrowserTools(
     });
     tools.select_option.execute = withVerification(
       ctx,
-      tools.select_option.execute,
+      tools.select_option.execute!,
     );
   }
 
   // ── toggle_checkbox ───────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.toggle_checkbox = tool({
       description: "Check or uncheck a checkbox or radio button.",
       inputSchema: jsonSchema<{
@@ -1693,12 +1677,12 @@ export function createBrowserTools(
     });
     tools.toggle_checkbox.execute = withVerification(
       ctx,
-      tools.toggle_checkbox.execute,
+      tools.toggle_checkbox.execute!,
     );
   }
 
   // ── submit_form ───────────────────────────────────────────────────────
-  if (caps.executeJs) {
+  if (caps.click) {
     tools.submit_form = tool({
       description:
         "Submit a form on the page. This may cause a page navigation.",
@@ -1789,17 +1773,17 @@ export function createBrowserTools(
         ctx,
         (args: { selector?: string }) =>
           `Submit form "${args.selector || "on page"}"`,
-        tools.submit_form.execute,
+        tools.submit_form.execute!,
       );
     }
     tools.submit_form.execute = withVerification(
       ctx,
-      tools.submit_form.execute,
+      tools.submit_form.execute!,
     );
   }
 
   // ── scroll_to ─────────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.scroll_to = tool({
       description:
         "Scroll an element into view. IMPORTANT: Use the ACTUAL text visible on the page (from get_page_context), not a translated or assumed version. The page language may differ from yours.",
@@ -1928,7 +1912,7 @@ export function createBrowserTools(
   }
 
   // ── find_text ─────────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.find_text = tool({
       description:
         "Search for text on the page. Returns matching elements and their context.",
@@ -2006,7 +1990,7 @@ export function createBrowserTools(
   }
 
   // ── extract_table ─────────────────────────────────────────────────────
-  if (caps.click || caps.executeJs) {
+  if (caps.click) {
     tools.extract_table = tool({
       description: "Extract data from a <table> element as JSON.",
       inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({

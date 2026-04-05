@@ -44,7 +44,6 @@ import {
   sanitizeError,
   savePendingNav,
   loadAndClearPendingNav,
-  resetPendingNavConsumed,
   getTabId,
   loadConversationIndex,
   loadConversation,
@@ -164,6 +163,7 @@ export function GyozaiWidget() {
     [],
   );
   const tabIdRef = useRef<number | null>(null);
+  const resumingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -476,72 +476,129 @@ export function GyozaiWidget() {
   // Loads pending-nav from storage, restores conversation, captures new page
   // context, and sends a follow-up query to continue the task.
   async function resumeFromPendingNav(tid: number) {
-    resetPendingNavConsumed();
-    const pendingNav = await loadAndClearPendingNav(tid);
-    if (!pendingNav) return;
-
-    log(
-      "Resuming after navigation — pending-nav state:",
-      JSON.stringify(pendingNav),
-    );
-
-    // Restore the conversation that was in progress
-    activeConvIdRef.current = pendingNav.conversationId;
-    const conv = await loadConversation(pendingNav.conversationId);
-    if (conv) {
-      log("Restored conversation:", conv.id, "messages:", conv.messages.length);
-      setMessages(conv.messages);
-    }
-
-    setExpanded(true);
-    setLoading(true);
-
-    // Show navigate status so user sees what happened
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Navigated to ${window.location.pathname}`,
-        type: "tool-status" as const,
-      },
-    ]);
-
-    // Small delay to let the new page render fully
-    await new Promise((r) => setTimeout(r, 500));
-
-    // Capture the requested snapshots on the NEW page
-    const pageCtx = capturePageContext(pendingNav.snapshotTypes);
-    const ctxText = formatPageContext(pageCtx);
-
-    if (ctxText) {
-      pendingExtraContext = ctxText;
-      log("Captured", ctxText.length, "chars from new page");
-    }
-
-    // The model already showed a message before navigating.
-    // Tell it to only provide NEW information about this page,
-    // not repeat what it already said.
-    const followUpQuery =
-      `Navigation complete — now on ${window.location.href}. ` +
-      `Original user request: "${pendingNav.originalQuery}". ` +
-      `Continue executing this task. Use get_page_context to understand the current page, ` +
-      `then take the next actions to fulfill the original request. ` +
-      `Do NOT repeat that you navigated here — just keep working.`;
-    log("Follow-up query:", followUpQuery);
-
+    if (resumingRef.current) return;
+    resumingRef.current = true;
     try {
-      autoFollowUpUsed = false;
-      const result = await sendQuery(
-        followUpQuery,
-        pendingExtraContext || undefined,
-      );
-      pendingExtraContext = null;
-      await processAgentResult(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      // Loop: after a navigated SPA result, a NEW pending-nav may be waiting.
+      // The SPA check message can't re-enter (resumingRef blocks it),
+      // so we must re-check here. For full-page navigations, break —
+      // the new content script's mount effect will handle it.
+      while (true) {
+        const pendingNav = await loadAndClearPendingNav(tid);
+        if (!pendingNav) break;
+
+        // Remember the URL before this iteration — used to detect SPA vs full-page nav
+        const urlBeforeQuery = window.location.href;
+
+        log(
+          "Resuming after navigation — pending-nav state:",
+          JSON.stringify(pendingNav),
+        );
+
+        // Restore the conversation that was in progress
+        activeConvIdRef.current = pendingNav.conversationId;
+        const conv = await loadConversation(pendingNav.conversationId);
+        if (conv) {
+          log(
+            "Restored conversation:",
+            conv.id,
+            "messages:",
+            conv.messages.length,
+          );
+          setMessages(conv.messages);
+        }
+
+        setExpanded(true);
+        setLoading(true);
+
+        // Show navigate status so user sees what happened
+        const displayPath =
+          window.location.pathname +
+          (window.location.search ? window.location.search : "");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: getTranslations(locale).status_navigated_to.replace(
+              "{path}",
+              displayPath,
+            ),
+            type: "tool-status" as const,
+          },
+        ]);
+
+        // Small delay to let the new page render fully
+        await new Promise((r) => setTimeout(r, 500));
+
+        // Capture the requested snapshots on the NEW page
+        const pageCtx = capturePageContext(pendingNav.snapshotTypes);
+        const ctxText = formatPageContext(pageCtx);
+
+        if (ctxText) {
+          pendingExtraContext = ctxText;
+          log("Captured", ctxText.length, "chars from new page");
+        }
+
+        // Extract the real original user query — pending-nav queries can nest
+        // ("Navigation complete... Original: "Navigation complete... Original: "real query"")
+        // so we dig out the innermost one, or fall back to the first user message.
+        let realOriginalQuery = pendingNav.originalQuery;
+        const innerMatch = pendingNav.originalQuery.match(
+          /Original user request: "([^"]+)"/,
+        );
+        if (innerMatch) {
+          // Keep extracting until we get the innermost
+          let q = innerMatch[1];
+          let next = q.match(/Original user request: "([^"]+)"/);
+          while (next) {
+            q = next[1];
+            next = q.match(/Original user request: "([^"]+)"/);
+          }
+          realOriginalQuery = q;
+        } else if (conv) {
+          // Fallback: use the first user message from conversation
+          const firstUser = conv.messages.find((m) => m.role === "user");
+          if (firstUser) realOriginalQuery = firstUser.content;
+        }
+
+        // Persist the original user query so auto-follow-ups have context
+        lastUserQueryRef.current = realOriginalQuery;
+
+        const followUpQuery =
+          `Navigation complete — now on ${window.location.href}. ` +
+          `Continue working on the original request from the conversation history. ` +
+          `The current page content is included below — do NOT call get_page_context. ` +
+          `Read the page carefully and take the next actions needed. ` +
+          `Do NOT navigate away — you were redirected here for a reason. ` +
+          `Use click, scroll_to, and other tools to interact with THIS page.`;
+        log("Follow-up query:", followUpQuery);
+
+        let navigated = false;
+        try {
+          autoFollowUpUsed = false;
+          const result = await sendQuery(
+            followUpQuery,
+            pendingExtraContext || undefined,
+            { disableNavigate: true },
+          );
+          pendingExtraContext = null;
+          navigated = !!result.navigated;
+          await processAgentResult(result);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Something went wrong");
+        } finally {
+          setLoading(false);
+        }
+
+        // Only loop for SPA navigations (URL changed in-place).
+        // For full-page navigations, the URL hasn't changed yet (page is
+        // unloading) — break and let the new content script handle it.
+        if (!navigated) break;
+        if (window.location.href === urlBeforeQuery) break;
+      }
     } finally {
-      setLoading(false);
+      resumingRef.current = false;
     }
   }
 
@@ -818,6 +875,7 @@ export function GyozaiWidget() {
   async function sendQuery(
     query: string,
     extraPageContext?: string,
+    options?: { disableNavigate?: boolean },
   ): Promise<AgentResult> {
     lastUserQueryRef.current = query;
     const currentRoute = window.location.pathname;
@@ -852,10 +910,9 @@ export function GyozaiWidget() {
         screenHeight: window.innerHeight,
       },
       capabilities: {
-        navigate: true,
+        navigate: !options?.disableNavigate,
         showMessage: true,
         click: true,
-        executeJs: true,
         highlightUi: true,
         fetch: false,
         clarify: !extSettings?.yoloMode,
@@ -1029,12 +1086,6 @@ export function GyozaiWidget() {
         case "click":
           lines.push("Clicked element");
           break;
-        case "execute_js": {
-          const desc =
-            (tc.args as { description?: string }).description || "Ran code";
-          lines.push(desc.length > 40 ? "Ran code" : desc);
-          break;
-        }
         case "highlight_ui":
           lines.push("Highlighted element");
           break;
@@ -1150,73 +1201,10 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // If events were already streamed to the UI, skip duplicate rendering.
-    // Only handle clarify (already set via streaming) and edge-case fallbacks.
-    // When the model performed actions but never sent a concluding
-    // show_message, ask it to briefly confirm what was done instead of
-    // showing a hardcoded English fallback.
-    const needsAiConclusion = (
-      toolCalls: AgentResult["toolCalls"],
-      msgs: string[],
-    ) => {
-      if (!toolCalls?.length) return false;
-
-      // If the model ended with show_message or report_action_result, it concluded
-      const lastTool = toolCalls[toolCalls.length - 1];
-      if (
-        lastTool.tool === "show_message" ||
-        lastTool.tool === "report_action_result"
-      )
-        return false;
-
-      const ACTION_TOOLS = [
-        "click",
-        "execute_js",
-        "fill_input",
-        "select_option",
-        "toggle_checkbox",
-        "submit_form",
-        "scroll_to",
-        "navigate",
-      ];
-      const hasDataGathering = toolCalls.some(
-        (tc) => tc.tool === "get_page_context",
-      );
-      const hasAction = toolCalls.some((tc) => ACTION_TOOLS.includes(tc.tool));
-
-      // Model gathered data but never acted on it — incomplete response
-      if (hasDataGathering && !hasAction) return true;
-
-      if (msgs.some((m) => m.trim())) return false;
-      return true;
-    };
-
+    // Streamed responses: all UI updates already happened via streaming events.
+    // Continuation is handled by prepareStep (forces tool calls) and the
+    // pending-nav loop — no client-side follow-up hacks needed.
     if (result.streamed) {
-      const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-      if (
-        needsAiConclusion(result.toolCalls, aiMessages) &&
-        !autoFollowUpUsed
-      ) {
-        // No message was shown — ask AI to answer using gathered info.
-        // Capture page context so the model doesn't need to call
-        // get_page_context again (multi-step doesn't continue through proxy).
-        autoFollowUpUsed = true;
-        const originalQ = lastUserQueryRef.current || "";
-        let pageCtx = "";
-        try {
-          const raw = capturePageContext(["all"] as SnapshotType[]);
-          const structured = formatPageContext(raw);
-          const html = captureCleanHtml();
-          pageCtx = [structured, html].filter(Boolean).join("\n\n");
-        } catch {
-          // Best-effort — model will re-fetch if needed
-        }
-        const followUp = await sendQuery(
-          `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
-          pageCtx || undefined,
-        );
-        await processAgentResult(followUp);
-      }
       return;
     }
 
@@ -1229,25 +1217,6 @@ export function GyozaiWidget() {
     const aiMessages = result.messages?.filter((m) => m.trim()) || [];
     for (const msg of aiMessages) {
       addAssistantMessage(msg);
-    }
-
-    if (needsAiConclusion(result.toolCalls, aiMessages) && !autoFollowUpUsed) {
-      autoFollowUpUsed = true;
-      const originalQ = lastUserQueryRef.current || "";
-      let pageCtx = "";
-      try {
-        const raw = capturePageContext(["all"] as SnapshotType[]);
-        const structured = formatPageContext(raw);
-        const html = captureCleanHtml();
-        pageCtx = [structured, html].filter(Boolean).join("\n\n");
-      } catch {
-        // Best-effort
-      }
-      const followUp = await sendQuery(
-        `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
-        pageCtx || undefined,
-      );
-      await processAgentResult(followUp);
     }
 
     if (result.clarify) {
@@ -1527,14 +1496,60 @@ export function GyozaiWidget() {
             .find((m) => m.role === "assistant" && m.type !== "tool-status");
           const isThinking = loading;
 
-          // Determine what to show: status pill, speech bubble, or idle pill
-          const showPill =
-            (isThinking && lastStatus) || isThinking || !lastAssistantMsg;
-          const pillText = isThinking
-            ? lastStatus?.content || tr.widget_status_thinking
-            : tr.widget_status_idling;
+          // Check if the most recent message is a tool-status (action in progress)
+          const lastMsg = messages[messages.length - 1];
+          const activeStatus = lastMsg?.type === "tool-status" ? lastMsg : null;
 
-          if (showPill && !(lastAssistantMsg && !isThinking)) {
+          // Find which is newer: last assistant message or last tool-status
+          const lastAssistantIdx = lastAssistantMsg
+            ? messages.lastIndexOf(lastAssistantMsg)
+            : -1;
+          const lastStatusIdx = lastStatus
+            ? messages.lastIndexOf(lastStatus)
+            : -1;
+          const assistantIsNewer = lastAssistantIdx > lastStatusIdx;
+
+          // When loading: always show the status pill (with loading animation)
+          // When idle: show whichever is newer — assistant message (speech
+          // bubble) or tool-status (pill). Fall back to idle pill.
+          if (isThinking) {
+            // Show animated dots in the pill, same as the open chatbox
+            const statusText = activeStatus
+              ? activeStatus.content
+              : lastStatus?.content;
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  zIndex: 2147483647,
+                  pointerEvents: "none",
+                  left: avatarCenterX,
+                  transform: "translateX(-50%)",
+                  ...verticalPos,
+                }}
+              >
+                <div className="gyozai-status-pill">
+                  {statusText || tr.widget_status_thinking}
+                  <span className="gyozai-thinking-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </div>
+              </div>
+            );
+          }
+
+          // Not loading — show newest of assistant message vs tool-status
+          const showPill =
+            activeStatus ||
+            (!assistantIsNewer && lastStatus) ||
+            !lastAssistantMsg;
+          const pillText = activeStatus
+            ? activeStatus.content
+            : lastStatus?.content || tr.widget_status_idling;
+
+          if (showPill) {
             return (
               <div
                 style={{
@@ -1809,7 +1824,7 @@ export function GyozaiWidget() {
               </div>
             )}
 
-            {/* Action confirmation (safeguard for submit_form / execute_js) */}
+            {/* Action confirmation (safeguard for submit_form) */}
             {confirmation && (
               <div className="gyozai-clarify">
                 <span className="gyozai-confirm-text">
