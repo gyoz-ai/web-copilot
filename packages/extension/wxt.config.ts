@@ -31,7 +31,7 @@ export default defineConfig({
     keepProfileChanges: true,
   },
   manifest: {
-    name: "gyoza — AI companion for the browser",
+    name: "gyoza",
     description:
       "gyoza can see your screen, understand any website, and do things for you — clicks, forms, navigation, all by just asking.",
     version: "0.0.9",
