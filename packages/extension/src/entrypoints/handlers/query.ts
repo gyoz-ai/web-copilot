@@ -188,21 +188,25 @@ export async function handleQuery(
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
-        // Check the LAST step's tool calls to decide whether to continue
         const lastStep = steps[steps.length - 1];
         const lastToolCalls = lastStep?.toolCalls || [];
         const lastToolName = lastToolCalls[lastToolCalls.length - 1]?.toolName;
 
-        // If the model stopped calling tools entirely (text-only response),
-        // or ended with clarify, let it stop naturally.
+        // If the model stopped calling tools entirely or used clarify,
+        // let it stop naturally.
         if (!lastToolCalls.length || lastToolName === "clarify") return {};
 
-        // Collect tools used so far for filtering
+        // If the last step ended with report_action_result, the model
+        // completed an action cycle. Let it decide whether to continue
+        // (auto) — it will keep going if more work remains.
+        if (lastToolName === "report_action_result") return {};
+
+        // Otherwise (show_message narration, get_page_context, etc.),
+        // force tool use so the model keeps working instead of stopping
+        // after just describing what it sees.
         const usedTools = new Set(
           steps.flatMap((s) => s.toolCalls?.map((tc) => tc.toolName) || []),
         );
-
-        // Tools to exclude from forced selection
         const exclude = new Set<string>();
         if (usedTools.has("set_expression")) exclude.add("set_expression");
 
@@ -210,9 +214,6 @@ export async function handleQuery(
           (t) => !exclude.has(t),
         ) as (keyof typeof tools)[];
 
-        // Force tool use — the model must keep working until it naturally
-        // stops (no tool calls in its response = task complete).
-        // This prevents premature text-only exits mid-task.
         return { toolChoice: "required" as const, activeTools: active };
       },
       onError: ({ error }) => {
