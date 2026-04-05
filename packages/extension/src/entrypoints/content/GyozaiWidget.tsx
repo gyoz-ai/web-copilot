@@ -1206,63 +1206,10 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // If events were already streamed to the UI, skip duplicate rendering.
-    // Only handle clarify (already set via streaming) and edge-case fallbacks.
-    // When the model performed actions but never sent a concluding
-    // show_message, ask it to briefly confirm what was done instead of
-    // showing a hardcoded English fallback.
-    const needsAiConclusion = (
-      toolCalls: AgentResult["toolCalls"],
-      msgs: string[],
-    ) => {
-      if (!toolCalls?.length) return false;
-
-      // If the model ended with show_message or report_action_result, it concluded
-      const lastTool = toolCalls[toolCalls.length - 1];
-      if (
-        lastTool.tool === "show_message" ||
-        lastTool.tool === "report_action_result"
-      )
-        return false;
-
-      // If the response ended with get_page_context, the model was checking
-      // its work but never reported the result — always needs a follow-up.
-      if (lastTool.tool === "get_page_context") return true;
-
-      if (msgs.some((m) => m.trim())) return false;
-      return true;
-    };
-
+    // Streamed responses: all UI updates already happened via streaming events.
+    // Continuation is handled by prepareStep (forces tool calls) and the
+    // pending-nav loop — no client-side follow-up hacks needed.
     if (result.streamed) {
-      // If navigation occurred, pending-nav will handle continuation on the new
-      // page — don't also fire needsAiConclusion (prevents duplicate queries).
-      if (result.navigated) return;
-
-      const aiMessages = result.messages?.filter((m) => m.trim()) || [];
-      if (
-        needsAiConclusion(result.toolCalls, aiMessages) &&
-        !autoFollowUpUsed
-      ) {
-        // No message was shown — ask AI to answer using gathered info.
-        // Capture page context so the model doesn't need to call
-        // get_page_context again (multi-step doesn't continue through proxy).
-        autoFollowUpUsed = true;
-        const originalQ = lastUserQueryRef.current || "";
-        let pageCtx = "";
-        try {
-          const raw = capturePageContext(["all"] as SnapshotType[]);
-          const structured = formatPageContext(raw);
-          const html = captureCleanHtml();
-          pageCtx = [structured, html].filter(Boolean).join("\n\n");
-        } catch {
-          // Best-effort — model will re-fetch if needed
-        }
-        const followUp = await sendQuery(
-          `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
-          pageCtx || undefined,
-        );
-        await processAgentResult(followUp);
-      }
       return;
     }
 
@@ -1275,25 +1222,6 @@ export function GyozaiWidget() {
     const aiMessages = result.messages?.filter((m) => m.trim()) || [];
     for (const msg of aiMessages) {
       addAssistantMessage(msg);
-    }
-
-    if (needsAiConclusion(result.toolCalls, aiMessages) && !autoFollowUpUsed) {
-      autoFollowUpUsed = true;
-      const originalQ = lastUserQueryRef.current || "";
-      let pageCtx = "";
-      try {
-        const raw = capturePageContext(["all"] as SnapshotType[]);
-        const structured = formatPageContext(raw);
-        const html = captureCleanHtml();
-        pageCtx = [structured, html].filter(Boolean).join("\n\n");
-      } catch {
-        // Best-effort
-      }
-      const followUp = await sendQuery(
-        `Complete the user's request using the page content provided below. The user asked: "${originalQ}". Perform the necessary actions (click, execute_js, fill_input, etc.) and then use show_message to report what you did. Do NOT call get_page_context — the page content is already included below.`,
-        pageCtx || undefined,
-      );
-      await processAgentResult(followUp);
     }
 
     if (result.clarify) {

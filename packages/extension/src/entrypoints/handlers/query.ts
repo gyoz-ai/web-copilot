@@ -188,29 +188,31 @@ export async function handleQuery(
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
 
-        // Check if any step so far produced user-facing output
-        const hasUserOutput = steps.some((s) =>
-          s.toolCalls?.some(
-            (tc) =>
-              tc.toolName === "show_message" ||
-              tc.toolName === "report_action_result",
-          ),
+        // Check the LAST step's tool calls to decide whether to continue
+        const lastStep = steps[steps.length - 1];
+        const lastToolCalls = lastStep?.toolCalls || [];
+        const lastToolName = lastToolCalls[lastToolCalls.length - 1]?.toolName;
+
+        // If the model stopped calling tools entirely (text-only response),
+        // or ended with clarify, let it stop naturally.
+        if (!lastToolCalls.length || lastToolName === "clarify") return {};
+
+        // Collect tools used so far for filtering
+        const usedTools = new Set(
+          steps.flatMap((s) => s.toolCalls?.map((tc) => tc.toolName) || []),
         );
 
-        if (hasUserOutput) return {};
+        // Tools to exclude from forced selection
+        const exclude = new Set<string>();
+        if (usedTools.has("set_expression")) exclude.add("set_expression");
 
-        // No user output yet — force the model to call a tool
-        const alreadySetExpression = steps.some((s) =>
-          s.toolCalls?.some((tc) => tc.toolName === "set_expression"),
-        );
+        const active = Object.keys(tools).filter(
+          (t) => !exclude.has(t),
+        ) as (keyof typeof tools)[];
 
-        // Exclude set_expression if already used (prevent escape hatch)
-        const active = alreadySetExpression
-          ? (Object.keys(tools).filter(
-              (t) => t !== "set_expression",
-            ) as (keyof typeof tools)[])
-          : undefined;
-
+        // Force tool use — the model must keep working until it naturally
+        // stops (no tool calls in its response = task complete).
+        // This prevents premature text-only exits mid-task.
         return { toolChoice: "required" as const, activeTools: active };
       },
       onError: ({ error }) => {
