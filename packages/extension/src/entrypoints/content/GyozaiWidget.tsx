@@ -1505,21 +1505,31 @@ export function GyozaiWidget() {
           const lastMsg = messages[messages.length - 1];
           const activeStatus = lastMsg?.type === "tool-status" ? lastMsg : null;
 
+          // Find which is newer: last assistant message or last tool-status
+          const lastAssistantIdx = lastAssistantMsg
+            ? messages.lastIndexOf(lastAssistantMsg)
+            : -1;
+          const lastStatusIdx = lastStatus
+            ? messages.lastIndexOf(lastStatus)
+            : -1;
+          const assistantIsNewer = lastAssistantIdx > lastStatusIdx;
+
           // Determine what to show: status pill, speech bubble, or idle pill
-          // Show pill when: loading, no assistant message yet, or a tool-status
-          // is the most recent message (action in progress).
+          // Show speech bubble if there's a newer assistant message than the
+          // last status, even while loading. Show pill otherwise.
           const showPill =
-            (isThinking && lastStatus) ||
-            isThinking ||
-            !lastAssistantMsg ||
-            activeStatus;
+            activeStatus ||
+            (isThinking && !assistantIsNewer) ||
+            !lastAssistantMsg;
           const pillText = activeStatus
             ? activeStatus.content
             : isThinking
-              ? lastStatus?.content || tr.widget_status_thinking
+              ? assistantIsNewer
+                ? tr.widget_status_thinking
+                : lastStatus?.content || tr.widget_status_thinking
               : tr.widget_status_idling;
 
-          if (showPill && !(lastAssistantMsg && !isThinking && !activeStatus)) {
+          if (showPill) {
             return (
               <div
                 style={{
