@@ -46,7 +46,7 @@ export default defineBackground(() => {
 
     // Skip stale entries — query completed > 15s ago means user navigated
     // manually, not a model-caused redirect (e.g. Stripe async processing)
-    if (query.completedAt && Date.now() - query.completedAt > 15000) {
+    if (query.completedAt && Date.now() - query.completedAt > 5000) {
       console.log(
         "[gyoza:nav] Stale activeQuery (completed",
         Math.round((Date.now() - query.completedAt) / 1000),
