@@ -1518,9 +1518,10 @@ export function GyozaiWidget() {
           // When idle: show whichever is newer — assistant message (speech
           // bubble) or tool-status (pill). Fall back to idle pill.
           if (isThinking) {
-            const thinkingText = activeStatus
+            // Show animated dots in the pill, same as the open chatbox
+            const statusText = activeStatus
               ? activeStatus.content
-              : lastStatus?.content || tr.widget_status_thinking;
+              : lastStatus?.content;
             return (
               <div
                 style={{
@@ -1532,7 +1533,14 @@ export function GyozaiWidget() {
                   ...verticalPos,
                 }}
               >
-                <div className="gyozai-status-pill">{thinkingText}</div>
+                <div className="gyozai-status-pill">
+                  {statusText || tr.widget_status_thinking}
+                  <span className="gyozai-thinking-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </div>
               </div>
             );
           }
