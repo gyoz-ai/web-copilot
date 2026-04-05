@@ -192,6 +192,8 @@ export interface ToolExecContext {
   }) => void;
   /** Abort the AI stream — called when navigation occurs mid-execution */
   abortStream?: () => void;
+  /** Signal from the query's AbortController — used to check if stream was already aborted */
+  abortSignal?: AbortSignal;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -443,28 +445,36 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
       );
 
       // For SPA navigations (pushState/replaceState), webNavigation doesn't
-      // fire, so save pending-nav here as fallback.
-      const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
-      await browser.storage.local
-        .set({
-          [pendingNavKey]: {
-            snapshotTypes: ["fullPage"],
-            originalQuery: ctx.originalQuery,
-            conversationId: ctx.conversationId || "",
-            tabId: ctx.tabId,
-            timestamp: Date.now(),
-          },
-        })
-        .catch(() => {});
+      // fire, so save pending-nav here as fallback. Skip if the stream was
+      // already aborted — onBeforeNavigate already saved pending-nav for
+      // full-page navigations and the mount effect will consume it.
+      const alreadyAborted = ctx.abortSignal?.aborted;
+
+      if (!alreadyAborted) {
+        const pendingNavKey = `gyozai_pending_nav_${ctx.tabId}`;
+        await browser.storage.local
+          .set({
+            [pendingNavKey]: {
+              snapshotTypes: ["fullPage"],
+              originalQuery: ctx.originalQuery,
+              conversationId: ctx.conversationId || "",
+              tabId: ctx.tabId,
+              timestamp: Date.now(),
+            },
+          })
+          .catch(() => {});
+      }
 
       // Abort the AI stream so it doesn't keep calling tools on a dead page
       ctx.abortStream?.();
 
       // Notify content script to check pending-nav — needed for SPA navigations
       // where the content script stays alive and the mount useEffect won't re-fire.
-      browser.tabs
-        .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
-        .catch(() => {});
+      if (!alreadyAborted) {
+        browser.tabs
+          .sendMessage(ctx.tabId, { type: "gyozai_check_pending_nav" })
+          .catch(() => {});
+      }
 
       return {
         ...result,

@@ -150,6 +150,7 @@ export async function handleQuery(
       originalQuery: message.query,
       onStreamEvent: sendStreamEvent,
       abortStream: () => abortController.abort(),
+      abortSignal: abortController.signal,
     };
 
     const tr = getTranslations(settings.language as LocaleCode);
