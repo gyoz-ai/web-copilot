@@ -269,16 +269,6 @@ export function App() {
           <div className="popup-section">
             <div className="mode-toggle">
               <button
-                className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
-                onClick={() => {
-                  const updated = { ...settings, mode: "byok" as const };
-                  setSettings(updated);
-                  saveSettings(updated);
-                }}
-              >
-                BYOK
-              </button>
-              <button
                 className={`mode-btn ${settings.mode === "managed" ? "active" : ""}`}
                 onClick={() => {
                   const updated = { ...settings, mode: "managed" as const };
@@ -286,7 +276,17 @@ export function App() {
                   saveSettings(updated);
                 }}
               >
-                Managed
+                {tr.popup_mode_pro}
+              </button>
+              <button
+                className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
+                onClick={() => {
+                  const updated = { ...settings, mode: "byok" as const };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {tr.popup_mode_own_key}
               </button>
             </div>
           </div>

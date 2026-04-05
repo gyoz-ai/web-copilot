@@ -43,7 +43,7 @@ export interface ExtensionSettings {
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
-  mode: "byok",
+  mode: "managed",
   provider: "claude",
   apiKeys: { claude: "", openai: "", gemini: "" },
   model: "claude-haiku-4-5-20251001",
