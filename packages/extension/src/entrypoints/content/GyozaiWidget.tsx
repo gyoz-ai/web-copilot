@@ -570,7 +570,8 @@ export function GyozaiWidget() {
           `Continue working on the original request from the conversation history. ` +
           `The current page content is included below — do NOT call get_page_context. ` +
           `Read the page carefully and take the next actions needed. ` +
-          `Do NOT just describe the page — perform clicks, form fills, or other actions needed.`;
+          `Do NOT navigate away — you were redirected here for a reason. ` +
+          `Use click, scroll_to, and other tools to interact with THIS page.`;
         log("Follow-up query:", followUpQuery);
 
         let navigated = false;
@@ -579,6 +580,7 @@ export function GyozaiWidget() {
           const result = await sendQuery(
             followUpQuery,
             pendingExtraContext || undefined,
+            { disableNavigate: true },
           );
           pendingExtraContext = null;
           navigated = !!result.navigated;
@@ -873,6 +875,7 @@ export function GyozaiWidget() {
   async function sendQuery(
     query: string,
     extraPageContext?: string,
+    options?: { disableNavigate?: boolean },
   ): Promise<AgentResult> {
     lastUserQueryRef.current = query;
     const currentRoute = window.location.pathname;
@@ -907,7 +910,7 @@ export function GyozaiWidget() {
         screenHeight: window.innerHeight,
       },
       capabilities: {
-        navigate: true,
+        navigate: !options?.disableNavigate,
         showMessage: true,
         click: true,
         highlightUi: true,
