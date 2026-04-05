@@ -44,7 +44,6 @@ import {
   sanitizeError,
   savePendingNav,
   loadAndClearPendingNav,
-  resetPendingNavConsumed,
   getTabId,
   loadConversationIndex,
   loadConversation,
@@ -164,6 +163,7 @@ export function GyozaiWidget() {
     [],
   );
   const tabIdRef = useRef<number | null>(null);
+  const resumingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -476,94 +476,104 @@ export function GyozaiWidget() {
   // Loads pending-nav from storage, restores conversation, captures new page
   // context, and sends a follow-up query to continue the task.
   async function resumeFromPendingNav(tid: number) {
-    resetPendingNavConsumed();
-    const pendingNav = await loadAndClearPendingNav(tid);
-    if (!pendingNav) return;
-
-    log(
-      "Resuming after navigation — pending-nav state:",
-      JSON.stringify(pendingNav),
-    );
-
-    // Restore the conversation that was in progress
-    activeConvIdRef.current = pendingNav.conversationId;
-    const conv = await loadConversation(pendingNav.conversationId);
-    if (conv) {
-      log("Restored conversation:", conv.id, "messages:", conv.messages.length);
-      setMessages(conv.messages);
-    }
-
-    setExpanded(true);
-    setLoading(true);
-
-    // Show navigate status so user sees what happened
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: getTranslations(locale).status_navigated_to.replace(
-          "{path}",
-          window.location.pathname,
-        ),
-        type: "tool-status" as const,
-      },
-    ]);
-
-    // Small delay to let the new page render fully
-    await new Promise((r) => setTimeout(r, 500));
-
-    // Capture the requested snapshots on the NEW page
-    const pageCtx = capturePageContext(pendingNav.snapshotTypes);
-    const ctxText = formatPageContext(pageCtx);
-
-    if (ctxText) {
-      pendingExtraContext = ctxText;
-      log("Captured", ctxText.length, "chars from new page");
-    }
-
-    // Extract the real original user query — pending-nav queries can nest
-    // ("Navigation complete... Original: "Navigation complete... Original: "real query"")
-    // so we dig out the innermost one, or fall back to the first user message.
-    let realOriginalQuery = pendingNav.originalQuery;
-    const innerMatch = pendingNav.originalQuery.match(
-      /Original user request: "([^"]+)"/,
-    );
-    if (innerMatch) {
-      // Keep extracting until we get the innermost
-      let q = innerMatch[1];
-      let next = q.match(/Original user request: "([^"]+)"/);
-      while (next) {
-        q = next[1];
-        next = q.match(/Original user request: "([^"]+)"/);
-      }
-      realOriginalQuery = q;
-    } else if (conv) {
-      // Fallback: use the first user message from conversation
-      const firstUser = conv.messages.find((m) => m.role === "user");
-      if (firstUser) realOriginalQuery = firstUser.content;
-    }
-
-    const followUpQuery =
-      `Navigation complete — now on ${window.location.href}. ` +
-      `Original user request: "${realOriginalQuery}". ` +
-      `The current page content is included below — do NOT call get_page_context. ` +
-      `Verify the result, then take next actions to fulfill the request. ` +
-      `Use show_message to tell the user what you see and what you're doing next.`;
-    log("Follow-up query:", followUpQuery);
-
+    if (resumingRef.current) return;
+    resumingRef.current = true;
     try {
-      autoFollowUpUsed = false;
-      const result = await sendQuery(
-        followUpQuery,
-        pendingExtraContext || undefined,
+      const pendingNav = await loadAndClearPendingNav(tid);
+      if (!pendingNav) return;
+
+      log(
+        "Resuming after navigation — pending-nav state:",
+        JSON.stringify(pendingNav),
       );
-      pendingExtraContext = null;
-      await processAgentResult(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+
+      // Restore the conversation that was in progress
+      activeConvIdRef.current = pendingNav.conversationId;
+      const conv = await loadConversation(pendingNav.conversationId);
+      if (conv) {
+        log(
+          "Restored conversation:",
+          conv.id,
+          "messages:",
+          conv.messages.length,
+        );
+        setMessages(conv.messages);
+      }
+
+      setExpanded(true);
+      setLoading(true);
+
+      // Show navigate status so user sees what happened
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: getTranslations(locale).status_navigated_to.replace(
+            "{path}",
+            window.location.pathname,
+          ),
+          type: "tool-status" as const,
+        },
+      ]);
+
+      // Small delay to let the new page render fully
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Capture the requested snapshots on the NEW page
+      const pageCtx = capturePageContext(pendingNav.snapshotTypes);
+      const ctxText = formatPageContext(pageCtx);
+
+      if (ctxText) {
+        pendingExtraContext = ctxText;
+        log("Captured", ctxText.length, "chars from new page");
+      }
+
+      // Extract the real original user query — pending-nav queries can nest
+      // ("Navigation complete... Original: "Navigation complete... Original: "real query"")
+      // so we dig out the innermost one, or fall back to the first user message.
+      let realOriginalQuery = pendingNav.originalQuery;
+      const innerMatch = pendingNav.originalQuery.match(
+        /Original user request: "([^"]+)"/,
+      );
+      if (innerMatch) {
+        // Keep extracting until we get the innermost
+        let q = innerMatch[1];
+        let next = q.match(/Original user request: "([^"]+)"/);
+        while (next) {
+          q = next[1];
+          next = q.match(/Original user request: "([^"]+)"/);
+        }
+        realOriginalQuery = q;
+      } else if (conv) {
+        // Fallback: use the first user message from conversation
+        const firstUser = conv.messages.find((m) => m.role === "user");
+        if (firstUser) realOriginalQuery = firstUser.content;
+      }
+
+      const followUpQuery =
+        `Navigation complete — now on ${window.location.href}. ` +
+        `Original user request: "${realOriginalQuery}". ` +
+        `The current page content is included below — do NOT call get_page_context. ` +
+        `Verify the result, then take next actions to fulfill the request. ` +
+        `Use show_message to tell the user what you see and what you're doing next.`;
+      log("Follow-up query:", followUpQuery);
+
+      try {
+        autoFollowUpUsed = false;
+        const result = await sendQuery(
+          followUpQuery,
+          pendingExtraContext || undefined,
+        );
+        pendingExtraContext = null;
+        await processAgentResult(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
     } finally {
-      setLoading(false);
+      resumingRef.current = false;
     }
   }
 

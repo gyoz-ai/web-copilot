@@ -47,11 +47,6 @@ export async function savePendingNav(state: PendingNavState) {
 // Guard against duplicate content script instances racing to consume the same pending-nav
 let _pendingNavConsumed = false;
 
-/** Reset the consumed flag so SPA navigations can re-check pending-nav */
-export function resetPendingNavConsumed() {
-  _pendingNavConsumed = false;
-}
-
 export async function loadAndClearPendingNav(
   tabId: number,
 ): Promise<PendingNavState | null> {
@@ -66,6 +61,8 @@ export async function loadAndClearPendingNav(
     const state = result[key] as PendingNavState | undefined;
     if (state) {
       await browser.storage.local.remove(key);
+      // Storage entry is gone — allow future SPA navigations to consume new pending-navs
+      _pendingNavConsumed = false;
       // Expire after 30s (in case of stale state)
       if (Date.now() - state.timestamp > 30000) return null;
       return state;
