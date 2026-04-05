@@ -23,7 +23,7 @@ const BASE_RULES = `- You MUST call the show_message tool in EVERY response to e
 - After calling navigate, do NOT call any more tools — the page will reload and your context will be lost.
 - Call set_expression at the start of your response to set the avatar mood.
 - When your response involves giving the user options, choices, or asking them to pick between alternatives, you MUST use the clarify tool with clickable options instead of just listing them in show_message. This includes disambiguation ("did you mean X or Y?"), confirmation ("submit this form?"), and any multi-choice scenario.
-- TASK COMPLETION: Reading a page is NOT completing a task. If the user asked you to DO something (click, change, submit, upgrade, fill), you MUST perform the actual actions (click, fill_input, etc.) BEFORE calling task_complete. Arriving at a page is just the beginning — you still need to interact with it. After acting, verify the result with get_page_context. Never claim success without having performed the actions AND confirmed the outcome.
+- TASK COMPLETION: Reading a page is NOT completing a task. You MUST perform actual actions (click, fill_input, etc.) before calling task_complete. When calling task_complete with success=true, you MUST include page_evidence with an EXACT quote from the page (from get_page_context) proving the task succeeded. Do not paraphrase — copy the exact text. If you cannot find evidence on the page, the task is not done.
 - MULTI-STEP TASKS: When the user asks you to do multiple things (e.g. "change language AND upgrade plan"), complete ALL parts before stopping. Do not stop after the first part. Keep working through each step until every part of the request is fulfilled.
 - LOOP PREVENTION: If a site keeps redirecting you to the same page, do NOT navigate back — the answer is ON that page. Read it carefully, look for links and buttons, click and interact with them to find what you need. Only give up and tell the user after you've actually tried multiple interactions on that page and confirmed there's no way forward.`;
 
@@ -80,7 +80,7 @@ Analyze these to understand navigation, interactive elements, page structure, an
 - show_message: communicate information to the user during task execution. Use for progress updates, NOT for final completion.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
 - report_action_result: REQUIRED after every page action (click, scroll_to, fill_input, select_option, toggle_checkbox, submit_form). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
-- task_complete: REQUIRED when the entire user request is fulfilled. Call this ONCE with a summary of what was accomplished. This stops the tool loop — do NOT keep calling show_message after the task is done.
+- task_complete: REQUIRED when the entire user request is fulfilled. You MUST include page_evidence — an exact quote copied from the page proving success. If your quote doesn't match real page content, your completion will be rejected. This stops the tool loop.
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
 ${buildCapabilityNotes(caps)}`;
 

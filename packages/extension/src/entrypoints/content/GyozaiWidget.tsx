@@ -567,11 +567,10 @@ export function GyozaiWidget() {
 
         const followUpQuery =
           `Navigation complete — now on ${window.location.href}. ` +
-          `Original user request: "${realOriginalQuery}". ` +
+          `Continue working on the original request from the conversation history. ` +
           `The current page content is included below — do NOT call get_page_context. ` +
-          `Verify the result, then take the next actions to fulfill the request. ` +
-          `Do NOT just describe the page — perform clicks, form fills, or other actions needed. ` +
-          `Use report_action_result when you have completed an action.`;
+          `Read the page carefully and take the next actions needed. ` +
+          `Do NOT just describe the page — perform clicks, form fills, or other actions needed.`;
         log("Follow-up query:", followUpQuery);
 
         let navigated = false;

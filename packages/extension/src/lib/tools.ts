@@ -198,6 +198,8 @@ export interface ToolExecContext {
   actionCount: number;
   /** Callback to notify background that a mutating action occurred (for pending-nav decisions) */
   onMutatingAction?: () => void;
+  /** Last page context snapshot — used to validate task_complete evidence */
+  lastPageContext?: string;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -638,12 +640,16 @@ export function createBrowserTools(
 
   // ── task_complete — signals the task is done, stops the tool loop ──────
   tools.task_complete = tool<
-    { success: boolean; summary: string },
+    { success: boolean; summary: string; page_evidence?: string },
     { stopped: boolean; warning?: string }
   >({
     description:
-      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST call this tool when you are done — do not keep calling show_message after completing the task. Include a brief summary of what was accomplished.",
-    inputSchema: jsonSchema<{ success: boolean; summary: string }>({
+      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST include page_evidence: quote EXACT text from the page that proves the task succeeded (copy-paste from get_page_context, not paraphrased). If you cannot quote evidence, the task is not verified.",
+    inputSchema: jsonSchema<{
+      success: boolean;
+      summary: string;
+      page_evidence?: string;
+    }>({
       type: "object" as const,
       properties: {
         success: {
@@ -655,10 +661,15 @@ export function createBrowserTools(
           description:
             "Final summary of what was done (shown to user as the last message)",
         },
+        page_evidence: {
+          type: "string",
+          description:
+            "REQUIRED for success=true. Exact text copied from the page (from get_page_context) that proves the task was completed. Must be a verbatim quote, not paraphrased.",
+        },
       },
       required: ["success", "summary"],
     }),
-    execute: async ({ success, summary }) => {
+    execute: async ({ success, summary, page_evidence }) => {
       // If the AI claims success but never performed any action, reject it
       if (success && ctx.actionCount === 0) {
         return {
@@ -666,6 +677,22 @@ export function createBrowserTools(
           warning:
             "You marked the task as complete but you have NOT performed any page actions (click, fill_input, etc.) in this session. Reading a page is not completing a task. Go back and actually interact with the page to fulfill the request, or call task_complete with success=false if the task cannot be done.",
         };
+      }
+      // Validate evidence against last page context
+      if (success && page_evidence && ctx.lastPageContext) {
+        const normalizedEvidence = page_evidence
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
+        const normalizedPage = ctx.lastPageContext
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+        if (!normalizedPage.includes(normalizedEvidence)) {
+          return {
+            stopped: false,
+            warning: `Your page_evidence "${page_evidence}" was NOT found on the page. You may be hallucinating. Call get_page_context to re-read the page, then look for the ACTUAL text that confirms your task, or call task_complete with success=false.`,
+          };
+        }
       }
       ctx.messages.push(summary);
       ctx.onStreamEvent?.({ kind: "message", content: summary });
@@ -1172,6 +1199,8 @@ export function createBrowserTools(
           );
           console.log(ctx_text.slice(0, 2000));
           console.groupEnd();
+          // Store for evidence validation in task_complete
+          ctx.lastPageContext = ctx_text;
           return { context: ctx_text };
         }
         return { context: "No page context captured (page may be loading)." };
