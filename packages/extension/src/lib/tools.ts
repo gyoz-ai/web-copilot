@@ -194,6 +194,8 @@ export interface ToolExecContext {
   abortStream?: () => void;
   /** Signal from the query's AbortController — used to check if stream was already aborted */
   abortSignal?: AbortSignal;
+  /** Count of mutating actions performed (click, fill_input, etc.) */
+  actionCount: number;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -421,6 +423,9 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
   executeFn: (args: TArgs) => Promise<TResult>,
 ): (args: TArgs) => Promise<TResult> {
   return async (args: TArgs) => {
+    // Track that a mutating action was attempted
+    ctx.actionCount++;
+
     // Capture before state
     const beforeText = await capturePageState(ctx.tabId);
     const preUrl = (await getPageUrl(ctx.tabId)) || "";
@@ -630,7 +635,7 @@ export function createBrowserTools(
   // ── task_complete — signals the task is done, stops the tool loop ──────
   tools.task_complete = tool<
     { success: boolean; summary: string },
-    { stopped: boolean }
+    { stopped: boolean; warning?: string }
   >({
     description:
       "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST call this tool when you are done — do not keep calling show_message after completing the task. Include a brief summary of what was accomplished.",
@@ -649,7 +654,15 @@ export function createBrowserTools(
       },
       required: ["success", "summary"],
     }),
-    execute: async ({ summary }) => {
+    execute: async ({ success, summary }) => {
+      // If the AI claims success but never performed any action, reject it
+      if (success && ctx.actionCount === 0) {
+        return {
+          stopped: false,
+          warning:
+            "You marked the task as complete but you have NOT performed any page actions (click, fill_input, etc.) in this session. Reading a page is not completing a task. Go back and actually interact with the page to fulfill the request, or call task_complete with success=false if the task cannot be done.",
+        };
+      }
       ctx.messages.push(summary);
       ctx.onStreamEvent?.({ kind: "message", content: summary });
       return { stopped: true };

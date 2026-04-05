@@ -151,6 +151,7 @@ export async function handleQuery(
       onStreamEvent: sendStreamEvent,
       abortStream: () => abortController.abort(),
       abortSignal: abortController.signal,
+      actionCount: 0,
     };
 
     const tr = getTranslations(settings.language as LocaleCode);
@@ -188,10 +189,23 @@ export async function handleQuery(
         if (steps.length >= 100) return true;
         // Stop when the model calls task_complete
         const lastStep = steps[steps.length - 1];
-        return (
-          lastStep?.toolCalls?.some((tc) => tc.toolName === "task_complete") ??
-          false
+        const calledTaskComplete = lastStep?.toolCalls?.some(
+          (tc) => tc.toolName === "task_complete",
         );
+        if (!calledTaskComplete) return false;
+        // If the AI performed actions OR is reporting failure, stop normally.
+        // If it claims success without any actions, the tool itself returns
+        // a warning (stopped: false) — let the model continue working.
+        if (ctx.actionCount > 0) return true;
+        // Check if it was a failure report (always allowed)
+        const tcCall = allToolCalls[allToolCalls.length - 1];
+        if (
+          tcCall?.tool === "task_complete" &&
+          (tcCall.args as { success?: boolean })?.success === false
+        )
+          return true;
+        // No actions + claimed success → tool rejected it, keep going
+        return false;
       },
       prepareStep: ({ steps }) => {
         if (steps.length === 0) return {};
