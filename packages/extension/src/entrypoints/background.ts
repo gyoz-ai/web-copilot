@@ -276,11 +276,14 @@ export default defineBackground(() => {
             const entry = activeQueries.get(tabId);
             if (entry && entry.abortController === abortController) {
               entry.completed = true;
-              // If no mutating actions, clear immediately — any future
-              // navigation is user-initiated
-              if (!entry.hadMutatingAction) {
-                activeQueries.delete(tabId);
-              }
+              // Clean up after a short delay. We keep the entry briefly
+              // so that model-caused navigations (e.g. Stripe redirecting
+              // after checkout) can still trigger pending-nav. After 3s,
+              // any navigation is user-initiated.
+              setTimeout(() => {
+                const current = activeQueries.get(tabId);
+                if (current === entry) activeQueries.delete(tabId);
+              }, 3000);
             }
           }
 
