@@ -559,8 +559,9 @@ export function GyozaiWidget() {
           `Navigation complete — now on ${window.location.href}. ` +
           `Original user request: "${realOriginalQuery}". ` +
           `The current page content is included below — do NOT call get_page_context. ` +
-          `Verify the result, then take next actions to fulfill the request. ` +
-          `Use show_message to tell the user what you see and what you're doing next.`;
+          `Verify the result, then take the next actions to fulfill the request. ` +
+          `Do NOT just describe the page — perform clicks, form fills, or other actions needed. ` +
+          `Use report_action_result when you have completed an action.`;
         log("Follow-up query:", followUpQuery);
 
         let navigated = false;
@@ -572,7 +573,7 @@ export function GyozaiWidget() {
           );
           pendingExtraContext = null;
           navigated = !!result.navigated;
-          await processAgentResult(result);
+          await processAgentResult(result, true);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
@@ -1158,7 +1159,10 @@ export function GyozaiWidget() {
   }, [addAssistantMessage, addToolStatusMessage]);
 
   // Process the agent result from the background worker
-  async function processAgentResult(result: AgentResult): Promise<void> {
+  async function processAgentResult(
+    result: AgentResult,
+    fromPendingNav = false,
+  ): Promise<void> {
     console.log(
       "%c[gyoza:result] processAgentResult called",
       "color: #3b82f6; font-weight: bold",
@@ -1205,13 +1209,14 @@ export function GyozaiWidget() {
     ) => {
       if (!toolCalls?.length) return false;
 
-      // If the model ended with show_message or report_action_result, it concluded
       const lastTool = toolCalls[toolCalls.length - 1];
-      if (
-        lastTool.tool === "show_message" ||
-        lastTool.tool === "report_action_result"
-      )
-        return false;
+
+      // report_action_result always concludes (has explicit success flag)
+      if (lastTool.tool === "report_action_result") return false;
+
+      // show_message: concludes for user queries, but during pending-nav
+      // resumes it's just narration — the AI should keep working on the task
+      if (lastTool.tool === "show_message") return fromPendingNav;
 
       // If the response ended with get_page_context, the model was checking
       // its work but never reported the result — always needs a follow-up.
