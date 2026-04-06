@@ -2147,6 +2147,19 @@ export function createBrowserTools(
           quality: 70,
         });
         lastScreenshotDataUrl = dataUrl;
+        console.log(
+          "%c[gyoza] page_screenshot captured",
+          "color: #a855f7; font-weight: bold",
+        );
+        console.log(
+          "%c  ",
+          `font-size: 200px; background: url(${dataUrl}) no-repeat center/contain; background-size: contain;`,
+        );
+        console.log(
+          "%c  Open image →",
+          "color: #9ca3af",
+          dataUrl.slice(0, 100) + "...",
+        );
         return {
           success: true,
           description:

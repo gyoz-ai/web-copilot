@@ -373,7 +373,17 @@ export default defineBackground(() => {
       case "gyozai_capture_tab":
         browser.tabs
           .captureVisibleTab({ format: "jpeg", quality: 70 })
-          .then((dataUrl) => sendResponse({ dataUrl }))
+          .then((dataUrl) => {
+            console.log(
+              "%c[gyoza] capture_tab screenshot taken",
+              "color: #a855f7; font-weight: bold",
+            );
+            console.log(
+              "%c  ",
+              `font-size: 200px; background: url(${dataUrl}) no-repeat center/contain; background-size: contain;`,
+            );
+            sendResponse({ dataUrl });
+          })
           .catch((err) =>
             sendResponse({
               error: err instanceof Error ? err.message : String(err),
