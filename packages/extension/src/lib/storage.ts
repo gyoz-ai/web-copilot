@@ -30,6 +30,7 @@ export interface ExtensionSettings {
   model: string;
   managedToken?: string;
   managedPlan?: string;
+  managedTier?: string;
   managedUsage?: ManagedUsage;
   yoloMode: boolean;
   chatOnly: boolean;

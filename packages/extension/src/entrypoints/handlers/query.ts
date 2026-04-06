@@ -24,20 +24,20 @@ export async function handleQuery(
 ): Promise<void> {
   const settings = await getSettings();
 
-  // ─── Free tier guard — managed mode requires a paid plan ───
-  const PAID_PLANS = new Set(["pro", "max"]);
+  // ─── Free tier guard — managed mode requires a paid tier ───
+  // managedTier comes from the usage API's "tier" field (e.g. "free", "pro")
+  // managedPlan is a different field ("max", "pro") and unreliable for this check
+  const PAID_TIERS = new Set(["pro", "max", "enterprise"]);
+  const tier = settings.managedTier ?? "";
   console.log(
     "[gyoza:query] Free tier check → mode:",
     settings.mode,
-    "managedPlan:",
-    JSON.stringify(settings.managedPlan),
+    "managedTier:",
+    JSON.stringify(settings.managedTier),
     "isPaid:",
-    PAID_PLANS.has(settings.managedPlan ?? ""),
+    PAID_TIERS.has(tier),
   );
-  if (
-    settings.mode === "managed" &&
-    !PAID_PLANS.has(settings.managedPlan ?? "")
-  ) {
+  if (settings.mode === "managed" && tier && !PAID_TIERS.has(tier)) {
     const tr = getTranslations(settings.language as LocaleCode);
     sendResponse({
       messages: [],

@@ -163,6 +163,7 @@ export default defineBackground(() => {
         );
         // Fetch plan info from platform
         let managedPlan: string | undefined;
+        let managedTier: string | undefined;
         try {
           const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -171,7 +172,13 @@ export default defineBackground(() => {
           if (res.ok) {
             const data = await res.json();
             managedPlan = data.plan;
-            console.log("[gyoza:cookie] Plan:", managedPlan);
+            managedTier = data.tier;
+            console.log(
+              "[gyoza:cookie] Plan:",
+              managedPlan,
+              "Tier:",
+              managedTier,
+            );
           }
         } catch (err) {
           console.warn("[gyoza:cookie] Platform unreachable:", err);
@@ -180,6 +187,7 @@ export default defineBackground(() => {
           ...settings,
           managedToken: token,
           managedPlan,
+          managedTier,
         });
         console.log("[gyoza:cookie] Managed token saved ✓");
       }
@@ -208,6 +216,7 @@ export default defineBackground(() => {
       if (settings.managedToken === cookie.value) return; // already synced
       console.log("[gyoza:cookie] Startup: syncing existing session cookie");
       let managedPlan: string | undefined;
+      let managedTier: string | undefined;
       try {
         const res = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
           headers: { Authorization: `Bearer ${cookie.value}` },
@@ -216,6 +225,7 @@ export default defineBackground(() => {
         if (res.ok) {
           const data = await res.json();
           managedPlan = data.plan;
+          managedTier = data.tier;
         }
       } catch (err) {
         console.warn("[gyoza:cookie] Startup platform unreachable:", err);
@@ -224,6 +234,7 @@ export default defineBackground(() => {
         ...settings,
         managedToken: cookie.value,
         managedPlan,
+        managedTier,
       });
       console.log("[gyoza:cookie] Startup: managed token saved ✓");
     },
