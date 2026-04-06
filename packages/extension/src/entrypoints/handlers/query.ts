@@ -14,6 +14,8 @@ import { buildSystemPrompt, buildUserPrompt } from "../../lib/prompts";
 import { createBrowserTools, type ToolExecContext } from "../../lib/tools";
 import { getTranslations, type LocaleCode } from "../../lib/i18n";
 
+const PLATFORM_URL = "https://gyoz.ai";
+
 export async function handleQuery(
   message: QueryInput & { conversationId?: string; queryId?: string },
   sender: chrome.runtime.MessageSender,
@@ -23,23 +25,6 @@ export async function handleQuery(
   onMutatingAction?: () => void,
 ): Promise<void> {
   const settings = await getSettings();
-
-  // ─── Free tier guard — managed mode requires a paid tier ───
-  // managedTier comes from the usage API's "tier" field (e.g. "free", "pro")
-  // managedPlan is a different field ("max", "pro") and unreliable for this check
-  const PAID_TIERS = new Set(["pro", "max", "enterprise"]);
-  const tier = (settings.managedTier ?? "").toLowerCase();
-  if (settings.mode === "managed" && tier && !PAID_TIERS.has(tier)) {
-    const tr = getTranslations(settings.language as LocaleCode);
-    sendResponse({
-      messages: [],
-      toolCalls: [],
-      error: tr.error_free_tier,
-      errorType: "free_tier",
-      provider: settings.provider,
-    });
-    return;
-  }
 
   const providerResult = createProvider(settings);
   const tabId = sender.tab?.id ?? null;
@@ -517,8 +502,30 @@ export async function handleQuery(
       errorType = "auth";
       errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
     } else if (msgLower.includes("no output generated")) {
-      errorMessage =
-        "The AI failed to generate a response. This may be a temporary issue — try again.";
+      if (settings.mode === "managed" && settings.managedToken) {
+        // Fetch fresh tier from API — cached value may be stale
+        try {
+          const usageRes = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
+            headers: { Authorization: `Bearer ${settings.managedToken}` },
+          });
+          if (usageRes.ok) {
+            const usage = await usageRes.json();
+            const freshTier = ((usage.tier as string) ?? "").toLowerCase();
+            const PAID_TIERS = new Set(["pro", "max", "enterprise"]);
+            if (freshTier && !PAID_TIERS.has(freshTier)) {
+              const tr = getTranslations(settings.language as LocaleCode);
+              errorType = "free_tier";
+              errorMessage = tr.error_free_tier;
+            }
+          }
+        } catch {
+          // API unreachable — fall through to generic message
+        }
+      }
+      if (!errorType) {
+        errorMessage =
+          "The AI failed to generate a response. This may be a temporary issue — try again.";
+      }
     } else if (statusCode) {
       errorMessage = `${settings.provider} API error (${statusCode}): ${errorMessage}`;
     }
