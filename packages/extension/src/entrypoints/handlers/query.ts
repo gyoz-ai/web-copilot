@@ -26,6 +26,14 @@ export async function handleQuery(
 
   // ─── Free tier guard — managed mode requires a paid plan ───
   const PAID_PLANS = new Set(["pro", "max"]);
+  console.log(
+    "[gyoza:query] Free tier check → mode:",
+    settings.mode,
+    "managedPlan:",
+    JSON.stringify(settings.managedPlan),
+    "isPaid:",
+    PAID_PLANS.has(settings.managedPlan ?? ""),
+  );
   if (
     settings.mode === "managed" &&
     !PAID_PLANS.has(settings.managedPlan ?? "")
@@ -517,8 +525,14 @@ export async function handleQuery(
       errorType = "auth";
       errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
     } else if (msgLower.includes("no output generated")) {
-      errorMessage =
-        "The AI failed to generate a response. This may be a temporary issue — try again.";
+      if (settings.mode === "managed") {
+        const tr = getTranslations(settings.language as LocaleCode);
+        errorType = "free_tier";
+        errorMessage = tr.error_free_tier;
+      } else {
+        errorMessage =
+          "The AI failed to generate a response. This may be a temporary issue — try again.";
+      }
     } else if (statusCode) {
       errorMessage = `${settings.provider} API error (${statusCode}): ${errorMessage}`;
     }
