@@ -121,6 +121,10 @@ export const WIDGET_STYLES = `
     border-radius: 0 16px 0 8px;
   }
 
+  .gyozai-resize-handle svg {
+    pointer-events: none;
+  }
+
   .gyozai-resize-handle:hover {
     opacity: 1;
     color: var(--g-brand-500);
