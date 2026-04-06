@@ -203,6 +203,7 @@ export function capturePageContext(
         'button, [role="button"], input[type="submit"], input[type="button"]',
       )
       .forEach((el, i) => {
+        if (isLiveElementHidden(el)) return;
         const text = (el.textContent || el.getAttribute("value") || "").trim();
         if (!text) return;
         ctx.buttons.push({
@@ -215,6 +216,7 @@ export function capturePageContext(
 
   if (captureAll || types.includes("links")) {
     body.querySelectorAll("a[href]").forEach((el, i) => {
+      if (isLiveElementHidden(el)) return;
       const text = (el.textContent || "").trim();
       const href = el.getAttribute("href") || "";
       if (!text || href.startsWith("#") || href.startsWith("javascript:"))
@@ -229,6 +231,7 @@ export function capturePageContext(
 
   if (captureAll || types.includes("forms")) {
     body.querySelectorAll("form").forEach((form, fi) => {
+      if (isLiveElementHidden(form)) return;
       const fields: PageContext["forms"][0]["fields"] = [];
 
       form.querySelectorAll("input, select, textarea").forEach((field, ii) => {
@@ -263,6 +266,7 @@ export function capturePageContext(
         "input:not(form input), select:not(form select), textarea:not(form textarea)",
       )
       .forEach((el, i) => {
+        if (isLiveElementHidden(el)) return;
         const type = el.getAttribute("type") || el.tagName.toLowerCase();
         if (type === "hidden") return;
         ctx.inputs.push({
@@ -279,6 +283,7 @@ export function capturePageContext(
 
   if (captureAll || types.includes("headings")) {
     body.querySelectorAll("h1, h2, h3, h4").forEach((el) => {
+      if (isLiveElementHidden(el)) return;
       const text = (el.textContent || "").trim();
       if (!text) return;
       const level = parseInt(el.tagName[1]);
@@ -307,6 +312,8 @@ export function capturePageContext(
         // The library already stripped scripts/styles; skip any remnants
         if (parent.closest("script, style, svg"))
           return NodeFilter.FILTER_REJECT;
+        // Skip text inside hidden elements
+        if (isLiveElementHidden(parent)) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       },
     });
@@ -323,6 +330,98 @@ export function capturePageContext(
   return ctx;
 }
 
+// ─── Hidden element detection ───────────────────────────────────────────────────
+
+/**
+ * Check if a live DOM element is effectively hidden via CSS tricks
+ * that bypass the html-screen-capture-js display:none / visibility:hidden filter.
+ */
+export function isEffectivelyHidden(el: Element): boolean {
+  if (typeof window === "undefined") return false;
+
+  // aria-hidden
+  if (el.getAttribute("aria-hidden") === "true") return true;
+
+  const style = window.getComputedStyle(el);
+
+  // Opacity zero
+  if (style.opacity === "0") return true;
+
+  // Zero dimensions
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return true;
+
+  // Offscreen positioning (100px buffer for legitimate sticky/fixed elements)
+  if (
+    rect.right < 0 ||
+    rect.bottom < 0 ||
+    rect.left > window.innerWidth + 100 ||
+    rect.top > window.innerHeight + 100
+  )
+    return true;
+
+  // Clip-path hiding
+  const clipPath = style.clipPath || "";
+  if (
+    clipPath === "inset(100%)" ||
+    clipPath === "circle(0)" ||
+    clipPath === "circle(0px)" ||
+    clipPath === "polygon(0 0, 0 0, 0 0, 0 0)" ||
+    clipPath === "polygon(0px 0px, 0px 0px, 0px 0px, 0px 0px)"
+  )
+    return true;
+
+  // Legacy clip rect
+  if (style.clip === "rect(0px, 0px, 0px, 0px)") return true;
+
+  return false;
+}
+
+/**
+ * Look up the live DOM counterpart of a captured element by text+tag
+ * and check if it's effectively hidden.
+ */
+function isLiveElementHidden(capturedEl: Element): boolean {
+  if (typeof document === "undefined") return false;
+
+  // Try ID first
+  if (capturedEl.id) {
+    const live = document.getElementById(capturedEl.id);
+    return live ? isEffectivelyHidden(live) : false;
+  }
+
+  // Try name
+  const name = capturedEl.getAttribute("name");
+  if (name) {
+    const live = document.querySelector(`[name="${name}"]`);
+    return live ? isEffectivelyHidden(live) : false;
+  }
+
+  // Match by text+tag (same logic as resolveLiveSelector)
+  const tag = capturedEl.tagName.toLowerCase();
+  const text = (capturedEl.textContent || "").trim();
+  if (!text) return false;
+
+  const candidates = document.querySelectorAll(tag);
+  for (const liveEl of Array.from(candidates)) {
+    if ((liveEl.textContent || "").trim() === text) {
+      return isEffectivelyHidden(liveEl);
+    }
+  }
+  return false;
+}
+
+// ─── XML escaping for untrusted page content ───────────────────────────────────
+
+/** Escape XML special characters to prevent prompt injection via page content. */
+export function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // ─── Format page context as compact XML for LLM prompt ──────────────────────────
 
 export function formatPageContext(ctx: PageContext): string {
@@ -331,7 +430,7 @@ export function formatPageContext(ctx: PageContext): string {
   if (ctx.headings.length > 0) {
     parts.push("<page-headings>");
     ctx.headings.forEach((h) =>
-      parts.push(`  <h${h.level}>${h.text}</h${h.level}>`),
+      parts.push(`  <h${h.level}>${escapeXml(h.text)}</h${h.level}>`),
     );
     parts.push("</page-headings>");
   }
@@ -339,7 +438,9 @@ export function formatPageContext(ctx: PageContext): string {
   if (ctx.buttons.length > 0) {
     parts.push("<page-buttons>");
     ctx.buttons.forEach((b) =>
-      parts.push(`  <button selector="${b.selector}">${b.text}</button>`),
+      parts.push(
+        `  <button selector="${escapeXml(b.selector)}">${escapeXml(b.text)}</button>`,
+      ),
     );
     parts.push("</page-buttons>");
   }
@@ -348,7 +449,7 @@ export function formatPageContext(ctx: PageContext): string {
     parts.push("<page-links>");
     ctx.links.forEach((l) =>
       parts.push(
-        `  <link href="${l.href}" selector="${l.selector}">${l.text}</link>`,
+        `  <link href="${escapeXml(l.href)}" selector="${escapeXml(l.selector)}">${escapeXml(l.text)}</link>`,
       ),
     );
     parts.push("</page-links>");
@@ -358,17 +459,18 @@ export function formatPageContext(ctx: PageContext): string {
     parts.push("<page-forms>");
     ctx.forms.forEach((f) => {
       parts.push(
-        `  <form selector="${f.selector}" action="${f.action || ""}" method="${f.method || ""}">`,
+        `  <form selector="${escapeXml(f.selector)}" action="${escapeXml(f.action || "")}" method="${escapeXml(f.method || "")}">`,
       );
       f.fields.forEach((field) => {
         const attrs = [
-          `name="${field.name}"`,
-          `type="${field.type}"`,
-          `selector="${field.selector}"`,
+          `name="${escapeXml(field.name)}"`,
+          `type="${escapeXml(field.type)}"`,
+          `selector="${escapeXml(field.selector)}"`,
         ];
-        if (field.label) attrs.push(`label="${field.label}"`);
-        if (field.placeholder) attrs.push(`placeholder="${field.placeholder}"`);
-        if (field.value) attrs.push(`value="${field.value}"`);
+        if (field.label) attrs.push(`label="${escapeXml(field.label)}"`);
+        if (field.placeholder)
+          attrs.push(`placeholder="${escapeXml(field.placeholder)}"`);
+        if (field.value) attrs.push(`value="${escapeXml(field.value)}"`);
         parts.push(`    <field ${attrs.join(" ")} />`);
       });
       parts.push("  </form>");
@@ -380,20 +482,21 @@ export function formatPageContext(ctx: PageContext): string {
     parts.push("<page-inputs>");
     ctx.inputs.forEach((inp) => {
       const attrs = [
-        `name="${inp.name}"`,
-        `type="${inp.type}"`,
-        `selector="${inp.selector}"`,
+        `name="${escapeXml(inp.name)}"`,
+        `type="${escapeXml(inp.type)}"`,
+        `selector="${escapeXml(inp.selector)}"`,
       ];
-      if (inp.label) attrs.push(`label="${inp.label}"`);
-      if (inp.placeholder) attrs.push(`placeholder="${inp.placeholder}"`);
-      if (inp.value) attrs.push(`value="${inp.value}"`);
+      if (inp.label) attrs.push(`label="${escapeXml(inp.label)}"`);
+      if (inp.placeholder)
+        attrs.push(`placeholder="${escapeXml(inp.placeholder)}"`);
+      if (inp.value) attrs.push(`value="${escapeXml(inp.value)}"`);
       parts.push(`  <input ${attrs.join(" ")} />`);
     });
     parts.push("</page-inputs>");
   }
 
   if (ctx.textContent) {
-    parts.push(`<page-text>${ctx.textContent}</page-text>`);
+    parts.push(`<page-text>${escapeXml(ctx.textContent)}</page-text>`);
   }
 
   return parts.join("\n");

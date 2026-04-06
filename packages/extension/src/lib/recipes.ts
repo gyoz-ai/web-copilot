@@ -58,6 +58,54 @@ export function extractPlaybooks(recipeBody: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+// ─── Recipe content validation ──────────────────────────────────────────────
+
+/** Max recipe size (50KB) to prevent abuse. */
+const MAX_RECIPE_SIZE = 50_000;
+
+/** Patterns that indicate prompt injection attempts in recipe content. */
+const INJECTION_PATTERNS = [
+  // LLM control tokens
+  /<\|im_start\|>/i,
+  /<\|im_end\|>/i,
+  /<\|endoftext\|>/i,
+  /<system>/i,
+  /<\/system>/i,
+  // Common prompt injection phrases
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /ignore\s+(all\s+)?prior\s+instructions/i,
+  /ignore\s+(all\s+)?above\s+instructions/i,
+  /disregard\s+(all\s+)?previous/i,
+  /you\s+are\s+now\s+(a|an)\b/i,
+  /new\s+system\s+prompt/i,
+  /override\s+(system|previous)\s+(prompt|instructions)/i,
+  /reveal\s+(your|the)\s+(system\s+)?prompt/i,
+  /output\s+(your|the)\s+(system\s+)?prompt/i,
+];
+
+export interface RecipeValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+/** Validate recipe content for prompt injection patterns and size limits. */
+export function validateRecipeContent(content: string): RecipeValidationResult {
+  if (content.length > MAX_RECIPE_SIZE) {
+    return { valid: false, reason: "Recipe exceeds maximum size limit" };
+  }
+
+  for (const pattern of INJECTION_PATTERNS) {
+    if (pattern.test(content)) {
+      return {
+        valid: false,
+        reason: `Recipe contains suspicious content matching: ${pattern.source}`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 // ─── Content hashing ────────────────────────────────────────────────────────
 
 async function hashContent(content: string): Promise<string> {
@@ -146,6 +194,15 @@ export async function importRecipeFromFile(
   recipeContent: string,
   overrideDomain?: string,
 ): Promise<void> {
+  // Validate recipe content before importing
+  const validation = validateRecipeContent(recipeContent);
+  if (!validation.valid) {
+    console.warn(
+      `[gyoza:recipes] Rejected recipe "${filename}": ${validation.reason}`,
+    );
+    return;
+  }
+
   let domain: string | undefined = overrideDomain;
   let name: string | undefined;
 

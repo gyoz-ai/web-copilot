@@ -9,6 +9,8 @@ export {
   captureCleanHtml,
   getContextHash,
   stripToFit,
+  escapeXml,
+  isEffectivelyHidden,
 } from "./page-context";
 export type { PageContext, SnapshotType } from "./page-context";
 export type {
