@@ -176,12 +176,12 @@ export const WIDGET_STYLES = `
     text-overflow: ellipsis;
   }
   /* Clamp left-side buttons to not overflow left edge */
-  .gyozai-input-inner > :first-child[title]:hover::after {
+  .gyozai-input-actions-left > :first-child[title]:hover::after {
     left: 0;
     transform: none;
   }
   /* Clamp right-side buttons to not overflow right edge */
-  .gyozai-input-inner > :last-child[title]:hover::after {
+  .gyozai-input-actions-right > :last-child[title]:hover::after {
     left: auto;
     right: 0;
     transform: none;
@@ -318,10 +318,16 @@ export const WIDGET_STYLES = `
     border: 1px solid oklch(0.3 0.01 50 / 0.5);
     margin: 4px 0;
   }
-  .gyozai-input-inner {
+  .gyozai-input-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: space-between;
+  }
+  .gyozai-input-actions-left,
+  .gyozai-input-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   /* ─── Image preview strip ──────────────────────────────── */
@@ -407,8 +413,11 @@ export const WIDGET_STYLES = `
   }
 
   .gyozai-input {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
+    min-height: 22px;
+    max-height: 66px;
+    resize: none;
+    overflow-y: auto;
     border-radius: 10px;
     outline: none;
     font-size: 13px;
@@ -418,6 +427,8 @@ export const WIDGET_STYLES = `
     color: var(--g-text-primary);
     background: var(--g-surface-0);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1.4;
+    box-sizing: border-box;
   }
   .gyozai-input:focus {
     border-color: var(--g-brand-500);

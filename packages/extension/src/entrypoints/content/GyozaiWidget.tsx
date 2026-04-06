@@ -242,7 +242,7 @@ export function GyozaiWidget() {
   );
   const tabIdRef = useRef<number | null>(null);
   const resumingRef = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pending images waiting to be sent with the next message
@@ -2258,168 +2258,59 @@ export function GyozaiWidget() {
               ))}
             </div>
           )}
-          <div className="gyozai-input-inner">
-            {/* Image upload button */}
-            <button
-              className="gyozai-icon-btn gyozai-upload-btn"
-              onClick={() => fileInputRef.current?.click()}
-              title="Attach image"
-              disabled={
-                loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+          {/* Textarea — full width */}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // Auto-resize up to 3 lines
+              const el = e.target;
+              el.style.height = "auto";
+              el.style.height = Math.min(el.scrollHeight, 66) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (viewMode === "history") setViewMode("chat");
+                handleSubmit();
               }
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => {
-                if (e.target.files) handleImageFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
-            {/* Screenshot button */}
-            <button
-              className="gyozai-icon-btn gyozai-upload-btn"
-              onClick={handleScreenshot}
-              title="Screenshot page"
-              disabled={
-                loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+              if (e.key === "Escape") {
+                startNewChat();
+                setExpanded(false);
               }
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </button>
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (viewMode === "history") setViewMode("chat");
-                  handleSubmit();
-                }
-                if (e.key === "Escape") {
-                  startNewChat();
-                  setExpanded(false);
-                }
-              }}
-              onPaste={handlePaste}
-              placeholder={tr.widget_placeholder}
-              className="gyozai-input"
-              disabled={loading}
-            />
-            {/* Action buttons */}
-            <button
-              className="gyozai-icon-btn"
-              onClick={startNewChat}
-              title={tr.widget_new_chat}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </button>
-            <button
-              className="gyozai-icon-btn"
-              onClick={() => openHistory()}
-              title={tr.widget_history}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </button>
-            <button
-              className="gyozai-icon-btn"
-              onClick={() =>
-                browser.runtime.sendMessage({ type: "gyozai_open_popup" })
-              }
-              title={tr.widget_settings}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              </svg>
-            </button>
-            {loading ? (
+            }}
+            onPaste={handlePaste}
+            placeholder={tr.widget_placeholder}
+            className="gyozai-input"
+            disabled={loading}
+            rows={1}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files) handleImageFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          {/* Action buttons row */}
+          <div className="gyozai-input-actions">
+            <div className="gyozai-input-actions-left">
               <button
-                className="gyozai-send-btn gyozai-stop-btn"
-                onClick={handleStop}
-                title="Stop"
+                className="gyozai-icon-btn gyozai-upload-btn"
+                onClick={() => fileInputRef.current?.click()}
+                title={tr.widget_attach_image}
+                disabled={
+                  loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+                }
               >
                 <svg
                   width="14"
                   height="14"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                className="gyozai-send-btn"
-                onClick={handleSubmit}
-                disabled={!input.trim() && pendingImages.length === 0}
-                title="Send message"
-              >
-                <svg
-                  width="16"
-                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -2427,11 +2318,130 @@ export function GyozaiWidget() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M22 2L11 13" />
-                  <path d="M22 2l-7 20-4-9-9-4z" />
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                 </svg>
               </button>
-            )}
+              <button
+                className="gyozai-icon-btn gyozai-upload-btn"
+                onClick={handleScreenshot}
+                title={tr.widget_screenshot}
+                disabled={
+                  loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+                }
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </button>
+            </div>
+            <div className="gyozai-input-actions-right">
+              <button
+                className="gyozai-icon-btn"
+                onClick={startNewChat}
+                title={tr.widget_new_chat}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+              <button
+                className="gyozai-icon-btn"
+                onClick={() => openHistory()}
+                title={tr.widget_history}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </button>
+              <button
+                className="gyozai-icon-btn"
+                onClick={() =>
+                  browser.runtime.sendMessage({ type: "gyozai_open_popup" })
+                }
+                title={tr.widget_settings}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                </svg>
+              </button>
+              {loading ? (
+                <button
+                  className="gyozai-send-btn gyozai-stop-btn"
+                  onClick={handleStop}
+                  title={tr.widget_stop}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  className="gyozai-send-btn"
+                  onClick={handleSubmit}
+                  disabled={!input.trim() && pendingImages.length === 0}
+                  title={tr.widget_send}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2l-7 20-4-9-9-4z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
