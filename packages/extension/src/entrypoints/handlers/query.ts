@@ -28,15 +28,7 @@ export async function handleQuery(
   // managedTier comes from the usage API's "tier" field (e.g. "free", "pro")
   // managedPlan is a different field ("max", "pro") and unreliable for this check
   const PAID_TIERS = new Set(["pro", "max", "enterprise"]);
-  const tier = settings.managedTier ?? "";
-  console.log(
-    "[gyoza:query] Free tier check → mode:",
-    settings.mode,
-    "managedTier:",
-    JSON.stringify(settings.managedTier),
-    "isPaid:",
-    PAID_TIERS.has(tier),
-  );
+  const tier = (settings.managedTier ?? "").toLowerCase();
   if (settings.mode === "managed" && tier && !PAID_TIERS.has(tier)) {
     const tr = getTranslations(settings.language as LocaleCode);
     sendResponse({

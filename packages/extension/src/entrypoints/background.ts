@@ -213,7 +213,9 @@ export default defineBackground(() => {
         "matches cookie:",
         settings.managedToken === cookie.value,
       );
-      if (settings.managedToken === cookie.value) return; // already synced
+      // Re-sync if token changed OR if managedTier is missing (field added later)
+      if (settings.managedToken === cookie.value && settings.managedTier)
+        return;
       console.log("[gyoza:cookie] Startup: syncing existing session cookie");
       let managedPlan: string | undefined;
       let managedTier: string | undefined;
