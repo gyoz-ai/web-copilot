@@ -83,7 +83,7 @@ export interface Translations {
   widget_confirm_allow: string;
   widget_confirm_deny: string;
   widget_shortcut_tip: string; // "Tip: press {shortcut} to talk to me anytime"
-  widget_attach_image: string; // "Attach image"
+  widget_attach_image: string; // "Attach file"
   widget_screenshot: string; // "Screenshot page"
   widget_stop: string; // "Stop"
   widget_send: string; // "Send message"
@@ -166,7 +166,7 @@ const en: Translations = {
   widget_confirm_allow: "Allow",
   widget_confirm_deny: "Deny",
   widget_shortcut_tip: "Tip: press {shortcut} to talk to me anytime",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -248,7 +248,7 @@ const ptBR: Translations = {
   widget_confirm_deny: "Negar",
   widget_shortcut_tip:
     "Dica: pressione {shortcut} para falar comigo a qualquer momento",
-  widget_attach_image: "Anexar imagem",
+  widget_attach_image: "Anexar arquivo",
   widget_screenshot: "Capturar tela",
   widget_stop: "Parar",
   widget_send: "Enviar mensagem",
@@ -349,7 +349,7 @@ const es: Translations = {
   widget_confirm_deny: "Denegar",
   widget_shortcut_tip:
     "Consejo: pulsa {shortcut} para hablar conmigo en cualquier momento",
-  widget_attach_image: "Adjuntar imagen",
+  widget_attach_image: "Adjuntar archivo",
   widget_screenshot: "Capturar pantalla",
   widget_stop: "Detener",
   widget_send: "Enviar mensaje",
@@ -432,7 +432,7 @@ const fr: Translations = {
   widget_confirm_deny: "Refuser",
   widget_shortcut_tip:
     "Astuce\u00a0: appuyez sur {shortcut} pour me parler \u00e0 tout moment",
-  widget_attach_image: "Joindre une image",
+  widget_attach_image: "Joindre un fichier",
   widget_screenshot: "Capturer la page",
   widget_stop: "Arr\u00eater",
   widget_send: "Envoyer",
@@ -515,7 +515,7 @@ const de: Translations = {
   widget_confirm_deny: "Ablehnen",
   widget_shortcut_tip:
     "Tipp: Dr\u00fccke {shortcut}, um jederzeit mit mir zu sprechen",
-  widget_attach_image: "Bild anh\u00e4ngen",
+  widget_attach_image: "Datei anhängen",
   widget_screenshot: "Screenshot aufnehmen",
   widget_stop: "Stopp",
   widget_send: "Nachricht senden",
@@ -598,7 +598,7 @@ const it: Translations = {
   widget_confirm_deny: "Nega",
   widget_shortcut_tip:
     "Suggerimento: premi {shortcut} per parlarmi in qualsiasi momento",
-  widget_attach_image: "Allega immagine",
+  widget_attach_image: "Allega file",
   widget_screenshot: "Cattura schermata",
   widget_stop: "Ferma",
   widget_send: "Invia messaggio",
@@ -680,7 +680,7 @@ const nl: Translations = {
   widget_confirm_allow: "Toestaan",
   widget_confirm_deny: "Weigeren",
   widget_shortcut_tip: "Tip: druk op {shortcut} om altijd met me te praten",
-  widget_attach_image: "Afbeelding bijvoegen",
+  widget_attach_image: "Bestand bijvoegen",
   widget_screenshot: "Screenshot maken",
   widget_stop: "Stop",
   widget_send: "Bericht verzenden",
@@ -762,7 +762,7 @@ const pl: Translations = {
   widget_confirm_deny: "Odrzu\u0107",
   widget_shortcut_tip:
     "Wskaz\u00f3wka: naci\u015bnij {shortcut}, aby porozmawiaj ze mn\u0105 w dowolnym momencie",
-  widget_attach_image: "Do\u0142\u0105cz obraz",
+  widget_attach_image: "Dołącz plik",
   widget_screenshot: "Zrzut ekranu",
   widget_stop: "Zatrzymaj",
   widget_send: "Wy\u015blij wiadomo\u015b\u0107",
@@ -852,7 +852,7 @@ const ru: Translations = {
   widget_confirm_deny: "\u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c",
   widget_shortcut_tip:
     "\u0421\u043e\u0432\u0435\u0442: \u043d\u0430\u0436\u043c\u0438\u0442\u0435 {shortcut}, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u044c \u0441\u043e \u043c\u043d\u043e\u0439 \u0432 \u043b\u044e\u0431\u043e\u0435 \u0432\u0440\u0435\u043c\u044f",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -963,7 +963,7 @@ const uk: Translations = {
   widget_confirm_deny: "\u0412\u0456\u0434\u0445\u0438\u043b\u0438\u0442\u0438",
   widget_shortcut_tip:
     "\u041f\u043e\u0440\u0430\u0434\u0430: \u043d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c {shortcut}, \u0449\u043e\u0431 \u043f\u043e\u0433\u043e\u0432\u043e\u0440\u0438\u0442\u0438 \u0437\u0456 \u043c\u043d\u043e\u044e \u0431\u0443\u0434\u044c-\u043a\u043e\u043b\u0438",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -1076,7 +1076,7 @@ const el: Translations = {
   widget_confirm_deny: "\u0386\u03c1\u03bd\u03b7\u03c3\u03b7",
   widget_shortcut_tip:
     "\u03a3\u03c5\u03bc\u03b2\u03bf\u03c5\u03bb\u03ae: \u03c0\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 {shortcut} \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03bc\u03bf\u03c5 \u03bc\u03b9\u03bb\u03ae\u03c3\u03b5\u03c4\u03b5 \u03bf\u03c0\u03bf\u03c4\u03b5\u03b4\u03ae\u03c0\u03bf\u03c4\u03b5",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -1184,7 +1184,7 @@ const tr: Translations = {
   widget_confirm_deny: "Reddet",
   widget_shortcut_tip:
     "\u0130pucu: her zaman benimle konu\u015fmak i\u00e7in {shortcut} tu\u015funa bas\u0131n",
-  widget_attach_image: "Resim ekle",
+  widget_attach_image: "Dosya ekle",
   widget_screenshot: "Ekran g\u00f6r\u00fcnt\u00fcs\u00fc",
   widget_stop: "Durdur",
   widget_send: "Mesaj g\u00f6nder",
@@ -1275,7 +1275,7 @@ const ar: Translations = {
   widget_confirm_deny: "\u0631\u0641\u0636",
   widget_shortcut_tip:
     "\u0646\u0635\u064a\u062d\u0629: \u0627\u0636\u063a\u0637 {shortcut} \u0644\u0644\u062a\u062d\u062f\u062b \u0645\u0639\u064a \u0641\u064a \u0623\u064a \u0648\u0642\u062a",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -1388,7 +1388,7 @@ const hi: Translations = {
   widget_confirm_deny: "\u0905\u0938\u094d\u0935\u0940\u0915\u093e\u0930",
   widget_shortcut_tip:
     "\u0938\u0941\u091d\u093e\u0935: \u0915\u093f\u0938\u0940 \u092d\u0940 \u0938\u092e\u092f \u092e\u0941\u091d\u0938\u0947 \u092c\u093e\u0924 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f {shortcut} \u0926\u092c\u093e\u090f\u0902",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -1493,7 +1493,7 @@ const ja: Translations = {
   widget_confirm_deny: "\u62d2\u5426",
   widget_shortcut_tip:
     "\u30d2\u30f3\u30c8: {shortcut} \u3092\u62bc\u3057\u3066\u3044\u3064\u3067\u3082\u8a71\u3057\u304b\u3051\u3066\u304f\u3060\u3055\u3044",
-  widget_attach_image: "\u753b\u50cf\u3092\u6dfb\u4ed8",
+  widget_attach_image: "ファイルを添付",
   widget_screenshot: "\u30b9\u30af\u30ea\u30fc\u30f3\u30b7\u30e7\u30c3\u30c8",
   widget_stop: "\u505c\u6b62",
   widget_send: "\u9001\u4fe1",
@@ -1584,7 +1584,7 @@ const ko: Translations = {
   widget_confirm_deny: "\uac70\ubd80",
   widget_shortcut_tip:
     "\ud301: {shortcut}\uc744 \ub20c\ub7ec \uc5b8\uc81c\ub4e0 \uc800\uc640 \ub300\ud654\ud558\uc138\uc694",
-  widget_attach_image: "\uc774\ubbf8\uc9c0 \ucca8\ubd80",
+  widget_attach_image: "파일 첨부",
   widget_screenshot: "\uc2a4\ud06c\ub9b0\uc0f7",
   widget_stop: "\uc911\uc9c0",
   widget_send: "\uba54\uc2dc\uc9c0 \ubcf4\ub0b4\uae30",
@@ -1671,7 +1671,7 @@ const zhCN: Translations = {
   widget_confirm_deny: "\u62d2\u7edd",
   widget_shortcut_tip:
     "\u63d0\u793a\uff1a\u6309 {shortcut} \u968f\u65f6\u4e0e\u6211\u5bf9\u8bdd",
-  widget_attach_image: "\u9644\u52a0\u56fe\u7247",
+  widget_attach_image: "附加文件",
   widget_screenshot: "\u622a\u53d6\u5c4f\u5e55",
   widget_stop: "\u505c\u6b62",
   widget_send: "\u53d1\u9001\u6d88\u606f",
@@ -1745,7 +1745,7 @@ const zhTW: Translations = {
   widget_confirm_deny: "\u62d2\u7d55",
   widget_shortcut_tip:
     "\u63d0\u793a\uff1a\u6309 {shortcut} \u96a8\u6642\u8207\u6211\u5c0d\u8a71",
-  widget_attach_image: "\u9644\u52a0\u5716\u7247",
+  widget_attach_image: "附加檔案",
   widget_screenshot: "\u64f7\u53d6\u756b\u9762",
   widget_stop: "\u505c\u6b62",
   widget_send: "\u50b3\u9001\u8a0a\u606f",
@@ -1833,7 +1833,7 @@ const th: Translations = {
   widget_confirm_deny: "\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18",
   widget_shortcut_tip:
     "\u0e40\u0e04\u0e25\u0e47\u0e14\u0e25\u0e31\u0e1a: \u0e01\u0e14 {shortcut} \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1e\u0e39\u0e14\u0e04\u0e38\u0e22\u0e01\u0e31\u0e1a\u0e09\u0e31\u0e19\u0e44\u0e14\u0e49\u0e17\u0e38\u0e01\u0e40\u0e21\u0e37\u0e48\u0e2d",
-  widget_attach_image: "Attach image",
+  widget_attach_image: "Attach file",
   widget_screenshot: "Screenshot page",
   widget_stop: "Stop",
   widget_send: "Send message",
@@ -1943,7 +1943,7 @@ const vi: Translations = {
   widget_confirm_deny: "T\u1eeb ch\u1ed1i",
   widget_shortcut_tip:
     "M\u1eb9o: nh\u1ea5n {shortcut} \u0111\u1ec3 n\u00f3i chuy\u1ec7n v\u1edbi t\u00f4i b\u1ea5t c\u1ee9 l\u00fac n\u00e0o",
-  widget_attach_image: "\u0110\u00ednh k\u00e8m h\u00ecnh \u1ea3nh",
+  widget_attach_image: "Đính kèm tệp",
   widget_screenshot: "Ch\u1ee5p m\u00e0n h\u00ecnh",
   widget_stop: "D\u1eebng",
   widget_send: "G\u1eedi tin nh\u1eafn",
@@ -2027,7 +2027,7 @@ const id: Translations = {
   widget_confirm_deny: "Tolak",
   widget_shortcut_tip:
     "Tips: tekan {shortcut} untuk berbicara dengan saya kapan saja",
-  widget_attach_image: "Lampirkan gambar",
+  widget_attach_image: "Lampirkan file",
   widget_screenshot: "Tangkapan layar",
   widget_stop: "Berhenti",
   widget_send: "Kirim pesan",
