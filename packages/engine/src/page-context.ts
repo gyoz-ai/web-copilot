@@ -155,6 +155,14 @@ function getCapturedDoc(): Document {
   const parser = new DOMParser();
   const doc = parser.parseFromString(raw, "text/html");
 
+  // Strip any residual value attributes from sensitive fields in the snapshot
+  doc.body.querySelectorAll("input, textarea, select").forEach((el) => {
+    if (isSensitiveField(el)) {
+      el.removeAttribute("value");
+      if (el.tagName === "TEXTAREA") el.textContent = "";
+    }
+  });
+
   _cache = { doc, ts: now };
   return doc;
 }
@@ -239,6 +247,7 @@ export function capturePageContext(
         const type = field.getAttribute("type") || field.tagName.toLowerCase();
         if (type === "hidden" || type === "submit") return;
 
+        const sensitive = isSensitiveField(field);
         fields.push({
           selector: resolveLiveSelector(field, `field-${fi}-${ii}`),
           name,
@@ -246,7 +255,9 @@ export function capturePageContext(
           label: findLabelInDoc(field, doc)?.slice(0, 100),
           placeholder:
             field.getAttribute("placeholder")?.slice(0, 100) || undefined,
-          value: field.getAttribute("value")?.slice(0, 200) || undefined,
+          value: sensitive
+            ? undefined
+            : field.getAttribute("value")?.slice(0, 200) || undefined,
         });
       });
 
@@ -269,6 +280,7 @@ export function capturePageContext(
         if (isLiveElementHidden(el)) return;
         const type = el.getAttribute("type") || el.tagName.toLowerCase();
         if (type === "hidden") return;
+        const sensitive = isSensitiveField(el);
         ctx.inputs.push({
           selector: resolveLiveSelector(el, `input-${i}`),
           name: el.getAttribute("name") || el.id || "",
@@ -276,7 +288,9 @@ export function capturePageContext(
           label: findLabelInDoc(el, doc)?.slice(0, 100),
           placeholder:
             el.getAttribute("placeholder")?.slice(0, 100) || undefined,
-          value: el.getAttribute("value")?.slice(0, 200) || undefined,
+          value: sensitive
+            ? undefined
+            : el.getAttribute("value")?.slice(0, 200) || undefined,
         });
       });
   }
@@ -579,9 +593,54 @@ function findLabelInDoc(input: Element, doc: Document): string | undefined {
   return input.getAttribute("aria-label") || undefined;
 }
 
+// ─── Sensitive field detection ─────────────────────────────────────────────────
+// Prevents passwords, credit card numbers, SSNs, API keys, etc. from being
+// captured and sent to the LLM.
+
+const SENSITIVE_INPUT_TYPES = new Set(["password"]);
+
+const SENSITIVE_NAME_PATTERN =
+  /passw|passwd|pwd|secret|token|api[_-]?key|ssn|social.?sec|credit.?card|card.?num|cc.?num|cvv|cvc|csc|security.?code|pin.?code|otp|totp|mfa|2fa|auth.?code|verification.?code/i;
+
+const SENSITIVE_AUTOCOMPLETE_VALUES = new Set([
+  "current-password",
+  "new-password",
+  "one-time-code",
+  "cc-number",
+  "cc-exp",
+  "cc-exp-month",
+  "cc-exp-year",
+  "cc-csc",
+  "cc-type",
+]);
+
+/**
+ * Checks whether a form field contains sensitive data that should not be
+ * sent to the LLM. Checks input type, name, id, and autocomplete attributes.
+ */
+export function isSensitiveField(el: Element): boolean {
+  const type = (el.getAttribute("type") || "").toLowerCase();
+  if (SENSITIVE_INPUT_TYPES.has(type)) return true;
+
+  const autocomplete = (el.getAttribute("autocomplete") || "").toLowerCase();
+  if (SENSITIVE_AUTOCOMPLETE_VALUES.has(autocomplete)) return true;
+
+  const name = el.getAttribute("name") || "";
+  if (name && SENSITIVE_NAME_PATTERN.test(name)) return true;
+
+  const id = el.id || "";
+  if (id && SENSITIVE_NAME_PATTERN.test(id)) return true;
+
+  const ariaLabel = el.getAttribute("aria-label") || "";
+  if (ariaLabel && SENSITIVE_NAME_PATTERN.test(ariaLabel)) return true;
+
+  return false;
+}
+
 // ─── Form value baking ──────────────────────────────────────────────────────────
 // Sets current form values as HTML attributes on the LIVE DOM so the library
 // captures them (it reads attributes, not JS properties).
+// Sensitive fields are skipped to avoid capturing passwords, tokens, etc.
 
 function bakeFormValues(): void {
   document.querySelectorAll("input, textarea, select").forEach((el) => {
@@ -592,6 +651,7 @@ function bakeFormValues(): void {
         else opt.removeAttribute("selected");
       }
     } else if (el.tagName === "TEXTAREA") {
+      if (isSensitiveField(el)) return;
       (el as HTMLTextAreaElement).textContent = (
         el as HTMLTextAreaElement
       ).value;
@@ -601,6 +661,7 @@ function bakeFormValues(): void {
         if (inp.checked) inp.setAttribute("checked", "checked");
         else inp.removeAttribute("checked");
       } else {
+        if (isSensitiveField(inp)) return;
         inp.setAttribute("value", inp.value);
       }
     }

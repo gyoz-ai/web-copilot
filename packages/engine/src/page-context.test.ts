@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { escapeXml, formatPageContext } from "./page-context";
+import { escapeXml, formatPageContext, isSensitiveField } from "./page-context";
 import type { PageContext } from "./page-context";
 
 describe("escapeXml", () => {
@@ -31,6 +31,188 @@ describe("escapeXml", () => {
 
   test("returns plain text unchanged", () => {
     expect(escapeXml("Hello world")).toBe("Hello world");
+  });
+});
+
+// ─── Lightweight mock element (no DOM required) ──────────────────────────────
+function mockElement(attrs: Record<string, string>): Element {
+  const store = new Map(Object.entries(attrs));
+  return {
+    getAttribute(name: string) {
+      return store.get(name) ?? null;
+    },
+    get id() {
+      return store.get("id") ?? "";
+    },
+  } as unknown as Element;
+}
+
+describe("isSensitiveField", () => {
+  test("detects type=password", () => {
+    expect(isSensitiveField(mockElement({ type: "password" }))).toBe(true);
+  });
+
+  test("allows type=text", () => {
+    expect(
+      isSensitiveField(mockElement({ type: "text", name: "username" })),
+    ).toBe(false);
+  });
+
+  test("allows type=email", () => {
+    expect(
+      isSensitiveField(mockElement({ type: "email", name: "email" })),
+    ).toBe(false);
+  });
+
+  test("detects autocomplete=current-password", () => {
+    expect(
+      isSensitiveField(mockElement({ autocomplete: "current-password" })),
+    ).toBe(true);
+  });
+
+  test("detects autocomplete=new-password", () => {
+    expect(
+      isSensitiveField(mockElement({ autocomplete: "new-password" })),
+    ).toBe(true);
+  });
+
+  test("detects autocomplete=cc-number", () => {
+    expect(isSensitiveField(mockElement({ autocomplete: "cc-number" }))).toBe(
+      true,
+    );
+  });
+
+  test("detects autocomplete=cc-csc", () => {
+    expect(isSensitiveField(mockElement({ autocomplete: "cc-csc" }))).toBe(
+      true,
+    );
+  });
+
+  test("detects autocomplete=one-time-code", () => {
+    expect(
+      isSensitiveField(mockElement({ autocomplete: "one-time-code" })),
+    ).toBe(true);
+  });
+
+  test("detects name=password", () => {
+    expect(isSensitiveField(mockElement({ name: "password" }))).toBe(true);
+  });
+
+  test("detects name=user_password", () => {
+    expect(isSensitiveField(mockElement({ name: "user_password" }))).toBe(true);
+  });
+
+  test("detects name=passwd", () => {
+    expect(isSensitiveField(mockElement({ name: "passwd" }))).toBe(true);
+  });
+
+  test("detects name=api_key", () => {
+    expect(isSensitiveField(mockElement({ name: "api_key" }))).toBe(true);
+  });
+
+  test("detects name=apiKey", () => {
+    expect(isSensitiveField(mockElement({ name: "apiKey" }))).toBe(true);
+  });
+
+  test("detects name=secret_token", () => {
+    expect(isSensitiveField(mockElement({ name: "secret_token" }))).toBe(true);
+  });
+
+  test("detects name=ssn", () => {
+    expect(isSensitiveField(mockElement({ name: "ssn" }))).toBe(true);
+  });
+
+  test("detects name=credit_card_number", () => {
+    expect(isSensitiveField(mockElement({ name: "credit_card_number" }))).toBe(
+      true,
+    );
+  });
+
+  test("detects name=cvv", () => {
+    expect(isSensitiveField(mockElement({ name: "cvv" }))).toBe(true);
+  });
+
+  test("detects name=cvc", () => {
+    expect(isSensitiveField(mockElement({ name: "cvc" }))).toBe(true);
+  });
+
+  test("detects name=security_code", () => {
+    expect(isSensitiveField(mockElement({ name: "security_code" }))).toBe(true);
+  });
+
+  test("detects name=otp", () => {
+    expect(isSensitiveField(mockElement({ name: "otp" }))).toBe(true);
+  });
+
+  test("detects name=totp_code", () => {
+    expect(isSensitiveField(mockElement({ name: "totp_code" }))).toBe(true);
+  });
+
+  test("detects name=mfa_code", () => {
+    expect(isSensitiveField(mockElement({ name: "mfa_code" }))).toBe(true);
+  });
+
+  test("detects name=verification_code", () => {
+    expect(isSensitiveField(mockElement({ name: "verification_code" }))).toBe(
+      true,
+    );
+  });
+
+  test("detects id=password-field", () => {
+    expect(isSensitiveField(mockElement({ id: "password-field" }))).toBe(true);
+  });
+
+  test("detects aria-label containing password", () => {
+    expect(
+      isSensitiveField(mockElement({ "aria-label": "Enter password" })),
+    ).toBe(true);
+  });
+
+  test("allows normal fields", () => {
+    expect(
+      isSensitiveField(mockElement({ name: "first_name", type: "text" })),
+    ).toBe(false);
+    expect(
+      isSensitiveField(mockElement({ name: "address", type: "text" })),
+    ).toBe(false);
+    expect(
+      isSensitiveField(mockElement({ name: "search", type: "search" })),
+    ).toBe(false);
+    expect(
+      isSensitiveField(mockElement({ name: "quantity", type: "number" })),
+    ).toBe(false);
+  });
+});
+
+describe("formatPageContext — sensitive field value filtering", () => {
+  test("omits value for password-type form field", () => {
+    const ctx = emptyContext();
+    ctx.forms = [
+      {
+        selector: "#login-form",
+        action: "/login",
+        method: "POST",
+        fields: [
+          { selector: "#user", name: "username", type: "text", value: "john" },
+          { selector: "#pass", name: "password", type: "password" },
+        ],
+      },
+    ];
+    const result = formatPageContext(ctx);
+    expect(result).toContain('value="john"');
+    expect(result).not.toContain("hunter2");
+  });
+
+  test("omits value for sensitive standalone input", () => {
+    const ctx = emptyContext();
+    ctx.inputs = [
+      { selector: "#search", name: "q", type: "text", value: "hello" },
+      { selector: "#key", name: "api_key", type: "text" },
+    ];
+    const result = formatPageContext(ctx);
+    expect(result).toContain('value="hello"');
+    // api_key field should not have a value attribute at all
+    expect(result).toContain('name="api_key"');
   });
 });
 
