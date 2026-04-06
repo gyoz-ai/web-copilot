@@ -100,7 +100,7 @@ ${buildCapabilityNotes(caps)}`;
     : "";
 
   const chatOnlySection = chatOnly
-    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, submit_form, scroll_to, select_option, or toggle_checkbox. Do NOT call get_page_context looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they can switch to Autopilot in the gyoza settings, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
+    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, submit_form, scroll_to, select_option, or toggle_checkbox. Do NOT call get_page_context looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they need to turn off "Chat Only" in the gyoza settings to allow actions, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
     : "";
 
   const securitySection = `SECURITY — Untrusted content:
