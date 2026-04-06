@@ -274,7 +274,7 @@ export const WIDGET_STYLES = `
 
   .gyozai-input-row {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     padding: 8px;
     gap: 4px;
     background: oklch(0.13 0.015 50 / 0.85);
@@ -282,6 +282,82 @@ export const WIDGET_STYLES = `
     backdrop-filter: blur(8px);
     border: 1px solid oklch(0.3 0.01 50 / 0.5);
     margin: 4px 0;
+  }
+  .gyozai-input-inner {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ─── Image preview strip ──────────────────────────────── */
+  .gyozai-image-preview-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 0;
+  }
+  .gyozai-preview-thumb {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .gyozai-preview-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .gyozai-preview-remove {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: oklch(0.55 0.2 25);
+    color: #fff;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .gyozai-preview-remove:hover {
+    background: oklch(0.48 0.22 25);
+  }
+
+  /* ─── Upload button ────────────────────────────────────── */
+  .gyozai-upload-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  /* ─── Message images ───────────────────────────────────── */
+  .gyozai-msg-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .gyozai-msg-image {
+    max-width: 100%;
+    max-height: 160px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: block;
+  }
+  .gyozai-msg-image:hover {
+    opacity: 0.85;
+  }
+  .gyozai-msg-image-placeholder {
+    color: var(--g-text-muted);
+    font-size: 11px;
+    font-style: italic;
+    margin-bottom: 4px;
   }
 
   .gyozai-input {

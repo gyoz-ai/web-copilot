@@ -4,6 +4,7 @@ import {
   type Conversation,
   type ConversationSummary,
 } from "../../lib/storage";
+import { deleteImagesByConversation } from "../../lib/image-store";
 
 // ─── Snapshot helpers ──────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ export async function persistConversation(conv: Conversation): Promise<void> {
     const removed = index.splice(50);
     for (const r of removed) {
       await browser.storage.local.remove(`gyozai_conv_${r.id}`);
+      deleteImagesByConversation(r.id).catch(() => {});
     }
   }
 
@@ -137,6 +139,7 @@ export async function persistConversation(conv: Conversation): Promise<void> {
 
 export async function removeConversation(id: string): Promise<void> {
   await browser.storage.local.remove(`gyozai_conv_${id}`);
+  deleteImagesByConversation(id).catch(() => {});
   const index = await loadConversationIndex();
   const filtered = index.filter((c) => c.id !== id);
   await browser.storage.local.set({ gyozai_conv_index: filtered });

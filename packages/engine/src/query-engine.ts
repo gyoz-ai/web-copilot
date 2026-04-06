@@ -94,6 +94,8 @@ export interface QueryInput {
   pageContext?: string;
   context?: Record<string, unknown>;
   capabilities?: Record<string, boolean>;
+  /** Base64 data URLs of images attached to this message. */
+  images?: string[];
 }
 
 export interface QueryResult {

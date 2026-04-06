@@ -24,6 +24,13 @@ import {
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../../lib/storage";
 import type { WidgetSession } from "../../lib/session";
+import { saveImages, getImages } from "../../lib/image-store";
+import {
+  compressImage,
+  imageFromClipboard,
+  blobToDataUrl,
+  MAX_IMAGES_PER_MESSAGE,
+} from "../../lib/image-utils";
 import {
   type LocaleCode,
   detectBrowserLocale,
@@ -102,6 +109,71 @@ function saveSessionViaBackground(tabId: number, session: WidgetSession): void {
     .catch(() => {});
 }
 
+/** Renders images for a user message by resolving imageIds from IndexedDB. */
+function MessageImages({
+  imageIds,
+  cache,
+}: {
+  imageIds: string[];
+  cache: React.RefObject<Map<string, string>>;
+}) {
+  const [urls, setUrls] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    // Use cached URLs where available, fetch the rest from IndexedDB
+    const cached = new Map<string, string>();
+    const missing: string[] = [];
+    for (const id of imageIds) {
+      const url = cache.current.get(id);
+      if (url) cached.set(id, url);
+      else missing.push(id);
+    }
+
+    if (missing.length === 0) {
+      setUrls(cached);
+      return;
+    }
+
+    getImages(missing).then((results) => {
+      if (cancelled) return;
+      const merged = new Map(cached);
+      for (const r of results) {
+        merged.set(r.id, r.dataUrl);
+        cache.current.set(r.id, r.dataUrl);
+      }
+      setUrls(merged);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageIds, cache]);
+
+  if (urls.size === 0 && imageIds.length > 0) {
+    return (
+      <div className="gyozai-msg-image-placeholder">Loading images...</div>
+    );
+  }
+
+  return (
+    <div className="gyozai-msg-images">
+      {imageIds.map((id) => {
+        const src = urls.get(id);
+        if (!src) return null;
+        return (
+          <img
+            key={id}
+            src={src}
+            alt="Attached image"
+            className="gyozai-msg-image"
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function GyozaiWidget() {
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
@@ -174,6 +246,19 @@ export function GyozaiWidget() {
   const tabIdRef = useRef<number | null>(null);
   const resumingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pending images waiting to be sent with the next message
+  interface PendingImage {
+    id: string;
+    dataUrl: string;
+    blob: Blob;
+    mimeType: string;
+  }
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+
+  // Cache of resolved image data URLs for rendered messages (imageId → dataUrl)
+  const imageCache = useRef<Map<string, string>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number | null>(null);
@@ -982,6 +1067,7 @@ export function GyozaiWidget() {
     query: string,
     extraPageContext?: string,
     options?: { disableNavigate?: boolean },
+    images?: string[],
   ): Promise<AgentResult> {
     lastUserQueryRef.current = query;
     const currentRoute = window.location.pathname;
@@ -1027,6 +1113,10 @@ export function GyozaiWidget() {
 
     if (extraPageContext) {
       payload.pageContext = extraPageContext;
+    }
+
+    if (images && images.length > 0) {
+      payload.images = images;
     }
 
     // ─── Log request ───────────────────
@@ -1455,23 +1545,104 @@ export function GyozaiWidget() {
     }
   }
 
+  // ─── Image upload helpers ──────────────────────────────────────────────────
+
+  const handleImageFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const remaining = MAX_IMAGES_PER_MESSAGE - pendingImages.length;
+      const toProcess = Array.from(files).slice(0, remaining);
+      if (toProcess.length === 0) return;
+
+      const newImages: PendingImage[] = [];
+      for (const file of toProcess) {
+        if (!file.type.startsWith("image/")) continue;
+        const { blob, mimeType } = await compressImage(file);
+        const dataUrl = await blobToDataUrl(blob);
+        newImages.push({
+          id: crypto.randomUUID(),
+          dataUrl,
+          blob,
+          mimeType,
+        });
+      }
+      if (newImages.length > 0) {
+        setPendingImages((prev) =>
+          [...prev, ...newImages].slice(0, MAX_IMAGES_PER_MESSAGE),
+        );
+      }
+    },
+    [pendingImages.length],
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of items) {
+        const result = imageFromClipboard(item);
+        if (result) imageFiles.push(result.blob as File);
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleImageFiles(imageFiles);
+      }
+    },
+    [handleImageFiles],
+  );
+
+  const removePendingImage = useCallback((id: string) => {
+    setPendingImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
+
+  // ─── Submit ──────────────────────────────────────────────────────────────────
+
   const handleSubmit = async () => {
     const trimmed = input.trim();
-    if (!trimmed || loading) return;
+    const hasImages = pendingImages.length > 0;
+    if ((!trimmed && !hasImages) || loading) return;
     setInput("");
     setError(null);
     setLoading(true);
     setClarify(null);
 
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), role: "user", content: trimmed },
-    ]);
+    // Capture pending images before clearing
+    const imagesToSend = [...pendingImages];
+    setPendingImages([]);
+
+    // Build user message with optional imageIds
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: trimmed,
+      ...(imagesToSend.length > 0 && {
+        imageIds: imagesToSend.map((img) => img.id),
+      }),
+    };
+
+    // Cache image data URLs for immediate rendering
+    for (const img of imagesToSend) {
+      imageCache.current.set(img.id, img.dataUrl);
+    }
+
+    setMessages((prev) => [...prev, userMsg]);
 
     // Ensure a conversation ID exists before the first query so the
     // background worker can persist LLM history for follow-up calls.
     if (!activeConvIdRef.current) {
       activeConvIdRef.current = crypto.randomUUID();
+    }
+
+    // Persist image blobs to IndexedDB
+    if (imagesToSend.length > 0) {
+      saveImages(
+        activeConvIdRef.current,
+        imagesToSend.map((img) => ({
+          id: img.id,
+          blob: img.blob,
+          mimeType: img.mimeType,
+        })),
+      ).catch(console.error);
     }
 
     try {
@@ -1480,8 +1651,18 @@ export function GyozaiWidget() {
         "%c[gyoza:submit] handleSubmit → sendQuery",
         "color: #3b82f6; font-weight: bold",
         trimmed.slice(0, 60),
+        imagesToSend.length > 0 ? `(+${imagesToSend.length} image(s))` : "",
       );
-      const result = await sendQuery(trimmed, pendingExtraContext || undefined);
+      const imageDataUrls =
+        imagesToSend.length > 0
+          ? imagesToSend.map((img) => img.dataUrl)
+          : undefined;
+      const result = await sendQuery(
+        trimmed,
+        pendingExtraContext || undefined,
+        undefined,
+        imageDataUrls,
+      );
       pendingExtraContext = null;
       console.log(
         "%c[gyoza:submit] sendQuery returned → calling processAgentResult",
@@ -1940,7 +2121,15 @@ export function GyozaiWidget() {
                         <FormatMessage text={msg.content} />
                       )
                     ) : (
-                      msg.content
+                      <>
+                        {msg.imageIds && msg.imageIds.length > 0 && (
+                          <MessageImages
+                            imageIds={msg.imageIds}
+                            cache={imageCache}
+                          />
+                        )}
+                        {msg.content}
+                      </>
                     )}
                   </div>
                 );
@@ -2028,109 +2217,36 @@ export function GyozaiWidget() {
 
         {/* Input row — always visible (both chat and history views) */}
         <div className="gyozai-input-row">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (viewMode === "history") setViewMode("chat");
-                handleSubmit();
-              }
-              if (e.key === "Escape") {
-                startNewChat();
-                setExpanded(false);
-              }
-            }}
-            placeholder={tr.widget_placeholder}
-            className="gyozai-input"
-            disabled={loading}
-          />
-          {/* Action buttons */}
-          <button
-            className="gyozai-icon-btn"
-            onClick={startNewChat}
-            title={tr.widget_new_chat}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-          </button>
-          <button
-            className="gyozai-icon-btn"
-            onClick={() => openHistory()}
-            title={tr.widget_history}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-          </button>
-          <button
-            className="gyozai-icon-btn"
-            onClick={() =>
-              browser.runtime.sendMessage({ type: "gyozai_open_popup" })
-            }
-            title={tr.widget_settings}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            </svg>
-          </button>
-          {loading ? (
+          {/* Image preview strip */}
+          {pendingImages.length > 0 && (
+            <div className="gyozai-image-preview-row">
+              {pendingImages.map((img) => (
+                <div key={img.id} className="gyozai-preview-thumb">
+                  <img src={img.dataUrl} alt="Preview" />
+                  <button
+                    className="gyozai-preview-remove"
+                    onClick={() => removePendingImage(img.id)}
+                    title="Remove"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="gyozai-input-inner">
+            {/* Image upload button */}
             <button
-              className="gyozai-send-btn gyozai-stop-btn"
-              onClick={handleStop}
-              title="Stop"
+              className="gyozai-icon-btn gyozai-upload-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach image"
+              disabled={
+                loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+              }
             >
               <svg
                 width="14"
                 height="14"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              className="gyozai-send-btn"
-              onClick={handleSubmit}
-              disabled={!input.trim()}
-            >
-              <svg
-                width="16"
-                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -2138,11 +2254,137 @@ export function GyozaiWidget() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M22 2L11 13" />
-                <path d="M22 2l-7 20-4-9-9-4z" />
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
               </svg>
             </button>
-          )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => {
+                if (e.target.files) handleImageFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (viewMode === "history") setViewMode("chat");
+                  handleSubmit();
+                }
+                if (e.key === "Escape") {
+                  startNewChat();
+                  setExpanded(false);
+                }
+              }}
+              onPaste={handlePaste}
+              placeholder={tr.widget_placeholder}
+              className="gyozai-input"
+              disabled={loading}
+            />
+            {/* Action buttons */}
+            <button
+              className="gyozai-icon-btn"
+              onClick={startNewChat}
+              title={tr.widget_new_chat}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
+            <button
+              className="gyozai-icon-btn"
+              onClick={() => openHistory()}
+              title={tr.widget_history}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+            <button
+              className="gyozai-icon-btn"
+              onClick={() =>
+                browser.runtime.sendMessage({ type: "gyozai_open_popup" })
+              }
+              title={tr.widget_settings}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              </svg>
+            </button>
+            {loading ? (
+              <button
+                className="gyozai-send-btn gyozai-stop-btn"
+                onClick={handleStop}
+                title="Stop"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                className="gyozai-send-btn"
+                onClick={handleSubmit}
+                disabled={!input.trim() && pendingImages.length === 0}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 2L11 13" />
+                  <path d="M22 2l-7 20-4-9-9-4z" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </>

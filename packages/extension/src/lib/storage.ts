@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser";
+import { deleteImagesByConversation } from "./image-store";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -142,7 +143,12 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   domain: string;
-  messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    imageIds?: string[];
+  }>;
   llmHistory: Array<{ role: string; content: string }>;
   pendingClarify?: { message: string; options: string[] } | null;
 }
@@ -193,6 +199,7 @@ export async function saveConversation(conv: Conversation): Promise<void> {
     const removed = index.splice(50);
     for (const r of removed) {
       await browser.storage.local.remove(convKey(r.id));
+      deleteImagesByConversation(r.id).catch(() => {});
     }
   }
 
@@ -201,6 +208,7 @@ export async function saveConversation(conv: Conversation): Promise<void> {
 
 export async function deleteConversation(id: string): Promise<void> {
   await browser.storage.local.remove(convKey(id));
+  deleteImagesByConversation(id).catch(() => {});
   const index = await getConversationIndex();
   const filtered = index.filter((c) => c.id !== id);
   await browser.storage.local.set({ [CONV_INDEX_KEY]: filtered });

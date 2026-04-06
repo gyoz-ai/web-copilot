@@ -13,6 +13,7 @@ export interface WidgetSession {
     role: "user" | "assistant";
     content: string;
     type?: "chat" | "tool-status";
+    imageIds?: string[];
   }>;
   input: string;
   viewMode: "chat" | "history";

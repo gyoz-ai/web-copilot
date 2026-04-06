@@ -4,6 +4,8 @@ export interface Message {
   content: string;
   /** "tool-status" for action indicators, default is regular chat */
   type?: "chat" | "tool-status";
+  /** IndexedDB image IDs attached to this message. */
+  imageIds?: string[];
 }
 
 export interface ClarifyState {

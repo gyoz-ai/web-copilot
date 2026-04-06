@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, type ModelMessage } from "ai";
 import {
   QueryEngine,
   type QueryInput,
@@ -163,18 +163,42 @@ export async function handleQuery(
     const tr = getTranslations(settings.language as LocaleCode);
     const tools = createBrowserTools(ctx, caps, settings.yoloMode, tr);
 
-    const aiMessages: Array<{ role: "user" | "assistant"; content: string }> = [
-      ...history.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      { role: "user" as const, content: userPrompt },
+    // Build the current user message — multimodal when images are attached
+    const images = message.images;
+    const currentUserContent:
+      | string
+      | Array<
+          { type: "text"; text: string } | { type: "image"; image: string }
+        > =
+      images && images.length > 0
+        ? [
+            ...images.map((img) => ({
+              type: "image" as const,
+              image: img,
+            })),
+            { type: "text" as const, text: userPrompt },
+          ]
+        : userPrompt;
+
+    const aiMessages: ModelMessage[] = [
+      ...history.map(
+        (m): ModelMessage => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }),
+      ),
+      { role: "user", content: currentUserContent },
     ];
 
     // Save user query to history BEFORE streaming so that if a navigate tool
     // triggers a page reload, the new page's auto-continue will find the full
     // conversation history (including this query) already persisted.
-    history.push({ role: "user", content: message.query });
+    // Images are NOT stored in LLM history — only text.
+    const historyText =
+      images && images.length > 0
+        ? `${message.query} [${images.length} image(s) attached]`
+        : message.query;
+    history.push({ role: "user", content: historyText });
     if (convId) {
       await saveConversationLlmHistory(convId, history);
     }
