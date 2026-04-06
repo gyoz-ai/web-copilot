@@ -123,6 +123,8 @@ export interface Translations {
   popup_settings: string;
   popup_yolo_mode: string;
   popup_yolo_desc: string;
+  popup_chat_only: string;
+  popup_chat_only_desc: string;
   popup_auto_import_recipes: string;
   popup_auto_import_recipes_desc: string;
   popup_theme: string;
@@ -191,8 +193,10 @@ const en: Translations = {
   popup_back: "\u2190 Back",
   popup_settings: "Settings",
   popup_yolo_mode: "Yolo Mode",
-  popup_yolo_desc:
-    "Skip confirmations \u2014 AI acts immediately without asking",
+  popup_yolo_desc: "Skip confirmations — AI acts immediately without asking",
+  popup_chat_only: "Chat Only",
+  popup_chat_only_desc:
+    "Only chat and read pages — no clicks, forms, or navigation",
   popup_auto_import_recipes: "Auto-import Recipes",
   popup_auto_import_recipes_desc:
     "Automatically import llms.txt recipes from websites you visit",
@@ -263,6 +267,9 @@ const ptBR: Translations = {
   popup_yolo_mode: "Modo Yolo",
   popup_yolo_desc:
     "Pular confirma\u00e7\u00f5es \u2014 IA age imediatamente sem perguntar",
+  popup_chat_only: "Apenas Chat",
+  popup_chat_only_desc:
+    "Apenas conversar e ler p\u00e1ginas \u2014 sem cliques, formul\u00e1rios ou navega\u00e7\u00e3o",
   popup_auto_import_recipes: "Importar Receitas Automaticamente",
   popup_auto_import_recipes_desc:
     "Importar automaticamente receitas llms.txt dos sites que você visita",
@@ -351,6 +358,9 @@ const es: Translations = {
   popup_yolo_mode: "Modo Yolo",
   popup_yolo_desc:
     "Omitir confirmaciones \u2014 la IA act\u00faa inmediatamente sin preguntar",
+  popup_chat_only: "Solo Chat",
+  popup_chat_only_desc:
+    "Solo chatear y leer p\u00e1ginas \u2014 sin clics, formularios ni navegaci\u00f3n",
   popup_auto_import_recipes: "Importar Recetas Automáticamente",
   popup_auto_import_recipes_desc:
     "Importar automáticamente recetas llms.txt de los sitios que visitas",
@@ -421,6 +431,9 @@ const fr: Translations = {
   popup_yolo_mode: "Mode Yolo",
   popup_yolo_desc:
     "Ignorer les confirmations \u2014 l'IA agit imm\u00e9diatement sans demander",
+  popup_chat_only: "Chat uniquement",
+  popup_chat_only_desc:
+    "Seulement discuter et lire les pages \u2014 pas de clics, formulaires ou navigation",
   popup_auto_import_recipes: "Importer les recettes automatiquement",
   popup_auto_import_recipes_desc:
     "Importer automatiquement les recettes llms.txt des sites que vous visitez",
@@ -491,6 +504,9 @@ const de: Translations = {
   popup_yolo_mode: "Yolo-Modus",
   popup_yolo_desc:
     "Best\u00e4tigungen \u00fcberspringen \u2014 KI handelt sofort ohne zu fragen",
+  popup_chat_only: "Nur Chat",
+  popup_chat_only_desc:
+    "Nur chatten und Seiten lesen \u2014 keine Klicks, Formulare oder Navigation",
   popup_auto_import_recipes: "Rezepte automatisch importieren",
   popup_auto_import_recipes_desc:
     "llms.txt-Rezepte automatisch von besuchten Websites importieren",
@@ -561,6 +577,9 @@ const it: Translations = {
   popup_yolo_mode: "Modalit\u00e0 Yolo",
   popup_yolo_desc:
     "Salta le conferme \u2014 l'IA agisce immediatamente senza chiedere",
+  popup_chat_only: "Solo Chat",
+  popup_chat_only_desc:
+    "Solo chattare e leggere pagine \u2014 nessun clic, moduli o navigazione",
   popup_auto_import_recipes: "Importa ricette automaticamente",
   popup_auto_import_recipes_desc:
     "Importa automaticamente le ricette llms.txt dai siti che visiti",
@@ -629,6 +648,9 @@ const nl: Translations = {
   popup_yolo_mode: "Yolo-modus",
   popup_yolo_desc:
     "Bevestigingen overslaan \u2014 AI handelt direct zonder te vragen",
+  popup_chat_only: "Alleen Chat",
+  popup_chat_only_desc:
+    "Alleen chatten en pagina's lezen \u2014 geen klikken, formulieren of navigatie",
   popup_auto_import_recipes: "Recepten automatisch importeren",
   popup_auto_import_recipes_desc:
     "Automatisch llms.txt-recepten importeren van bezochte websites",
@@ -698,6 +720,9 @@ const pl: Translations = {
   popup_yolo_mode: "Tryb Yolo",
   popup_yolo_desc:
     "Pomi\u0144 potwierdzenia \u2014 AI dzia\u0142a natychmiast bez pytania",
+  popup_chat_only: "Tylko Chat",
+  popup_chat_only_desc:
+    "Tylko czat i czytanie stron \u2014 bez klikania, formularzy i nawigacji",
   popup_auto_import_recipes: "Automatycznie importuj przepisy",
   popup_auto_import_recipes_desc:
     "Automatycznie importuj przepisy llms.txt z odwiedzanych stron",
@@ -793,6 +818,9 @@ const ru: Translations = {
   popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
   popup_yolo_desc:
     "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f \u2014 \u0418\u0418 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u043d\u0435\u043c\u0435\u0434\u043b\u0435\u043d\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0440\u043e\u0441\u0430",
+  popup_chat_only: "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442",
+  popup_chat_only_desc:
+    "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442 \u0438 \u0447\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446 \u2014 \u0431\u0435\u0437 \u043a\u043b\u0438\u043a\u043e\u0432, \u0444\u043e\u0440\u043c \u0438 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438",
   popup_auto_import_recipes: "Автоимпорт рецептов",
   popup_auto_import_recipes_desc:
     "Автоматически импортировать рецепты llms.txt с посещаемых сайтов",
@@ -893,6 +921,9 @@ const uk: Translations = {
   popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
   popup_yolo_desc:
     "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u0438 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043d\u044f \u2014 \u0428\u0406 \u0434\u0456\u0454 \u043d\u0435\u0433\u0430\u0439\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0438\u0442\u0443",
+  popup_chat_only: "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442",
+  popup_chat_only_desc:
+    "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442 \u0456 \u0447\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a \u2014 \u0431\u0435\u0437 \u043a\u043b\u0456\u043a\u0456\u0432, \u0444\u043e\u0440\u043c \u0442\u0430 \u043d\u0430\u0432\u0456\u0433\u0430\u0446\u0456\u0457",
   popup_auto_import_recipes: "Автоімпорт рецептів",
   popup_auto_import_recipes_desc:
     "Автоматично імпортувати рецепти llms.txt з відвіданих сайтів",
@@ -993,6 +1024,10 @@ const el: Translations = {
     "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 Yolo",
   popup_yolo_desc:
     "\u03a0\u03b1\u03c1\u03ac\u03bb\u03b5\u03b9\u03c8\u03b7 \u03b5\u03c0\u03b9\u03b2\u03b5\u03b2\u03b1\u03b9\u03ce\u03c3\u03b5\u03c9\u03bd \u2014 \u03c4\u03bf AI \u03b5\u03bd\u03b5\u03c1\u03b3\u03b5\u03af \u03b1\u03bc\u03ad\u03c3\u03c9\u03c2",
+  popup_chat_only:
+    "\u039c\u03cc\u03bd\u03bf \u03a3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
+  popup_chat_only_desc:
+    "\u039c\u03cc\u03bd\u03bf \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03ba\u03b1\u03b9 \u03b1\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03c9\u03bd \u2014 \u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b9\u03ba, \u03c6\u03cc\u03c1\u03bc\u03b5\u03c2 \u03ae \u03c0\u03bb\u03bf\u03ae\u03b3\u03b7\u03c3\u03b7",
   popup_auto_import_recipes: "Αυτόματη εισαγωγή συνταγών",
   popup_auto_import_recipes_desc:
     "Αυτόματη εισαγωγή συνταγών llms.txt από ιστότοπους που επισκέπτεστε",
@@ -1065,6 +1100,9 @@ const tr: Translations = {
   popup_yolo_mode: "Yolo Modu",
   popup_yolo_desc:
     "Onaylar\u0131 atla \u2014 AI sormadan hemen harekete ge\u00e7er",
+  popup_chat_only: "Sadece Sohbet",
+  popup_chat_only_desc:
+    "Sadece sohbet ve sayfa okuma \u2014 t\u0131klama, form veya gezinme yok",
   popup_auto_import_recipes: "Tarifleri otomatik içe aktar",
   popup_auto_import_recipes_desc:
     "Ziyaret ettiğiniz web sitelerinden llms.txt tariflerini otomatik içe aktar",
@@ -1163,6 +1201,9 @@ const ar: Translations = {
   popup_yolo_mode: "\u0648\u0636\u0639 Yolo",
   popup_yolo_desc:
     "\u062a\u062e\u0637\u064a \u0627\u0644\u062a\u0623\u0643\u064a\u062f\u0627\u062a \u2014 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a \u064a\u062a\u0635\u0631\u0641 \u0641\u0648\u0631\u0627\u064b",
+  popup_chat_only: "\u0645\u062d\u0627\u062f\u062b\u0629 \u0641\u0642\u0637",
+  popup_chat_only_desc:
+    "\u0641\u0642\u0637 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0648\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0627\u062a \u2014 \u0628\u062f\u0648\u0646 \u0646\u0642\u0631\u0627\u062a \u0623\u0648 \u0646\u0645\u0627\u0630\u062c \u0623\u0648 \u062a\u0646\u0642\u0644",
   popup_auto_import_recipes: "استيراد الوصفات تلقائياً",
   popup_auto_import_recipes_desc:
     "استيراد وصفات llms.txt تلقائياً من المواقع التي تزورها",
@@ -1259,6 +1300,9 @@ const hi: Translations = {
   popup_yolo_mode: "Yolo \u092e\u094b\u0921",
   popup_yolo_desc:
     "\u092a\u0941\u0937\u094d\u091f\u093f \u091b\u094b\u0921\u093c\u0947\u0902 \u2014 AI \u0924\u0941\u0930\u0902\u0924 \u0915\u093e\u0930\u094d\u0930\u0935\u093e\u0908 \u0915\u0930\u0924\u093e \u0939\u0948",
+  popup_chat_only: "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f",
+  popup_chat_only_desc:
+    "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f \u0914\u0930 \u092a\u0947\u091c \u092a\u0922\u093c\u0947\u0902 \u2014 \u0915\u094b\u0908 \u0915\u094d\u0932\u093f\u0915, \u092b\u0949\u0930\u094d\u092e \u092f\u093e \u0928\u0947\u0935\u093f\u0917\u0947\u0936\u0928 \u0928\u0939\u0940\u0902",
   popup_auto_import_recipes: "रेसिपी स्वचालित रूप से आयात करें",
   popup_auto_import_recipes_desc:
     "आपके द्वारा विज़िट की जाने वाली वेबसाइटों से llms.txt रेसिपी स्वचालित रूप से आयात करें",
@@ -1338,6 +1382,9 @@ const ja: Translations = {
   popup_yolo_mode: "Yolo\u30e2\u30fc\u30c9",
   popup_yolo_desc:
     "\u78ba\u8a8d\u3092\u30b9\u30ad\u30c3\u30d7 \u2014 AI\u304c\u78ba\u8a8d\u306a\u3057\u3067\u5373\u5ea7\u306b\u5b9f\u884c",
+  popup_chat_only: "\u30c1\u30e3\u30c3\u30c8\u306e\u307f",
+  popup_chat_only_desc:
+    "\u30c1\u30e3\u30c3\u30c8\u3068\u30da\u30fc\u30b8\u306e\u95b2\u89a7\u306e\u307f \u2014 \u30af\u30ea\u30c3\u30af\u3001\u30d5\u30a9\u30fc\u30e0\u3001\u30ca\u30d3\u30b2\u30fc\u30b7\u30e7\u30f3\u306a\u3057",
   popup_auto_import_recipes: "レシピの自動インポート",
   popup_auto_import_recipes_desc:
     "訪問したウェブサイトからllms.txtレシピを自動的にインポート",
@@ -1414,6 +1461,9 @@ const ko: Translations = {
   popup_yolo_mode: "Yolo \ubaa8\ub4dc",
   popup_yolo_desc:
     "\ud655\uc778 \uac74\ub108\ub6f0\uae30 \u2014 AI\uac00 \ubb3b\uc9c0 \uc54a\uace0 \uc989\uc2dc \uc2e4\ud589",
+  popup_chat_only: "\ucc44\ud305\ub9cc",
+  popup_chat_only_desc:
+    "\ucc44\ud305\uacfc \ud398\uc774\uc9c0 \uc77d\uae30\ub9cc \u2014 \ud074\ub9ad, \uc591\uc2dd, \ud0d0\uc0c9 \uc5c6\uc74c",
   popup_auto_import_recipes: "레시피 자동 가져오기",
   popup_auto_import_recipes_desc:
     "방문하는 웹사이트에서 llms.txt 레시피를 자동으로 가져오기",
@@ -1486,6 +1536,9 @@ const zhCN: Translations = {
   popup_yolo_mode: "Yolo\u6a21\u5f0f",
   popup_yolo_desc:
     "\u8df3\u8fc7\u786e\u8ba4 \u2014 AI\u65e0\u9700\u8be2\u95ee\u7acb\u5373\u6267\u884c",
+  popup_chat_only: "\u4ec5\u804a\u5929",
+  popup_chat_only_desc:
+    "\u4ec5\u804a\u5929\u548c\u9605\u8bfb\u9875\u9762 \u2014 \u65e0\u70b9\u51fb\u3001\u8868\u5355\u6216\u5bfc\u822a",
   popup_auto_import_recipes: "自动导入食谱",
   popup_auto_import_recipes_desc: "自动从您访问的网站导入llms.txt食谱",
   popup_theme: "\u4e3b\u9898",
@@ -1543,6 +1596,9 @@ const zhTW: Translations = {
   popup_settings: "\u8a2d\u5b9a",
   popup_yolo_desc:
     "\u8df3\u904e\u78ba\u8a8d \u2014 AI\u7121\u9700\u8a62\u554f\u7acb\u5373\u57f7\u884c",
+  popup_chat_only: "\u50c5\u804a\u5929",
+  popup_chat_only_desc:
+    "\u50c5\u804a\u5929\u548c\u95b1\u8b80\u9801\u9762 \u2014 \u7121\u9ede\u64ca\u3001\u8868\u55ae\u6216\u5c0e\u89bd",
   popup_auto_import_recipes: "自動匯入食譜",
   popup_auto_import_recipes_desc: "自動從您造訪的網站匯入llms.txt食譜",
   popup_theme: "\u4e3b\u984c",
@@ -1644,6 +1700,10 @@ const th: Translations = {
   popup_yolo_mode: "\u0e42\u0e2b\u0e21\u0e14 Yolo",
   popup_yolo_desc:
     "\u0e02\u0e49\u0e32\u0e21\u0e01\u0e32\u0e23\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19 \u2014 AI \u0e17\u0e33\u0e07\u0e32\u0e19\u0e17\u0e31\u0e19\u0e17\u0e35\u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e16\u0e32\u0e21",
+  popup_chat_only:
+    "\u0e41\u0e0a\u0e17\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19",
+  popup_chat_only_desc:
+    "\u0e41\u0e0a\u0e17\u0e41\u0e25\u0e30\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u2014 \u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e04\u0e25\u0e34\u0e01 \u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21 \u0e2b\u0e23\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e19\u0e33\u0e17\u0e32\u0e07",
   popup_auto_import_recipes: "นำเข้าสูตรอัตโนมัติ",
   popup_auto_import_recipes_desc:
     "นำเข้าสูตร llms.txt จากเว็บไซต์ที่คุณเยี่ยมชมโดยอัตโนมัติ",
@@ -1719,6 +1779,9 @@ const vi: Translations = {
   popup_yolo_mode: "Ch\u1ebf \u0111\u1ed9 Yolo",
   popup_yolo_desc:
     "B\u1ecf qua x\u00e1c nh\u1eadn \u2014 AI h\u00e0nh \u0111\u1ed9ng ngay m\u00e0 kh\u00f4ng h\u1ecfi",
+  popup_chat_only: "Ch\u1ec9 tr\u00f2 chuy\u1ec7n",
+  popup_chat_only_desc:
+    "Ch\u1ec9 tr\u00f2 chuy\u1ec7n v\u00e0 \u0111\u1ecdc trang \u2014 kh\u00f4ng nh\u1ea5p, bi\u1ec3u m\u1eabu ho\u1eb7c \u0111i\u1ec1u h\u01b0\u1edbng",
   popup_auto_import_recipes: "Tự động nhập công thức",
   popup_auto_import_recipes_desc:
     "Tự động nhập công thức llms.txt từ các trang web bạn truy cập",
@@ -1789,6 +1852,9 @@ const id: Translations = {
   popup_yolo_mode: "Mode Yolo",
   popup_yolo_desc:
     "Lewati konfirmasi \u2014 AI bertindak langsung tanpa bertanya",
+  popup_chat_only: "Hanya Chat",
+  popup_chat_only_desc:
+    "Hanya chat dan membaca halaman \u2014 tanpa klik, formulir, atau navigasi",
   popup_auto_import_recipes: "Impor resep otomatis",
   popup_auto_import_recipes_desc:
     "Impor resep llms.txt secara otomatis dari situs web yang Anda kunjungi",
