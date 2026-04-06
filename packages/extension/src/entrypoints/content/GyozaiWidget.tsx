@@ -910,9 +910,9 @@ export function GyozaiWidget() {
         screenHeight: window.innerHeight,
       },
       capabilities: {
-        navigate: !options?.disableNavigate,
+        navigate: !options?.disableNavigate && !extSettings?.chatOnly,
         showMessage: true,
-        click: true,
+        click: !extSettings?.chatOnly,
         highlightUi: true,
         fetch: false,
         clarify: !extSettings?.yoloMode,

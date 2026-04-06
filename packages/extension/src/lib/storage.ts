@@ -32,6 +32,7 @@ export interface ExtensionSettings {
   managedPlan?: string;
   managedUsage?: ManagedUsage;
   yoloMode: boolean;
+  chatOnly: boolean;
   autoImportRecipes: boolean;
   theme: "dark" | "light";
   language: string; // locale code or "auto" for browser detection
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   apiKeys: { claude: "", openai: "", gemini: "" },
   model: "claude-haiku-4-5-20251001",
   yoloMode: false,
+  chatOnly: false,
   autoImportRecipes: true,
   theme: "dark",
   language: "auto",
