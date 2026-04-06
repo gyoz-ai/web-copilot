@@ -162,12 +162,9 @@ function MessageImages({
         const src = urls.get(id);
         if (!src) return null;
         return (
-          <img
-            key={id}
-            src={src}
-            alt="Attached image"
-            className="gyozai-msg-image"
-          />
+          <div key={id} className="gyozai-msg-image-frame">
+            <img src={src} alt="Attached image" className="gyozai-msg-image" />
+          </div>
         );
       })}
     </div>

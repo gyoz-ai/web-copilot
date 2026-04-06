@@ -340,18 +340,29 @@ export const WIDGET_STYLES = `
   .gyozai-msg-images {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
     margin-bottom: 6px;
+  }
+  .gyozai-msg-image-frame {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: oklch(0.15 0.01 50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .gyozai-msg-image-frame:hover {
+    opacity: 0.85;
   }
   .gyozai-msg-image {
     max-width: 100%;
-    max-height: 160px;
-    border-radius: 8px;
-    cursor: pointer;
+    max-height: 100%;
     display: block;
-  }
-  .gyozai-msg-image:hover {
-    opacity: 0.85;
+    object-fit: contain;
   }
   .gyozai-msg-image-placeholder {
     color: var(--g-text-muted);
