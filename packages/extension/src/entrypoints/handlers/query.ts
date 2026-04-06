@@ -516,8 +516,15 @@ export async function handleQuery(
       errorType = "auth";
       errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
     } else if (msgLower.includes("no output generated")) {
-      errorMessage =
-        "The AI failed to generate a response. This may be a temporary issue — try again.";
+      // If user is on managed mode, this is likely a free tier issue
+      if (settings.mode === "managed") {
+        const tr = getTranslations(settings.language as LocaleCode);
+        errorType = "free_tier";
+        errorMessage = tr.error_free_tier;
+      } else {
+        errorMessage =
+          "The AI failed to generate a response. This may be a temporary issue — try again.";
+      }
     } else if (statusCode) {
       errorMessage = `${settings.provider} API error (${statusCode}): ${errorMessage}`;
     }
