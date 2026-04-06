@@ -187,7 +187,8 @@ export async function handleQuery(
           })),
           ...(files ?? []).map((f) => ({
             type: "file" as const,
-            data: f.dataUrl,
+            // Strip data URL prefix — AI SDK FilePart expects raw base64
+            data: f.dataUrl.replace(/^data:[^;]+;base64,/, ""),
             mediaType: f.mimeType,
             ...(f.filename ? { filename: f.filename } : {}),
           })),

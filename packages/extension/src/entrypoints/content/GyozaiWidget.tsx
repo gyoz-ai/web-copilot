@@ -115,7 +115,9 @@ function MessageImages({
   cache,
 }: {
   imageIds: string[];
-  cache: React.RefObject<Map<string, string>>;
+  cache: React.RefObject<
+    Map<string, { dataUrl: string; filename?: string; kind?: "image" | "file" }>
+  >;
 }) {
   const [entries, setEntries] = useState<
     Map<string, { dataUrl: string; filename?: string; kind?: "image" | "file" }>
@@ -123,15 +125,15 @@ function MessageImages({
 
   useEffect(() => {
     let cancelled = false;
-    // Use cached URLs where available, fetch the rest from IndexedDB
+    // Use cached entries where available, fetch the rest from IndexedDB
     const cached = new Map<
       string,
       { dataUrl: string; filename?: string; kind?: "image" | "file" }
     >();
     const missing: string[] = [];
     for (const id of imageIds) {
-      const url = cache.current.get(id);
-      if (url) cached.set(id, { dataUrl: url });
+      const entry = cache.current.get(id);
+      if (entry) cached.set(id, entry);
       else missing.push(id);
     }
 
@@ -144,12 +146,13 @@ function MessageImages({
       if (cancelled) return;
       const merged = new Map(cached);
       for (const r of results) {
-        merged.set(r.id, {
+        const resolved = {
           dataUrl: r.dataUrl,
           filename: r.filename,
           kind: r.kind,
-        });
-        cache.current.set(r.id, r.dataUrl);
+        };
+        merged.set(r.id, resolved);
+        cache.current.set(r.id, resolved);
       }
       setEntries(merged);
     });
@@ -295,8 +298,10 @@ export function GyozaiWidget() {
   }
   const [pendingImages, setPendingImages] = useState<PendingAttachment[]>([]);
 
-  // Cache of resolved image data URLs for rendered messages (imageId → dataUrl)
-  const imageCache = useRef<Map<string, string>>(new Map());
+  // Cache of resolved attachment data for rendered messages
+  const imageCache = useRef<
+    Map<string, { dataUrl: string; filename?: string; kind?: "image" | "file" }>
+  >(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number | null>(null);
@@ -1709,9 +1714,13 @@ export function GyozaiWidget() {
       }),
     };
 
-    // Cache image data URLs for immediate rendering
+    // Cache attachment data for immediate rendering
     for (const img of imagesToSend) {
-      imageCache.current.set(img.id, img.dataUrl);
+      imageCache.current.set(img.id, {
+        dataUrl: img.dataUrl,
+        filename: img.filename,
+        kind: img.kind,
+      });
     }
 
     setMessages((prev) => [...prev, userMsg]);
