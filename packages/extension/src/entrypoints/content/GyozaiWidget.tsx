@@ -1859,8 +1859,30 @@ export function GyozaiWidget() {
               </div>
             )}
 
-            {/* Error */}
-            {error && <div className="gyozai-error">{error}</div>}
+            {/* Error — render URLs as clickable links */}
+            {error && (
+              <div className="gyozai-error">
+                {error.split(/(https?:\/\/\S+)/g).map((part, i) =>
+                  /^https?:\/\//.test(part) ? (
+                    <a
+                      key={i}
+                      href={part}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "inherit",
+                        textDecoration: "underline",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {part}
+                    </a>
+                  ) : (
+                    part
+                  ),
+                )}
+              </div>
+            )}
 
             {/* Toast */}
             {toast && <div className="gyozai-toast">{toast}</div>}

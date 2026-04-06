@@ -23,6 +23,23 @@ export async function handleQuery(
   onMutatingAction?: () => void,
 ): Promise<void> {
   const settings = await getSettings();
+
+  // ─── Free tier guard — managed mode requires a paid plan ───
+  if (
+    settings.mode === "managed" &&
+    (!settings.managedPlan || settings.managedPlan === "free")
+  ) {
+    const tr = getTranslations(settings.language as LocaleCode);
+    sendResponse({
+      messages: [],
+      toolCalls: [],
+      error: tr.error_free_tier,
+      errorType: "free_tier",
+      provider: settings.provider,
+    });
+    return;
+  }
+
   const providerResult = createProvider(settings);
   const tabId = sender.tab?.id ?? null;
   const convId = message.conversationId;
