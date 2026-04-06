@@ -130,6 +130,8 @@ export function GyozaiWidget() {
   const [typingAnimation, setTypingAnimation] = useState(true);
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
+  const [stickyChat, setStickyChat] = useState(false);
+  const stickyChatRef = useRef(false);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
   const [expression, setExpression] = useState<Expression>(() => {
@@ -212,6 +214,11 @@ export function GyozaiWidget() {
     return () => window.removeEventListener("gyozai:reattached", onReattach);
   }, []);
 
+  // Keep ref in sync so closures always read fresh value
+  useEffect(() => {
+    stickyChatRef.current = stickyChat;
+  }, [stickyChat]);
+
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
@@ -230,6 +237,8 @@ export function GyozaiWidget() {
       setExpanded(true);
     },
     onLeave: () => {
+      // Don't close if sticky mode is on
+      if (stickyChatRef.current) return;
       // Don't close if cursor is still inside the chatbox/input panel
       // or if we just dropped the avatar (grace period)
       if (
@@ -441,6 +450,7 @@ export function GyozaiWidget() {
             setTypingSound(s.typingSound);
           if (typeof s?.bubbleOpacity === "number")
             setBubbleOpacity(s.bubbleOpacity);
+          if (typeof s?.stickyChat === "boolean") setStickyChat(s.stickyChat);
         })
         .catch(() => {});
     });
@@ -466,6 +476,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.bubbleOpacity === "number") {
         setBubbleOpacity(newSettings.bubbleOpacity);
+      }
+      if (typeof newSettings?.stickyChat === "boolean") {
+        setStickyChat(newSettings.stickyChat);
       }
     };
     browser.storage.onChanged.addListener(handler);
@@ -712,6 +725,7 @@ export function GyozaiWidget() {
       y <= r.bottom + margin;
 
     const interval = setInterval(() => {
+      if (stickyChatRef.current) return;
       if (!hoverOpenRef.current || !expanded || dragDropGraceRef.current)
         return;
       const panel = panelRef.current;

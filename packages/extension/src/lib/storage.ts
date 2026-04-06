@@ -41,6 +41,8 @@ export interface ExtensionSettings {
   typingSound: boolean;
   /** Opacity of chat speech bubbles (0.0–1.0). */
   bubbleOpacity: number;
+  /** Keep chatbox open regardless of cursor proximity. */
+  stickyChat: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -57,6 +59,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   typingAnimation: true,
   typingSound: true,
   bubbleOpacity: 0.85,
+  stickyChat: false,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {

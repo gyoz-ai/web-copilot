@@ -721,6 +721,27 @@ export function App() {
               </button>
             </div>
 
+            {/* Sticky Chat */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">{tr.popup_sticky_chat}</div>
+                <div className="setting-desc">{tr.popup_sticky_chat_desc}</div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.stickyChat ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    stickyChat: !settings.stickyChat,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.stickyChat ? "ON" : "OFF"}
+              </button>
+            </div>
+
             {/* Auto-import Recipes */}
             <div className="setting-row">
               <div className="setting-info">

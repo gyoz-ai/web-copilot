@@ -125,6 +125,8 @@ export interface Translations {
   popup_yolo_desc: string;
   popup_chat_only: string;
   popup_chat_only_desc: string;
+  popup_sticky_chat: string;
+  popup_sticky_chat_desc: string;
   popup_auto_import_recipes: string;
   popup_auto_import_recipes_desc: string;
   popup_theme: string;
@@ -197,6 +199,9 @@ const en: Translations = {
   popup_chat_only: "Chat Only",
   popup_chat_only_desc:
     "Only chat and read pages — no clicks, forms, or navigation",
+  popup_sticky_chat: "Sticky Chat",
+  popup_sticky_chat_desc:
+    "Keep chatbox open — ignore cursor proximity and stay visible",
   popup_auto_import_recipes: "Auto-import Recipes",
   popup_auto_import_recipes_desc:
     "Automatically import llms.txt recipes from websites you visit",
@@ -270,6 +275,9 @@ const ptBR: Translations = {
   popup_chat_only: "Apenas Chat",
   popup_chat_only_desc:
     "Apenas conversar e ler p\u00e1ginas \u2014 sem cliques, formul\u00e1rios ou navega\u00e7\u00e3o",
+  popup_sticky_chat: "Chat Fixo",
+  popup_sticky_chat_desc:
+    "Manter chat aberto \u2014 ignorar proximidade do cursor e ficar vis\u00edvel",
   popup_auto_import_recipes: "Importar Receitas Automaticamente",
   popup_auto_import_recipes_desc:
     "Importar automaticamente receitas llms.txt dos sites que você visita",
@@ -361,6 +369,9 @@ const es: Translations = {
   popup_chat_only: "Solo Chat",
   popup_chat_only_desc:
     "Solo chatear y leer p\u00e1ginas \u2014 sin clics, formularios ni navegaci\u00f3n",
+  popup_sticky_chat: "Chat Fijo",
+  popup_sticky_chat_desc:
+    "Mantener chat abierto \u2014 ignorar proximidad del cursor y permanecer visible",
   popup_auto_import_recipes: "Importar Recetas Automáticamente",
   popup_auto_import_recipes_desc:
     "Importar automáticamente recetas llms.txt de los sitios que visitas",
@@ -434,6 +445,9 @@ const fr: Translations = {
   popup_chat_only: "Chat uniquement",
   popup_chat_only_desc:
     "Seulement discuter et lire les pages \u2014 pas de clics, formulaires ou navigation",
+  popup_sticky_chat: "Chat \u00c9pingl\u00e9",
+  popup_sticky_chat_desc:
+    "Garder le chat ouvert \u2014 ignorer la proximit\u00e9 du curseur et rester visible",
   popup_auto_import_recipes: "Importer les recettes automatiquement",
   popup_auto_import_recipes_desc:
     "Importer automatiquement les recettes llms.txt des sites que vous visitez",
@@ -507,6 +521,9 @@ const de: Translations = {
   popup_chat_only: "Nur Chat",
   popup_chat_only_desc:
     "Nur chatten und Seiten lesen \u2014 keine Klicks, Formulare oder Navigation",
+  popup_sticky_chat: "Chat Fixiert",
+  popup_sticky_chat_desc:
+    "Chat ge\u00f6ffnet halten \u2014 Cursorn\u00e4he ignorieren und sichtbar bleiben",
   popup_auto_import_recipes: "Rezepte automatisch importieren",
   popup_auto_import_recipes_desc:
     "llms.txt-Rezepte automatisch von besuchten Websites importieren",
@@ -580,6 +597,9 @@ const it: Translations = {
   popup_chat_only: "Solo Chat",
   popup_chat_only_desc:
     "Solo chattare e leggere pagine \u2014 nessun clic, moduli o navigazione",
+  popup_sticky_chat: "Chat Fisso",
+  popup_sticky_chat_desc:
+    "Mantieni la chat aperta \u2014 ignora la prossimit\u00e0 del cursore e resta visibile",
   popup_auto_import_recipes: "Importa ricette automaticamente",
   popup_auto_import_recipes_desc:
     "Importa automaticamente le ricette llms.txt dai siti che visiti",
@@ -651,6 +671,9 @@ const nl: Translations = {
   popup_chat_only: "Alleen Chat",
   popup_chat_only_desc:
     "Alleen chatten en pagina's lezen \u2014 geen klikken, formulieren of navigatie",
+  popup_sticky_chat: "Vaste Chat",
+  popup_sticky_chat_desc:
+    "Chat open houden \u2014 cursorproximiteit negeren en zichtbaar blijven",
   popup_auto_import_recipes: "Recepten automatisch importeren",
   popup_auto_import_recipes_desc:
     "Automatisch llms.txt-recepten importeren van bezochte websites",
@@ -723,6 +746,9 @@ const pl: Translations = {
   popup_chat_only: "Tylko Chat",
   popup_chat_only_desc:
     "Tylko czat i czytanie stron \u2014 bez klikania, formularzy i nawigacji",
+  popup_sticky_chat: "Przypi\u0119ty Chat",
+  popup_sticky_chat_desc:
+    "Utrzymuj chat otwarty \u2014 ignoruj blisko\u015b\u0107 kursora i pozostawaj widoczny",
   popup_auto_import_recipes: "Automatycznie importuj przepisy",
   popup_auto_import_recipes_desc:
     "Automatycznie importuj przepisy llms.txt z odwiedzanych stron",
@@ -821,6 +847,10 @@ const ru: Translations = {
   popup_chat_only: "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442",
   popup_chat_only_desc:
     "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442 \u0438 \u0447\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446 \u2014 \u0431\u0435\u0437 \u043a\u043b\u0438\u043a\u043e\u0432, \u0444\u043e\u0440\u043c \u0438 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438",
+  popup_sticky_chat:
+    "\u0417\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0439 \u0447\u0430\u0442",
+  popup_sticky_chat_desc:
+    "\u0414\u0435\u0440\u0436\u0430\u0442\u044c \u0447\u0430\u0442 \u043e\u0442\u043a\u0440\u044b\u0442\u044b\u043c \u2014 \u0438\u0433\u043d\u043e\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0431\u043b\u0438\u0437\u043e\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0438 \u043e\u0441\u0442\u0430\u0432\u0430\u0442\u044c\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u044b\u043c",
   popup_auto_import_recipes: "Автоимпорт рецептов",
   popup_auto_import_recipes_desc:
     "Автоматически импортировать рецепты llms.txt с посещаемых сайтов",
@@ -924,6 +954,10 @@ const uk: Translations = {
   popup_chat_only: "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442",
   popup_chat_only_desc:
     "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442 \u0456 \u0447\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a \u2014 \u0431\u0435\u0437 \u043a\u043b\u0456\u043a\u0456\u0432, \u0444\u043e\u0440\u043c \u0442\u0430 \u043d\u0430\u0432\u0456\u0433\u0430\u0446\u0456\u0457",
+  popup_sticky_chat:
+    "\u0417\u0430\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u0438\u0439 \u0447\u0430\u0442",
+  popup_sticky_chat_desc:
+    "\u0422\u0440\u0438\u043c\u0430\u0442\u0438 \u0447\u0430\u0442 \u0432\u0456\u0434\u043a\u0440\u0438\u0442\u0438\u043c \u2014 \u0456\u0433\u043d\u043e\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043b\u0438\u0437\u044c\u043a\u0456\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0442\u0430 \u0437\u0430\u043b\u0438\u0448\u0430\u0442\u0438\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u0438\u043c",
   popup_auto_import_recipes: "Автоімпорт рецептів",
   popup_auto_import_recipes_desc:
     "Автоматично імпортувати рецепти llms.txt з відвіданих сайтів",
@@ -1028,6 +1062,10 @@ const el: Translations = {
     "\u039c\u03cc\u03bd\u03bf \u03a3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
   popup_chat_only_desc:
     "\u039c\u03cc\u03bd\u03bf \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03ba\u03b1\u03b9 \u03b1\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03c9\u03bd \u2014 \u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b9\u03ba, \u03c6\u03cc\u03c1\u03bc\u03b5\u03c2 \u03ae \u03c0\u03bb\u03bf\u03ae\u03b3\u03b7\u03c3\u03b7",
+  popup_sticky_chat:
+    "\u03a3\u03c4\u03b1\u03b8\u03b5\u03c1\u03ae \u03a3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
+  popup_sticky_chat_desc:
+    "\u039a\u03c1\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7 \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03b1\u03bd\u03bf\u03b9\u03c7\u03c4\u03ae \u2014 \u03b1\u03b3\u03bd\u03bf\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7\u03bd \u03b5\u03b3\u03b3\u03cd\u03c4\u03b7\u03c4\u03b1 \u03ba\u03ad\u03c1\u03c3\u03bf\u03c1\u03b1",
   popup_auto_import_recipes: "Αυτόματη εισαγωγή συνταγών",
   popup_auto_import_recipes_desc:
     "Αυτόματη εισαγωγή συνταγών llms.txt από ιστότοπους που επισκέπτεστε",
@@ -1103,6 +1141,9 @@ const tr: Translations = {
   popup_chat_only: "Sadece Sohbet",
   popup_chat_only_desc:
     "Sadece sohbet ve sayfa okuma \u2014 t\u0131klama, form veya gezinme yok",
+  popup_sticky_chat: "Sabit Sohbet",
+  popup_sticky_chat_desc:
+    "Sohbeti a\u00e7\u0131k tut \u2014 imle\u00e7 yak\u0131nl\u0131\u011f\u0131n\u0131 yoksay ve g\u00f6r\u00fcn\u00fcr kal",
   popup_auto_import_recipes: "Tarifleri otomatik içe aktar",
   popup_auto_import_recipes_desc:
     "Ziyaret ettiğiniz web sitelerinden llms.txt tariflerini otomatik içe aktar",
@@ -1204,6 +1245,10 @@ const ar: Translations = {
   popup_chat_only: "\u0645\u062d\u0627\u062f\u062b\u0629 \u0641\u0642\u0637",
   popup_chat_only_desc:
     "\u0641\u0642\u0637 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0648\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0627\u062a \u2014 \u0628\u062f\u0648\u0646 \u0646\u0642\u0631\u0627\u062a \u0623\u0648 \u0646\u0645\u0627\u0630\u062c \u0623\u0648 \u062a\u0646\u0642\u0644",
+  popup_sticky_chat:
+    "\u0645\u062d\u0627\u062f\u062b\u0629 \u0645\u062b\u0628\u062a\u0629",
+  popup_sticky_chat_desc:
+    "\u0625\u0628\u0642\u0627\u0621 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0645\u0641\u062a\u0648\u062d\u0629 \u2014 \u062a\u062c\u0627\u0647\u0644 \u0642\u0631\u0628 \u0627\u0644\u0645\u0624\u0634\u0631 \u0648\u0627\u0644\u0628\u0642\u0627\u0621 \u0645\u0631\u0626\u064a\u064b\u0627",
   popup_auto_import_recipes: "استيراد الوصفات تلقائياً",
   popup_auto_import_recipes_desc:
     "استيراد وصفات llms.txt تلقائياً من المواقع التي تزورها",
@@ -1303,6 +1348,9 @@ const hi: Translations = {
   popup_chat_only: "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f",
   popup_chat_only_desc:
     "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f \u0914\u0930 \u092a\u0947\u091c \u092a\u0922\u093c\u0947\u0902 \u2014 \u0915\u094b\u0908 \u0915\u094d\u0932\u093f\u0915, \u092b\u0949\u0930\u094d\u092e \u092f\u093e \u0928\u0947\u0935\u093f\u0917\u0947\u0936\u0928 \u0928\u0939\u0940\u0902",
+  popup_sticky_chat: "\u0938\u094d\u0925\u093f\u0930 \u091a\u0948\u091f",
+  popup_sticky_chat_desc:
+    "\u091a\u0948\u091f \u0916\u0941\u0932\u093e \u0930\u0916\u0947\u0902 \u2014 \u0915\u0930\u094d\u0938\u0930 \u0928\u093f\u0915\u091f\u0924\u093e \u0905\u0928\u0926\u0947\u0916\u093e \u0915\u0930\u0947\u0902 \u0914\u0930 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902",
   popup_auto_import_recipes: "रेसिपी स्वचालित रूप से आयात करें",
   popup_auto_import_recipes_desc:
     "आपके द्वारा विज़िट की जाने वाली वेबसाइटों से llms.txt रेसिपी स्वचालित रूप से आयात करें",
@@ -1385,6 +1433,9 @@ const ja: Translations = {
   popup_chat_only: "\u30c1\u30e3\u30c3\u30c8\u306e\u307f",
   popup_chat_only_desc:
     "\u30c1\u30e3\u30c3\u30c8\u3068\u30da\u30fc\u30b8\u306e\u95b2\u89a7\u306e\u307f \u2014 \u30af\u30ea\u30c3\u30af\u3001\u30d5\u30a9\u30fc\u30e0\u3001\u30ca\u30d3\u30b2\u30fc\u30b7\u30e7\u30f3\u306a\u3057",
+  popup_sticky_chat: "\u30c1\u30e3\u30c3\u30c8\u56fa\u5b9a",
+  popup_sticky_chat_desc:
+    "\u30c1\u30e3\u30c3\u30c8\u3092\u958b\u3044\u305f\u307e\u307e\u306b\u3059\u308b \u2014 \u30ab\u30fc\u30bd\u30eb\u306e\u8fd1\u63a5\u3092\u7121\u8996\u3057\u3066\u8868\u793a\u3057\u7d9a\u3051\u308b",
   popup_auto_import_recipes: "レシピの自動インポート",
   popup_auto_import_recipes_desc:
     "訪問したウェブサイトからllms.txtレシピを自動的にインポート",
@@ -1464,6 +1515,9 @@ const ko: Translations = {
   popup_chat_only: "\ucc44\ud305\ub9cc",
   popup_chat_only_desc:
     "\ucc44\ud305\uacfc \ud398\uc774\uc9c0 \uc77d\uae30\ub9cc \u2014 \ud074\ub9ad, \uc591\uc2dd, \ud0d0\uc0c9 \uc5c6\uc74c",
+  popup_sticky_chat: "\uace0\uc815 \ucc44\ud305",
+  popup_sticky_chat_desc:
+    "\ucc44\ud305\ucc3d \uc5f4\ub9b0 \uc0c1\ud0dc \uc720\uc9c0 \u2014 \ucee4\uc11c \uadfc\uc811 \ubb34\uc2dc\ud558\uace0 \uacc4\uc18d \ud45c\uc2dc",
   popup_auto_import_recipes: "레시피 자동 가져오기",
   popup_auto_import_recipes_desc:
     "방문하는 웹사이트에서 llms.txt 레시피를 자동으로 가져오기",
@@ -1539,6 +1593,9 @@ const zhCN: Translations = {
   popup_chat_only: "\u4ec5\u804a\u5929",
   popup_chat_only_desc:
     "\u4ec5\u804a\u5929\u548c\u9605\u8bfb\u9875\u9762 \u2014 \u65e0\u70b9\u51fb\u3001\u8868\u5355\u6216\u5bfc\u822a",
+  popup_sticky_chat: "\u56fa\u5b9a\u804a\u5929",
+  popup_sticky_chat_desc:
+    "\u4fdd\u6301\u804a\u5929\u6253\u5f00 \u2014 \u5ffd\u7565\u5149\u6807\u63a5\u8fd1\u5e76\u4fdd\u6301\u53ef\u89c1",
   popup_auto_import_recipes: "自动导入食谱",
   popup_auto_import_recipes_desc: "自动从您访问的网站导入llms.txt食谱",
   popup_theme: "\u4e3b\u9898",
@@ -1599,6 +1656,9 @@ const zhTW: Translations = {
   popup_chat_only: "\u50c5\u804a\u5929",
   popup_chat_only_desc:
     "\u50c5\u804a\u5929\u548c\u95b1\u8b80\u9801\u9762 \u2014 \u7121\u9ede\u64ca\u3001\u8868\u55ae\u6216\u5c0e\u89bd",
+  popup_sticky_chat: "\u56fa\u5b9a\u804a\u5929",
+  popup_sticky_chat_desc:
+    "\u4fdd\u6301\u804a\u5929\u958b\u555f \u2014 \u5ffd\u7565\u6e38\u6a19\u63a5\u8fd1\u4e26\u4fdd\u6301\u53ef\u898b",
   popup_auto_import_recipes: "自動匯入食譜",
   popup_auto_import_recipes_desc: "自動從您造訪的網站匯入llms.txt食譜",
   popup_theme: "\u4e3b\u984c",
@@ -1704,6 +1764,9 @@ const th: Translations = {
     "\u0e41\u0e0a\u0e17\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19",
   popup_chat_only_desc:
     "\u0e41\u0e0a\u0e17\u0e41\u0e25\u0e30\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u2014 \u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e04\u0e25\u0e34\u0e01 \u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21 \u0e2b\u0e23\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e19\u0e33\u0e17\u0e32\u0e07",
+  popup_sticky_chat: "\u0e41\u0e0a\u0e17\u0e04\u0e07\u0e17\u0e35\u0e48",
+  popup_sticky_chat_desc:
+    "\u0e40\u0e1b\u0e34\u0e14\u0e41\u0e0a\u0e17\u0e04\u0e49\u0e32\u0e07\u0e44\u0e27\u0e49 \u2014 \u0e44\u0e21\u0e48\u0e2a\u0e19\u0e43\u0e08\u0e04\u0e27\u0e32\u0e21\u0e43\u0e01\u0e25\u0e49\u0e40\u0e04\u0e2d\u0e23\u0e4c\u0e40\u0e0b\u0e2d\u0e23\u0e4c\u0e41\u0e25\u0e30\u0e41\u0e2a\u0e14\u0e07\u0e15\u0e25\u0e2d\u0e14",
   popup_auto_import_recipes: "นำเข้าสูตรอัตโนมัติ",
   popup_auto_import_recipes_desc:
     "นำเข้าสูตร llms.txt จากเว็บไซต์ที่คุณเยี่ยมชมโดยอัตโนมัติ",
@@ -1782,6 +1845,9 @@ const vi: Translations = {
   popup_chat_only: "Ch\u1ec9 tr\u00f2 chuy\u1ec7n",
   popup_chat_only_desc:
     "Ch\u1ec9 tr\u00f2 chuy\u1ec7n v\u00e0 \u0111\u1ecdc trang \u2014 kh\u00f4ng nh\u1ea5p, bi\u1ec3u m\u1eabu ho\u1eb7c \u0111i\u1ec1u h\u01b0\u1edbng",
+  popup_sticky_chat: "Ghim Tr\u00f2 Chuy\u1ec7n",
+  popup_sticky_chat_desc:
+    "Gi\u1eef tr\u00f2 chuy\u1ec7n m\u1edf \u2014 b\u1ecf qua v\u1ecb tr\u00ed con tr\u1ecf v\u00e0 lu\u00f4n hi\u1ec3n th\u1ecb",
   popup_auto_import_recipes: "Tự động nhập công thức",
   popup_auto_import_recipes_desc:
     "Tự động nhập công thức llms.txt từ các trang web bạn truy cập",
@@ -1855,6 +1921,9 @@ const id: Translations = {
   popup_chat_only: "Hanya Chat",
   popup_chat_only_desc:
     "Hanya chat dan membaca halaman \u2014 tanpa klik, formulir, atau navigasi",
+  popup_sticky_chat: "Chat Tetap",
+  popup_sticky_chat_desc:
+    "Biarkan chat terbuka \u2014 abaikan kedekatan kursor dan tetap terlihat",
   popup_auto_import_recipes: "Impor resep otomatis",
   popup_auto_import_recipes_desc:
     "Impor resep llms.txt secara otomatis dari situs web yang Anda kunjungi",
