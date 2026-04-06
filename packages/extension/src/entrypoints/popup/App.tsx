@@ -276,7 +276,7 @@ export function App() {
                   saveSettings(updated);
                 }}
               >
-                {tr.popup_mode_pro}
+                {managedUsage?.plan === "max" ? "gyoza Max" : tr.popup_mode_pro}
               </button>
               <button
                 className={`mode-btn ${settings.mode === "byok" ? "active" : ""}`}
@@ -697,6 +697,27 @@ export function App() {
                 }}
               >
                 {settings.yoloMode ? "ON" : "OFF"}
+              </button>
+            </div>
+
+            {/* Chat Only */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">{tr.popup_chat_only}</div>
+                <div className="setting-desc">{tr.popup_chat_only_desc}</div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.chatOnly ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    chatOnly: !settings.chatOnly,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.chatOnly ? "ON" : "OFF"}
               </button>
             </div>
 
