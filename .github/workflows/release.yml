@@ -192,6 +192,7 @@ jobs:
   # Safari — macOS + iOS/iPadOS (App Store Connect)
   # ═══════════════════════════════════════════════════════════════════
   release-safari:
+    if: false # disabled for now
     name: Build & Publish Safari Extension
     runs-on: macos-latest
     needs: release
