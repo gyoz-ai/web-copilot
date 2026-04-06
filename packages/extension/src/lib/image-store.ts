@@ -13,6 +13,10 @@ export interface StoredImage {
   data: Blob;
   mimeType: string;
   createdAt: number;
+  /** Original filename for file attachments (PDF, TXT). */
+  filename?: string;
+  /** Attachment kind — 'image' for images, 'file' for PDF/TXT. Defaults to 'image' for backwards compat. */
+  kind?: "image" | "file";
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -35,7 +39,13 @@ function openDb(): Promise<IDBDatabase> {
 /** Save one or more images tied to a conversation. */
 export async function saveImages(
   conversationId: string,
-  images: Array<{ id: string; blob: Blob; mimeType: string }>,
+  images: Array<{
+    id: string;
+    blob: Blob;
+    mimeType: string;
+    filename?: string;
+    kind?: "image" | "file";
+  }>,
 ): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(STORE_NAME, "readwrite");
@@ -49,6 +59,8 @@ export async function saveImages(
       data: img.blob,
       mimeType: img.mimeType,
       createdAt: now,
+      filename: img.filename,
+      kind: img.kind ?? "image",
     };
     store.put(record);
   }
@@ -65,17 +77,27 @@ export async function saveImages(
   });
 }
 
-/** Retrieve images by their IDs, returning data URLs for rendering. */
-export async function getImages(
-  imageIds: string[],
-): Promise<Array<{ id: string; dataUrl: string }>> {
+/** Retrieve images/files by their IDs, returning data URLs for rendering. */
+export async function getImages(imageIds: string[]): Promise<
+  Array<{
+    id: string;
+    dataUrl: string;
+    filename?: string;
+    kind?: "image" | "file";
+  }>
+> {
   if (imageIds.length === 0) return [];
 
   const db = await openDb();
   const tx = db.transaction(STORE_NAME, "readonly");
   const store = tx.objectStore(STORE_NAME);
 
-  const results: Array<{ id: string; dataUrl: string }> = [];
+  const results: Array<{
+    id: string;
+    dataUrl: string;
+    filename?: string;
+    kind?: "image" | "file";
+  }> = [];
 
   const gets = imageIds.map(
     (id) =>
@@ -86,7 +108,12 @@ export async function getImages(
           if (record) {
             const reader = new FileReader();
             reader.onloadend = () => {
-              results.push({ id, dataUrl: reader.result as string });
+              results.push({
+                id,
+                dataUrl: reader.result as string,
+                filename: record.filename,
+                kind: record.kind ?? "image",
+              });
               resolve();
             };
             reader.onerror = () => resolve(); // skip missing

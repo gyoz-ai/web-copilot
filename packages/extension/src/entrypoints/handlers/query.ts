@@ -163,22 +163,37 @@ export async function handleQuery(
     const tr = getTranslations(settings.language as LocaleCode);
     const tools = createBrowserTools(ctx, caps, settings.yoloMode, tr);
 
-    // Build the current user message — multimodal when images are attached
+    // Build the current user message — multimodal when images/files are attached
     const images = message.images;
+    const files = message.files;
+    const hasAttachments =
+      (images && images.length > 0) || (files && files.length > 0);
     const currentUserContent:
       | string
       | Array<
-          { type: "text"; text: string } | { type: "image"; image: string }
-        > =
-      images && images.length > 0
-        ? [
-            ...images.map((img) => ({
-              type: "image" as const,
-              image: img,
-            })),
-            { type: "text" as const, text: userPrompt },
-          ]
-        : userPrompt;
+          | { type: "text"; text: string }
+          | { type: "image"; image: string }
+          | {
+              type: "file";
+              data: string;
+              mediaType: string;
+              filename?: string;
+            }
+        > = hasAttachments
+      ? [
+          ...(images ?? []).map((img) => ({
+            type: "image" as const,
+            image: img,
+          })),
+          ...(files ?? []).map((f) => ({
+            type: "file" as const,
+            data: f.dataUrl,
+            mediaType: f.mimeType,
+            ...(f.filename ? { filename: f.filename } : {}),
+          })),
+          { type: "text" as const, text: userPrompt },
+        ]
+      : userPrompt;
 
     const aiMessages: ModelMessage[] = [
       ...history.map(
@@ -193,11 +208,18 @@ export async function handleQuery(
     // Save user query to history BEFORE streaming so that if a navigate tool
     // triggers a page reload, the new page's auto-continue will find the full
     // conversation history (including this query) already persisted.
-    // Images are NOT stored in LLM history — only text.
-    const historyText =
-      images && images.length > 0
-        ? `${message.query} [${images.length} image(s) attached]`
-        : message.query;
+    // Attachments are NOT stored in LLM history — only text.
+    const imageCount = images?.length ?? 0;
+    const fileCount = files?.length ?? 0;
+    const attachmentNote = [
+      imageCount > 0 ? `${imageCount} image(s)` : "",
+      fileCount > 0 ? `${fileCount} file(s)` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const historyText = attachmentNote
+      ? `${message.query} [${attachmentNote} attached]`
+      : message.query;
     history.push({ role: "user", content: historyText });
     if (convId) {
       await saveConversationLlmHistory(convId, history);

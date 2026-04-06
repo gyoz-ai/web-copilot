@@ -109,7 +109,7 @@ function saveSessionViaBackground(tabId: number, session: WidgetSession): void {
     .catch(() => {});
 }
 
-/** Renders images for a user message by resolving imageIds from IndexedDB. */
+/** Renders images/files for a user message by resolving imageIds from IndexedDB. */
 function MessageImages({
   imageIds,
   cache,
@@ -117,21 +117,26 @@ function MessageImages({
   imageIds: string[];
   cache: React.RefObject<Map<string, string>>;
 }) {
-  const [urls, setUrls] = useState<Map<string, string>>(new Map());
+  const [entries, setEntries] = useState<
+    Map<string, { dataUrl: string; filename?: string; kind?: "image" | "file" }>
+  >(new Map());
 
   useEffect(() => {
     let cancelled = false;
     // Use cached URLs where available, fetch the rest from IndexedDB
-    const cached = new Map<string, string>();
+    const cached = new Map<
+      string,
+      { dataUrl: string; filename?: string; kind?: "image" | "file" }
+    >();
     const missing: string[] = [];
     for (const id of imageIds) {
       const url = cache.current.get(id);
-      if (url) cached.set(id, url);
+      if (url) cached.set(id, { dataUrl: url });
       else missing.push(id);
     }
 
     if (missing.length === 0) {
-      setUrls(cached);
+      setEntries(cached);
       return;
     }
 
@@ -139,10 +144,14 @@ function MessageImages({
       if (cancelled) return;
       const merged = new Map(cached);
       for (const r of results) {
-        merged.set(r.id, r.dataUrl);
+        merged.set(r.id, {
+          dataUrl: r.dataUrl,
+          filename: r.filename,
+          kind: r.kind,
+        });
         cache.current.set(r.id, r.dataUrl);
       }
-      setUrls(merged);
+      setEntries(merged);
     });
 
     return () => {
@@ -150,20 +159,48 @@ function MessageImages({
     };
   }, [imageIds, cache]);
 
-  if (urls.size === 0 && imageIds.length > 0) {
+  if (entries.size === 0 && imageIds.length > 0) {
     return (
-      <div className="gyozai-msg-image-placeholder">Loading images...</div>
+      <div className="gyozai-msg-image-placeholder">Loading attachments...</div>
     );
   }
 
   return (
     <div className="gyozai-msg-images">
       {imageIds.map((id) => {
-        const src = urls.get(id);
-        if (!src) return null;
+        const entry = entries.get(id);
+        if (!entry) return null;
+        if (entry.kind === "file") {
+          return (
+            <div key={id} className="gyozai-msg-file-frame">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              <span className="gyozai-file-name">
+                {entry.filename || "file"}
+              </span>
+            </div>
+          );
+        }
         return (
           <div key={id} className="gyozai-msg-image-frame">
-            <img src={src} alt="Attached image" className="gyozai-msg-image" />
+            <img
+              src={entry.dataUrl}
+              alt="Attached image"
+              className="gyozai-msg-image"
+            />
           </div>
         );
       })}
@@ -245,14 +282,18 @@ export function GyozaiWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pending images waiting to be sent with the next message
-  interface PendingImage {
+  // Pending attachments (images, PDFs, text files) waiting to be sent with the next message
+  interface PendingAttachment {
     id: string;
     dataUrl: string;
     blob: Blob;
     mimeType: string;
+    /** Original filename for file attachments (PDF, TXT). */
+    filename?: string;
+    /** 'image' for images, 'file' for PDF/TXT. */
+    kind: "image" | "file";
   }
-  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingAttachment[]>([]);
 
   // Cache of resolved image data URLs for rendered messages (imageId → dataUrl)
   const imageCache = useRef<Map<string, string>>(new Map());
@@ -1065,6 +1106,7 @@ export function GyozaiWidget() {
     extraPageContext?: string,
     options?: { disableNavigate?: boolean },
     images?: string[],
+    files?: Array<{ dataUrl: string; mimeType: string; filename?: string }>,
   ): Promise<AgentResult> {
     lastUserQueryRef.current = query;
     const currentRoute = window.location.pathname;
@@ -1114,6 +1156,10 @@ export function GyozaiWidget() {
 
     if (images && images.length > 0) {
       payload.images = images;
+    }
+
+    if (files && files.length > 0) {
+      payload.files = files;
     }
 
     // ─── Log request ───────────────────
@@ -1542,7 +1588,10 @@ export function GyozaiWidget() {
     }
   }
 
-  // ─── Image upload helpers ──────────────────────────────────────────────────
+  // ─── Attachment upload helpers ──────────────────────────────────────────────
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  const ACCEPTED_FILE_TYPES = new Set(["application/pdf", "text/plain"]);
 
   const handleImageFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -1550,21 +1599,36 @@ export function GyozaiWidget() {
       const toProcess = Array.from(files).slice(0, remaining);
       if (toProcess.length === 0) return;
 
-      const newImages: PendingImage[] = [];
+      const newAttachments: PendingAttachment[] = [];
       for (const file of toProcess) {
-        if (!file.type.startsWith("image/")) continue;
-        const { blob, mimeType } = await compressImage(file);
-        const dataUrl = await blobToDataUrl(blob);
-        newImages.push({
-          id: crypto.randomUUID(),
-          dataUrl,
-          blob,
-          mimeType,
-        });
+        if (file.type.startsWith("image/")) {
+          // Image: compress as before
+          const { blob, mimeType } = await compressImage(file);
+          const dataUrl = await blobToDataUrl(blob);
+          newAttachments.push({
+            id: crypto.randomUUID(),
+            dataUrl,
+            blob,
+            mimeType,
+            kind: "image",
+          });
+        } else if (ACCEPTED_FILE_TYPES.has(file.type)) {
+          // PDF or TXT: read raw, enforce size limit
+          if (file.size > MAX_FILE_SIZE) continue;
+          const dataUrl = await blobToDataUrl(file);
+          newAttachments.push({
+            id: crypto.randomUUID(),
+            dataUrl,
+            blob: file,
+            mimeType: file.type,
+            filename: file.name,
+            kind: "file",
+          });
+        }
       }
-      if (newImages.length > 0) {
+      if (newAttachments.length > 0) {
         setPendingImages((prev) =>
-          [...prev, ...newImages].slice(0, MAX_IMAGES_PER_MESSAGE),
+          [...prev, ...newAttachments].slice(0, MAX_IMAGES_PER_MESSAGE),
         );
       }
     },
@@ -1611,6 +1675,7 @@ export function GyozaiWidget() {
             dataUrl,
             blob,
             mimeType: "image/jpeg",
+            kind: "image" as const,
           },
         ].slice(0, MAX_IMAGES_PER_MESSAGE),
       );
@@ -1657,7 +1722,7 @@ export function GyozaiWidget() {
       activeConvIdRef.current = crypto.randomUUID();
     }
 
-    // Persist image blobs to IndexedDB
+    // Persist attachment blobs to IndexedDB
     if (imagesToSend.length > 0) {
       saveImages(
         activeConvIdRef.current,
@@ -1665,27 +1730,45 @@ export function GyozaiWidget() {
           id: img.id,
           blob: img.blob,
           mimeType: img.mimeType,
+          filename: img.filename,
+          kind: img.kind,
         })),
       ).catch(console.error);
     }
 
     try {
       autoFollowUpUsed = false;
+      const imageAttachments = imagesToSend.filter((a) => a.kind === "image");
+      const fileAttachments = imagesToSend.filter((a) => a.kind === "file");
       console.log(
         "%c[gyoza:submit] handleSubmit → sendQuery",
         "color: #3b82f6; font-weight: bold",
         trimmed.slice(0, 60),
-        imagesToSend.length > 0 ? `(+${imagesToSend.length} image(s))` : "",
+        imageAttachments.length > 0
+          ? `(+${imageAttachments.length} image(s))`
+          : "",
+        fileAttachments.length > 0
+          ? `(+${fileAttachments.length} file(s))`
+          : "",
       );
       const imageDataUrls =
-        imagesToSend.length > 0
-          ? imagesToSend.map((img) => img.dataUrl)
+        imageAttachments.length > 0
+          ? imageAttachments.map((img) => img.dataUrl)
+          : undefined;
+      const filePayloads =
+        fileAttachments.length > 0
+          ? fileAttachments.map((f) => ({
+              dataUrl: f.dataUrl,
+              mimeType: f.mimeType,
+              filename: f.filename,
+            }))
           : undefined;
       const result = await sendQuery(
         trimmed,
         pendingExtraContext || undefined,
         undefined,
         imageDataUrls,
+        filePayloads,
       );
       pendingExtraContext = null;
       console.log(
@@ -2241,12 +2324,39 @@ export function GyozaiWidget() {
 
         {/* Input row — always visible (both chat and history views) */}
         <div className="gyozai-input-row">
-          {/* Image preview strip */}
+          {/* Attachment preview strip */}
           {pendingImages.length > 0 && (
             <div className="gyozai-image-preview-row">
               {pendingImages.map((img) => (
                 <div key={img.id} className="gyozai-preview-thumb">
-                  <img src={img.dataUrl} alt="Preview" />
+                  {img.kind === "file" ? (
+                    <div className="gyozai-file-preview">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                      <span className="gyozai-file-name">
+                        {img.filename
+                          ? img.filename.length > 12
+                            ? img.filename.slice(0, 10) + "..."
+                            : img.filename
+                          : "file"}
+                      </span>
+                    </div>
+                  ) : (
+                    <img src={img.dataUrl} alt="Preview" />
+                  )}
                   <button
                     className="gyozai-preview-remove"
                     onClick={() => removePendingImage(img.id)}
@@ -2289,7 +2399,7 @@ export function GyozaiWidget() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.pdf,.txt,application/pdf,text/plain"
             multiple
             style={{ display: "none" }}
             onChange={(e) => {

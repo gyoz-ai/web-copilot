@@ -96,6 +96,8 @@ export interface QueryInput {
   capabilities?: Record<string, boolean>;
   /** Base64 data URLs of images attached to this message. */
   images?: string[];
+  /** File attachments (PDF, TXT) as base64 data URLs with metadata. */
+  files?: Array<{ dataUrl: string; mimeType: string; filename?: string }>;
 }
 
 export interface QueryResult {

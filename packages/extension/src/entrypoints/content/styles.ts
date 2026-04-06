@@ -412,6 +412,47 @@ export const WIDGET_STYLES = `
     margin-bottom: 4px;
   }
 
+  /* ─── File attachment previews ────────────────────────── */
+  .gyozai-file-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+    background: oklch(0.2 0.01 50);
+    color: var(--g-text-muted);
+    padding: 2px;
+  }
+  .gyozai-file-name {
+    font-size: 8px;
+    line-height: 1.1;
+    text-align: center;
+    word-break: break-all;
+    overflow: hidden;
+    max-height: 18px;
+  }
+  .gyozai-msg-file-frame {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: oklch(0.2 0.01 50);
+    color: var(--g-text-muted);
+    font-size: 11px;
+    max-width: 100%;
+  }
+  .gyozai-msg-file-frame .gyozai-file-name {
+    font-size: 11px;
+    max-height: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+  }
+
   .gyozai-input {
     width: 100%;
     min-height: 22px;
