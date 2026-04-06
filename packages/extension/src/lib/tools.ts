@@ -2175,12 +2175,26 @@ export function createBrowserTools(
     },
     toModelOutput: async ({ output }) => {
       const result = output as { success: boolean; description: string };
+      console.log(
+        "%c[gyoza] toModelOutput called for page_screenshot",
+        "color: #f59e0b; font-weight: bold",
+        { success: result.success, hasDataUrl: !!lastScreenshotDataUrl },
+      );
       if (!result.success || !lastScreenshotDataUrl) {
+        console.log(
+          "%c[gyoza] toModelOutput → returning text (no image)",
+          "color: #ef4444",
+        );
         return { type: "text" as const, value: result.description };
       }
       const base64 = lastScreenshotDataUrl.replace(
         /^data:image\/\w+;base64,/,
         "",
+      );
+      console.log(
+        "%c[gyoza] toModelOutput → returning image-data content",
+        "color: #22c55e; font-weight: bold",
+        `base64 length: ${base64.length} chars`,
       );
       lastScreenshotDataUrl = null;
       return {
