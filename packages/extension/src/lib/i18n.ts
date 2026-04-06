@@ -134,6 +134,9 @@ export interface Translations {
   popup_light: string;
   popup_language: string;
   popup_language_auto: string;
+
+  // Errors
+  error_free_tier: string;
 }
 
 // ─── Translation data ───────────────────────────────────────────────────────
@@ -210,6 +213,8 @@ const en: Translations = {
   popup_light: "Light",
   popup_language: "Language",
   popup_language_auto: "Auto (browser)",
+  error_free_tier:
+    'You are on the free tier \u2014 only "Own Key" mode is available. Subscribe to gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ptBR: Translations = {
@@ -286,6 +291,8 @@ const ptBR: Translations = {
   popup_light: "Claro",
   popup_language: "Idioma",
   popup_language_auto: "Autom\u00e1tico (navegador)",
+  error_free_tier:
+    'Voc\u00ea est\u00e1 no plano gratuito \u2014 apenas o modo "Chave Pr\u00f3pria" est\u00e1 dispon\u00edvel. Assine o gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ptPT: Translations = {
@@ -380,6 +387,8 @@ const es: Translations = {
   popup_light: "Claro",
   popup_language: "Idioma",
   popup_language_auto: "Autom\u00e1tico (navegador)",
+  error_free_tier:
+    'Est\u00e1s en el plan gratuito \u2014 solo el modo "Clave Propia" est\u00e1 disponible. Suscr\u00edbete a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const fr: Translations = {
@@ -456,6 +465,8 @@ const fr: Translations = {
   popup_light: "Clair",
   popup_language: "Langue",
   popup_language_auto: "Automatique (navigateur)",
+  error_free_tier:
+    'Vous êtes sur le plan gratuit \u2014 seul le mode "Clé Personnelle" est disponible. Abonnez-vous à gyoza Pro\u00a0: https://gyoz.ai/pricing',
 };
 
 const de: Translations = {
@@ -532,6 +543,8 @@ const de: Translations = {
   popup_light: "Hell",
   popup_language: "Sprache",
   popup_language_auto: "Automatisch (Browser)",
+  error_free_tier:
+    'Sie sind im kostenlosen Plan \u2014 nur der Modus "Eigener Schlüssel" ist verfügbar. Abonnieren Sie gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const it: Translations = {
@@ -608,6 +621,8 @@ const it: Translations = {
   popup_light: "Chiaro",
   popup_language: "Lingua",
   popup_language_auto: "Automatico (browser)",
+  error_free_tier:
+    'Sei nel piano gratuito \u2014 solo la modalità "Chiave Propria" è disponibile. Abbonati a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const nl: Translations = {
@@ -682,6 +697,8 @@ const nl: Translations = {
   popup_light: "Licht",
   popup_language: "Taal",
   popup_language_auto: "Automatisch (browser)",
+  error_free_tier:
+    'Je bent op het gratis plan \u2014 alleen de modus "Eigen Sleutel" is beschikbaar. Abonneer op gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const pl: Translations = {
@@ -757,6 +774,8 @@ const pl: Translations = {
   popup_light: "Jasny",
   popup_language: "J\u0119zyk",
   popup_language_auto: "Automatyczny (przegl\u0105darka)",
+  error_free_tier:
+    'Jeste\u015b na darmowym planie \u2014 dost\u0119pny jest tylko tryb "W\u0142asny Klucz". Subskrybuj gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ru: Translations = {
@@ -860,6 +879,8 @@ const ru: Translations = {
   popup_language: "\u042f\u0437\u044b\u043a",
   popup_language_auto:
     "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
+  error_free_tier:
+    '\u0412\u044b \u043d\u0430 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u043c \u043f\u043b\u0430\u043d\u0435 \u2014 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u0440\u0435\u0436\u0438\u043c "\u0421\u0432\u043e\u0439 \u041a\u043b\u044e\u0447". \u041f\u043e\u0434\u043f\u0438\u0448\u0438\u0442\u0435\u0441\u044c \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const uk: Translations = {
@@ -967,6 +988,8 @@ const uk: Translations = {
   popup_language: "\u041c\u043e\u0432\u0430",
   popup_language_auto:
     "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
+  error_free_tier:
+    '\u0412\u0438 \u043d\u0430 \u0431\u0435\u0437\u043a\u043e\u0448\u0442\u043e\u0432\u043d\u043e\u043c\u0443 \u043f\u043b\u0430\u043d\u0456 \u2014 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 \u043b\u0438\u0448\u0435 \u0440\u0435\u0436\u0438\u043c "\u0412\u043b\u0430\u0441\u043d\u0438\u0439 \u041a\u043b\u044e\u0447". \u041f\u0456\u0434\u043f\u0438\u0448\u0456\u0442\u044c\u0441\u044f \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const el: Translations = {
@@ -1075,6 +1098,8 @@ const el: Translations = {
   popup_language: "\u0393\u03bb\u03ce\u03c3\u03c3\u03b1",
   popup_language_auto:
     "\u0391\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03bf (\u03c0\u03c1\u03cc\u03b3\u03c1\u03b1\u03bc\u03bc\u03b1 \u03c0\u03b5\u03c1\u03b9\u03ae\u03b3\u03b7\u03c3\u03b7\u03c2)",
+  error_free_tier:
+    '\u0395\u03af\u03c3\u03c4\u03b5 \u03c3\u03c4\u03bf \u03b4\u03c9\u03c1\u03b5\u03ac\u03bd \u03c0\u03bb\u03ac\u03bd\u03bf \u2014 \u03bc\u03cc\u03bd\u03bf \u03b7 \u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 "\u0394\u03b9\u03ba\u03cc \u03c3\u03b1\u03c2 \u039a\u03bb\u03b5\u03b9\u03b4\u03af" \u03b5\u03af\u03bd\u03b1\u03b9 \u03b4\u03b9\u03b1\u03b8\u03ad\u03c3\u03b9\u03bc\u03b7. \u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03b5\u03af\u03c4\u03b5 \u03c3\u03c4\u03bf gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const tr: Translations = {
@@ -1152,6 +1177,8 @@ const tr: Translations = {
   popup_light: "A\u00e7\u0131k",
   popup_language: "Dil",
   popup_language_auto: "Otomatik (taray\u0131c\u0131)",
+  error_free_tier:
+    '\u00dccretsiz plandas\u0131n\u0131z \u2014 yaln\u0131zca "Kendi Anahtar\u0131n\u0131z" modu kullan\u0131labilir. gyoza Pro\'ya abone olun: https://gyoz.ai/pricing',
 };
 
 const ar: Translations = {
@@ -1258,6 +1285,8 @@ const ar: Translations = {
   popup_language: "\u0627\u0644\u0644\u063a\u0629",
   popup_language_auto:
     "\u062a\u0644\u0642\u0627\u0626\u064a (\u0627\u0644\u0645\u062a\u0635\u0641\u062d)",
+  error_free_tier:
+    '\u0623\u0646\u062a \u0639\u0644\u0649 \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062c\u0627\u0646\u064a\u0629 \u2014 \u0641\u0642\u0637 \u0648\u0636\u0639 "\u0645\u0641\u062a\u0627\u062d\u0643 \u0627\u0644\u062e\u0627\u0635" \u0645\u062a\u0627\u062d. \u0627\u0634\u062a\u0631\u0643 \u0641\u064a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const hi: Translations = {
@@ -1360,6 +1389,8 @@ const hi: Translations = {
   popup_language: "\u092d\u093e\u0937\u093e",
   popup_language_auto:
     "\u0911\u091f\u094b (\u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930)",
+  error_free_tier:
+    '\u0906\u092a \u092e\u0941\u092b\u094d\u0924 \u092f\u094b\u091c\u0928\u093e \u092a\u0930 \u0939\u0948\u0902 \u2014 \u0915\u0947\u0935\u0932 "\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u0940" \u092e\u094b\u0921 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0964 gyoza Pro \u0915\u0940 \u0938\u0926\u0938\u094d\u092f\u0924\u093e \u0932\u0947\u0902: https://gyoz.ai/pricing',
 };
 
 const ja: Translations = {
@@ -1444,6 +1475,8 @@ const ja: Translations = {
   popup_light: "\u30e9\u30a4\u30c8",
   popup_language: "\u8a00\u8a9e",
   popup_language_auto: "\u81ea\u52d5\uff08\u30d6\u30e9\u30a6\u30b6\u30fc\uff09",
+  error_free_tier:
+    "\u7121\u6599\u30d7\u30e9\u30f3\u3092\u3054\u5229\u7528\u4e2d\u3067\u3059 \u2014 \u300c\u81ea\u5206\u306e\u30ad\u30fc\u300d\u30e2\u30fc\u30c9\u306e\u307f\u5229\u7528\u53ef\u80fd\u3067\u3059\u3002gyoza Pro\u306b\u767b\u9332: https://gyoz.ai/pricing",
 };
 
 const ko: Translations = {
@@ -1526,6 +1559,8 @@ const ko: Translations = {
   popup_light: "\ub77c\uc774\ud2b8",
   popup_language: "\uc5b8\uc5b4",
   popup_language_auto: "\uc790\ub3d9 (\ube0c\ub77c\uc6b0\uc800)",
+  error_free_tier:
+    '\ubb34\ub8cc \ud50c\ub79c\uc785\ub2c8\ub2e4 \u2014 "\uc790\uccb4 \ud0a4" \ubaa8\ub4dc\ub9cc \uc0ac\uc6a9 \uac00\ub2a5\ud569\ub2c8\ub2e4. gyoza Pro \uad6c\ub3c5: https://gyoz.ai/pricing',
 };
 
 const zhCN: Translations = {
@@ -1603,6 +1638,8 @@ const zhCN: Translations = {
   popup_light: "\u6d45\u8272",
   popup_language: "\u8bed\u8a00",
   popup_language_auto: "\u81ea\u52a8\uff08\u6d4f\u89c8\u5668\uff09",
+  error_free_tier:
+    '\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8d39\u8ba1\u5212 \u2014 \u4ec5"\u81ea\u6709\u5bc6\u94a5"\u6a21\u5f0f\u53ef\u7528\u3002\u8ba2\u9605 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const zhTW: Translations = {
@@ -1666,6 +1703,8 @@ const zhTW: Translations = {
   popup_light: "\u6dfa\u8272",
   popup_language: "\u8a9e\u8a00",
   popup_language_auto: "\u81ea\u52d5\uff08\u700f\u89bd\u5668\uff09",
+  error_free_tier:
+    "\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8cbb\u65b9\u6848 \u2014 \u50c5\u300c\u81ea\u6709\u91d1\u9470\u300d\u6a21\u5f0f\u53ef\u7528\u3002\u8a02\u95b1 gyoza Pro: https://gyoz.ai/pricing",
 };
 
 const th: Translations = {
@@ -1776,6 +1815,8 @@ const th: Translations = {
   popup_language: "\u0e20\u0e32\u0e29\u0e32",
   popup_language_auto:
     "\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 (\u0e40\u0e1a\u0e23\u0e32\u0e27\u0e40\u0e0b\u0e2d\u0e23\u0e4c)",
+  error_free_tier:
+    '\u0e04\u0e38\u0e13\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e41\u0e1c\u0e19\u0e1f\u0e23\u0e35 \u2014 \u0e21\u0e35\u0e40\u0e09\u0e1e\u0e32\u0e30\u0e42\u0e2b\u0e21\u0e14 "\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e40\u0e2d\u0e07" \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const vi: Translations = {
@@ -1856,6 +1897,8 @@ const vi: Translations = {
   popup_light: "S\u00e1ng",
   popup_language: "Ng\u00f4n ng\u1eef",
   popup_language_auto: "T\u1ef1 \u0111\u1ed9ng (tr\u00ecnh duy\u1ec7t)",
+  error_free_tier:
+    'B\u1ea1n \u0111ang \u1edf g\u00f3i mi\u1ec5n ph\u00ed \u2014 ch\u1ec9 c\u00f3 ch\u1ebf \u0111\u1ed9 "Kh\u00f3a Ri\u00eang" kh\u1ea3 d\u1ee5ng. \u0110\u0103ng k\u00fd gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const id: Translations = {
@@ -1932,6 +1975,8 @@ const id: Translations = {
   popup_light: "Terang",
   popup_language: "Bahasa",
   popup_language_auto: "Otomatis (browser)",
+  error_free_tier:
+    'Anda di paket gratis \u2014 hanya mode "Kunci Sendiri" yang tersedia. Berlangganan gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ms: Translations = {
