@@ -152,26 +152,8 @@ export const WIDGET_STYLES = `
     color: var(--g-brand-500);
     background: oklch(0.66 0.18 72 / 0.08);
   }
-  /* CSS tooltip for icon buttons */
-  .gyozai-icon-btn[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: oklch(0.15 0.01 50 / 0.95);
-    color: var(--g-text-primary);
-    font-size: 11px;
-    line-height: 1.3;
-    padding: 4px 8px;
-    border-radius: 6px;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 10;
-    border: 1px solid oklch(0.3 0.01 50 / 0.5);
-    box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
-  }
-  /* Also apply to send/stop buttons */
+  /* CSS tooltip for icon buttons and send/stop */
+  .gyozai-icon-btn[title]:hover::after,
   .gyozai-send-btn[title]:hover::after {
     content: attr(title);
     position: absolute;
@@ -189,6 +171,20 @@ export const WIDGET_STYLES = `
     z-index: 10;
     border: 1px solid oklch(0.3 0.01 50 / 0.5);
     box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Clamp left-side buttons to not overflow left edge */
+  .gyozai-input-inner > :first-child[title]:hover::after {
+    left: 0;
+    transform: none;
+  }
+  /* Clamp right-side buttons to not overflow right edge */
+  .gyozai-input-inner > :last-child[title]:hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
   }
   .gyozai-icon-btn-active {
     color: var(--g-brand-500);
