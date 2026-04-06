@@ -181,6 +181,20 @@ export async function handleQuery(
       args: Record<string, unknown>;
     }> = [];
 
+    // Tools that actually interact with the page DOM. If none of these
+    // were called, the session is purely conversational (greeting, explanation).
+    const PAGE_ACTION_TOOLS = new Set([
+      "click",
+      "navigate",
+      "fill_input",
+      "select_option",
+      "toggle_checkbox",
+      "submit_form",
+      "scroll_to",
+    ]);
+    const hasPageAction = () =>
+      allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));
+
     let streamError: Error | null = null;
     const stream = streamText({
       model: providerResult.model,
@@ -209,7 +223,10 @@ export async function handleQuery(
           (tcCall.args as { success?: boolean })?.success === false
         )
           return true;
-        // No actions + claimed success → tool rejected it, keep going
+        // Conversational completions — no page-action tools were attempted,
+        // so the model was just chatting (greeting, explanation, etc.).
+        if (!hasPageAction()) return true;
+        // Had page actions attempted but actionCount still 0 → tool rejected, keep going
         return false;
       },
       prepareStep: ({ steps }) => {
@@ -232,6 +249,11 @@ export async function handleQuery(
         // Chat-only mode: let the model stop after show_message since it
         // can't take actions and just needs to explain to the user.
         if (settings.chatOnly && lastToolName === "show_message") return {};
+
+        // Conversational queries: if show_message was the last tool and no
+        // page-action tools have been attempted yet, let the model stop
+        // naturally — it's just responding to a greeting or question.
+        if (lastToolName === "show_message" && !hasPageAction()) return {};
 
         // Otherwise (show_message narration, get_page_context, etc.),
         // force tool use so the model keeps working instead of stopping

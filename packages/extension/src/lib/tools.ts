@@ -671,7 +671,13 @@ export function createBrowserTools(
     }),
     execute: async ({ success, summary, page_evidence }) => {
       // If the AI claims success but never performed any action, reject it
+      // — UNLESS it already communicated via show_message (conversational
+      // responses like greetings or explanations don't require page actions).
       if (success && ctx.actionCount === 0) {
+        if (ctx.messages.length > 0) {
+          // Conversational completion — model already responded to the user
+          return { stopped: true };
+        }
         return {
           stopped: false,
           warning:
