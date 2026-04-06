@@ -115,9 +115,9 @@ export const WIDGET_STYLES = `
     align-items: center;
     justify-content: center;
     z-index: 1;
-    opacity: 0.4;
+    opacity: 0.5;
     transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
-    color: var(--g-text-muted);
+    color: var(--g-text-secondary);
     border-radius: 0 16px 0 8px;
   }
 
