@@ -1867,12 +1867,15 @@ export function GyozaiWidget() {
                     <a
                       key={i}
                       href={part}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.open(part, "_blank", "noopener,noreferrer");
+                      }}
                       style={{
                         color: "inherit",
                         textDecoration: "underline",
                         fontWeight: 600,
+                        cursor: "pointer",
                       }}
                     >
                       {part}
