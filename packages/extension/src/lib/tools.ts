@@ -2131,7 +2131,7 @@ export function createBrowserTools(
     { success: boolean; description: string }
   >({
     description:
-      "Take a screenshot of the current page. Use this when you need to visually understand the page layout, verify visual changes, or analyze something that text context alone cannot capture. The screenshot image will be sent to you for analysis.",
+      "Take a screenshot of the current page. The screenshot image will be returned to you as a visual image for analysis. IMPORTANT: Call this tool ALONE — do NOT call show_message or any other tool in the same step. Wait for the screenshot result first, then analyze the image and respond in the next step.",
     inputSchema: jsonSchema<Record<string, never>>({
       type: "object" as const,
       properties: {},
