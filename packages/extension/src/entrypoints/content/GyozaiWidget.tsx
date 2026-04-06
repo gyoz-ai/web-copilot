@@ -132,6 +132,13 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [stickyChat, setStickyChat] = useState(false);
   const stickyChatRef = useRef(false);
+  const [chatScale, setChatScale] = useState(1);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartRef = useRef<{
+    pointerX: number;
+    pointerY: number;
+    startScale: number;
+  } | null>(null);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [isTypewriting, setIsTypewriting] = useState(false);
   const [expression, setExpression] = useState<Expression>(() => {
@@ -218,6 +225,82 @@ export function GyozaiWidget() {
   useEffect(() => {
     stickyChatRef.current = stickyChat;
   }, [stickyChat]);
+
+  // ─── Resize constants & handlers ──────────────────────────
+  const SCALE_MIN = 0.7;
+  const SCALE_MAX = 1.5;
+  const SCALE_SENSITIVITY = 0.003;
+  const isResizingRef = useRef(false);
+
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeStartRef.current = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        startScale: chatScale,
+      };
+      setIsResizing(true);
+      isResizingRef.current = true;
+
+      const overlay = document.createElement("div");
+      overlay.style.cssText =
+        "position:fixed;inset:0;z-index:2147483647;cursor:nwse-resize;";
+      const root = (e.target as HTMLElement).getRootNode();
+      if (root instanceof ShadowRoot) {
+        root.appendChild(overlay);
+      } else {
+        document.body.appendChild(overlay);
+      }
+
+      const onMove = (ev: PointerEvent) => {
+        const start = resizeStartRef.current;
+        if (!start) return;
+        const dx = ev.clientX - start.pointerX;
+        const dy = ev.clientY - start.pointerY;
+        const diagonalDelta = (dx + dy) / Math.SQRT2;
+        const newScale = Math.min(
+          SCALE_MAX,
+          Math.max(
+            SCALE_MIN,
+            start.startScale + diagonalDelta * SCALE_SENSITIVITY,
+          ),
+        );
+        setChatScale(newScale);
+      };
+
+      const onUp = () => {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        overlay.remove();
+        setIsResizing(false);
+        isResizingRef.current = false;
+        resizeStartRef.current = null;
+      };
+
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    },
+    [chatScale],
+  );
+
+  // Persist scale when resize ends
+  const prevResizingRef = useRef(false);
+  useEffect(() => {
+    if (prevResizingRef.current && !isResizing) {
+      const scaleToSave = chatScale;
+      browser.runtime
+        .sendMessage({ type: "gyozai_get_settings" })
+        .then((s: ExtensionSettings) => {
+          browser.storage.local
+            .set({ gyozai_settings: { ...s, chatScale: scaleToSave } })
+            .catch(() => {});
+        })
+        .catch(() => {});
+    }
+    prevResizingRef.current = isResizing;
+  }, [isResizing, chatScale]);
 
   // hoverOpen: true = chatbox was opened by proximity (closes on leave)
   // false = chatbox was opened by click (stays open until clicked again)
@@ -451,6 +534,7 @@ export function GyozaiWidget() {
           if (typeof s?.bubbleOpacity === "number")
             setBubbleOpacity(s.bubbleOpacity);
           if (typeof s?.stickyChat === "boolean") setStickyChat(s.stickyChat);
+          if (typeof s?.chatScale === "number") setChatScale(s.chatScale);
         })
         .catch(() => {});
     });
@@ -479,6 +563,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.stickyChat === "boolean") {
         setStickyChat(newSettings.stickyChat);
+      }
+      if (typeof newSettings?.chatScale === "number") {
+        setChatScale(newSettings.chatScale);
       }
     };
     browser.storage.onChanged.addListener(handler);
@@ -726,7 +813,12 @@ export function GyozaiWidget() {
 
     const interval = setInterval(() => {
       if (stickyChatRef.current) return;
-      if (!hoverOpenRef.current || !expanded || dragDropGraceRef.current)
+      if (
+        !hoverOpenRef.current ||
+        !expanded ||
+        dragDropGraceRef.current ||
+        isResizingRef.current
+      )
         return;
       const panel = panelRef.current;
       const avatar = avatarWrapperRef.current;
@@ -1662,17 +1754,27 @@ export function GyozaiWidget() {
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
         style={{
           display: expanded && !isDraggingAvatar ? "flex" : "none",
+          transform: chatScale !== 1 ? `scale(${chatScale})` : undefined,
+          transformOrigin: avatarWrapperRef.current
+            ? avatarWrapperRef.current.getBoundingClientRect().top >
+              window.innerHeight / 2
+              ? "bottom center"
+              : "top center"
+            : "bottom center",
+          transition: isResizing ? "none" : "transform 0.15s ease-out",
           ...(avatarWrapperRef.current
             ? (() => {
                 const rect = avatarWrapperRef.current.getBoundingClientRect();
                 const avatarCenterX = rect.left + rect.width / 2;
                 const showAbove = rect.top > window.innerHeight / 2;
-                const panelWidth = 380;
+                const panelCssWidth = 380;
+                const visualOffset =
+                  (panelCssWidth * chatScale - panelCssWidth) / 2;
                 const left = Math.max(
-                  8,
+                  8 + visualOffset,
                   Math.min(
-                    avatarCenterX - panelWidth / 2,
-                    window.innerWidth - panelWidth - 8,
+                    avatarCenterX - panelCssWidth / 2,
+                    window.innerWidth - panelCssWidth - 8 - visualOffset,
                   ),
                 );
                 return showAbove
@@ -1687,12 +1789,44 @@ export function GyozaiWidget() {
           forceInside();
         }}
         onMouseLeave={() => {
+          if (isResizingRef.current) return;
           insidePanelRef.current = false;
           if (hoverOpenRef.current) {
             startLeave();
           }
         }}
       >
+        {/* Resize handle — top-right corner */}
+        <div
+          className={`gyozai-resize-handle${isResizing ? " gyozai-resize-handle-active" : ""}`}
+          onPointerDown={handleResizePointerDown}
+          onDoubleClick={() => {
+            setChatScale(1);
+            browser.runtime
+              .sendMessage({ type: "gyozai_get_settings" })
+              .then((s: ExtensionSettings) => {
+                browser.storage.local
+                  .set({ gyozai_settings: { ...s, chatScale: 1 } })
+                  .catch(() => {});
+              })
+              .catch(() => {});
+          }}
+          title="Drag to resize, double-click to reset"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <path d="M2 10L10 2" />
+            <path d="M6 10L10 6" />
+          </svg>
+        </div>
+
         {/* History View */}
         {viewMode === "history" && (
           <div className="gyozai-messages">

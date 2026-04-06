@@ -44,6 +44,8 @@ export interface ExtensionSettings {
   bubbleOpacity: number;
   /** Keep chatbox open regardless of cursor proximity. */
   stickyChat: boolean;
+  /** Scale factor for the chat panel (0.7–1.5). */
+  chatScale: number;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -61,6 +63,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   typingSound: true,
   bubbleOpacity: 0.85,
   stickyChat: false,
+  chatScale: 1,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {

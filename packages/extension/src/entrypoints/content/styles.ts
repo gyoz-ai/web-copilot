@@ -98,8 +98,42 @@ export const WIDGET_STYLES = `
   }
 
   @keyframes gyozai-panel-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* ─── Resize Handle ──────────────────────────────────────── */
+
+  .gyozai-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    cursor: nwse-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    color: var(--g-text-muted);
+    border-radius: 0 16px 0 8px;
+  }
+
+  .gyozai-panel:hover .gyozai-resize-handle {
+    opacity: 0.5;
+  }
+
+  .gyozai-resize-handle:hover {
+    opacity: 1 !important;
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.08);
+  }
+
+  .gyozai-resize-handle-active {
+    opacity: 1 !important;
+    color: var(--g-brand-500);
   }
   .gyozai-icon-btn {
     display: flex;
