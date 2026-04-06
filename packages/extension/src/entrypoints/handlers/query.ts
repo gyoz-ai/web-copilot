@@ -256,8 +256,29 @@ export async function handleQuery(
         // Had page actions attempted but actionCount still 0 → tool rejected, keep going
         return false;
       },
-      prepareStep: ({ steps }) => {
+      prepareStep: ({ steps, messages: stepMessages }) => {
         if (steps.length === 0) return {};
+
+        // If page_screenshot was used, inject the image as a user message
+        // so the model sees it as visual content (same path as chat image upload)
+        if (ctx.pendingScreenshotDataUrl) {
+          const screenshotDataUrl = ctx.pendingScreenshotDataUrl;
+          ctx.pendingScreenshotDataUrl = null;
+          console.log(
+            "%c[gyoza] prepareStep → injecting screenshot as user image message",
+            "color: #22c55e; font-weight: bold",
+          );
+          stepMessages.push({
+            role: "user",
+            content: [
+              { type: "image" as const, image: screenshotDataUrl },
+              {
+                type: "text" as const,
+                text: "Here is the screenshot of the current page. Analyze this image visually and describe what you see.",
+              },
+            ],
+          });
+        }
 
         const lastStep = steps[steps.length - 1];
         const lastToolCalls = lastStep?.toolCalls || [];

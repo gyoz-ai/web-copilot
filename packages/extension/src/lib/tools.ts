@@ -209,6 +209,8 @@ export interface ToolExecContext {
   onMutatingAction?: () => void;
   /** Last page context snapshot — used to validate task_complete evidence */
   lastPageContext?: string;
+  /** Screenshot data URL captured by page_screenshot tool — consumed by prepareStep */
+  pendingScreenshotDataUrl?: string | null;
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -2125,13 +2127,12 @@ export function createBrowserTools(
   }
 
   // ── page_screenshot — capture visible tab as image for visual analysis ──
-  let lastScreenshotDataUrl: string | null = null;
   tools.page_screenshot = tool<
     Record<string, never>,
     { success: boolean; description: string }
   >({
     description:
-      "Take a screenshot of the current page. The screenshot image will be returned to you as a visual image for analysis. IMPORTANT: Call this tool ALONE — do NOT call show_message or any other tool in the same step. Wait for the screenshot result first, then analyze the image and respond in the next step.",
+      "Take a screenshot of the current page. The screenshot will be injected as an image into the conversation so you can see and analyze it visually in the next step. After calling this, wait for the next step where you will see the page image, then respond with your analysis via show_message.",
     inputSchema: jsonSchema<Record<string, never>>({
       type: "object" as const,
       properties: {},
@@ -2146,68 +2147,27 @@ export function createBrowserTools(
           format: "jpeg",
           quality: 70,
         });
-        lastScreenshotDataUrl = dataUrl;
+        // Store on ctx — prepareStep in query.ts injects this as a user image
+        ctx.pendingScreenshotDataUrl = dataUrl;
         console.log(
-          "%c[gyoza] page_screenshot captured",
+          "%c[gyoza] page_screenshot captured → stored on ctx for prepareStep injection",
           "color: #a855f7; font-weight: bold",
         );
         console.log(
           "%c  ",
           `font-size: 200px; background: url(${dataUrl}) no-repeat center/contain; background-size: contain;`,
         );
-        console.log(
-          "%c  Open image →",
-          "color: #9ca3af",
-          dataUrl.slice(0, 100) + "...",
-        );
         return {
           success: true,
           description:
-            "Screenshot captured. Analyze the image to understand the page visually.",
+            "Screenshot captured. The image will appear in your next message. Analyze it visually and respond.",
         };
       } catch (e) {
-        lastScreenshotDataUrl = null;
         return {
           success: false,
           description: `Failed to capture screenshot: ${e instanceof Error ? e.message : String(e)}`,
         };
       }
-    },
-    toModelOutput: async ({ output }) => {
-      const result = output as { success: boolean; description: string };
-      console.log(
-        "%c[gyoza] toModelOutput called for page_screenshot",
-        "color: #f59e0b; font-weight: bold",
-        { success: result.success, hasDataUrl: !!lastScreenshotDataUrl },
-      );
-      if (!result.success || !lastScreenshotDataUrl) {
-        console.log(
-          "%c[gyoza] toModelOutput → returning text (no image)",
-          "color: #ef4444",
-        );
-        return { type: "text" as const, value: result.description };
-      }
-      const base64 = lastScreenshotDataUrl.replace(
-        /^data:image\/\w+;base64,/,
-        "",
-      );
-      console.log(
-        "%c[gyoza] toModelOutput → returning image-data content",
-        "color: #22c55e; font-weight: bold",
-        `base64 length: ${base64.length} chars`,
-      );
-      lastScreenshotDataUrl = null;
-      return {
-        type: "content" as const,
-        value: [
-          {
-            type: "image-data" as const,
-            data: base64,
-            mediaType: "image/jpeg",
-          },
-          { type: "text" as const, text: "Screenshot of the current page." },
-        ],
-      };
     },
   });
 
