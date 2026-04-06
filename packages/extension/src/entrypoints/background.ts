@@ -370,6 +370,16 @@ export default defineBackground(() => {
           browser.tabs.create({ url: browser.runtime.getURL("/popup.html") });
         }
         return false;
+      case "gyozai_capture_tab":
+        browser.tabs
+          .captureVisibleTab({ format: "jpeg", quality: 70 })
+          .then((dataUrl) => sendResponse({ dataUrl }))
+          .catch((err) =>
+            sendResponse({
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        return true;
       case "gyozai_exec":
         handleLegacyExec(message, sendResponse);
         return true;

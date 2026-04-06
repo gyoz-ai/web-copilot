@@ -164,6 +164,15 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 200,
   },
+  page_screenshot: {
+    name: "page_screenshot",
+    description: "Capture page screenshot",
+    pageChange: false,
+    mutatesPage: false,
+    requiresFreshContext: false,
+    isConcurrencySafe: true,
+    maxResultChars: 500,
+  },
 };
 
 // ─── Tool Result Types ─────────────────────────────────────────────────────────
@@ -2114,6 +2123,66 @@ export function createBrowserTools(
       },
     });
   }
+
+  // ── page_screenshot — capture visible tab as image for visual analysis ──
+  let lastScreenshotDataUrl: string | null = null;
+  tools.page_screenshot = tool<
+    Record<string, never>,
+    { success: boolean; description: string }
+  >({
+    description:
+      "Take a screenshot of the current page. Use this when you need to visually understand the page layout, verify visual changes, or analyze something that text context alone cannot capture. The screenshot image will be sent to you for analysis.",
+    inputSchema: jsonSchema<Record<string, never>>({
+      type: "object" as const,
+      properties: {},
+    }),
+    execute: async () => {
+      ctx.onStreamEvent?.({
+        kind: "tool-status",
+        content: tr?.status_screenshot || "Taking screenshot",
+      });
+      try {
+        const dataUrl = await browser.tabs.captureVisibleTab({
+          format: "jpeg",
+          quality: 70,
+        });
+        lastScreenshotDataUrl = dataUrl;
+        return {
+          success: true,
+          description:
+            "Screenshot captured. Analyze the image to understand the page visually.",
+        };
+      } catch (e) {
+        lastScreenshotDataUrl = null;
+        return {
+          success: false,
+          description: `Failed to capture screenshot: ${e instanceof Error ? e.message : String(e)}`,
+        };
+      }
+    },
+    toModelOutput: async ({ output }) => {
+      const result = output as { success: boolean; description: string };
+      if (!result.success || !lastScreenshotDataUrl) {
+        return { type: "text" as const, value: result.description };
+      }
+      const base64 = lastScreenshotDataUrl.replace(
+        /^data:image\/\w+;base64,/,
+        "",
+      );
+      lastScreenshotDataUrl = null;
+      return {
+        type: "content" as const,
+        value: [
+          {
+            type: "image-data" as const,
+            data: base64,
+            mediaType: "image/jpeg",
+          },
+          { type: "text" as const, text: "Screenshot of the current page." },
+        ],
+      };
+    },
+  });
 
   return tools;
 }

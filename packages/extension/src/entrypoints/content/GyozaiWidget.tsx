@@ -1592,6 +1592,33 @@ export function GyozaiWidget() {
     setPendingImages((prev) => prev.filter((img) => img.id !== id));
   }, []);
 
+  const handleScreenshot = useCallback(async () => {
+    if (pendingImages.length >= MAX_IMAGES_PER_MESSAGE) return;
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "gyozai_capture_tab",
+      });
+      if (response?.error) return;
+      const dataUrl = response.dataUrl as string;
+      // Convert data URL to blob for IndexedDB storage
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      setPendingImages((prev) =>
+        [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            dataUrl,
+            blob,
+            mimeType: "image/jpeg",
+          },
+        ].slice(0, MAX_IMAGES_PER_MESSAGE),
+      );
+    } catch {
+      // Silently fail — screenshot not critical
+    }
+  }, [pendingImages.length]);
+
   // ─── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
@@ -2265,6 +2292,29 @@ export function GyozaiWidget() {
                 e.target.value = "";
               }}
             />
+            {/* Screenshot button */}
+            <button
+              className="gyozai-icon-btn gyozai-upload-btn"
+              onClick={handleScreenshot}
+              title="Screenshot page"
+              disabled={
+                loading || pendingImages.length >= MAX_IMAGES_PER_MESSAGE
+              }
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
             <input
               ref={inputRef}
               type="text"

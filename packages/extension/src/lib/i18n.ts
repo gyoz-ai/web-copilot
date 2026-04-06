@@ -91,6 +91,7 @@ export interface Translations {
   status_highlighted: string; // "Highlighted element"
   status_reading_page: string; // "Reading page"
   status_fetching: string; // "Fetching data"
+  status_screenshot: string; // "Taking screenshot"
   status_filling: string; // "Filling input"
   status_selecting: string; // "Selecting option"
   status_toggling: string; // "Toggling checkbox"
@@ -167,6 +168,7 @@ const en: Translations = {
   status_highlighted: "Highlighted element",
   status_reading_page: "Reading page",
   status_fetching: "Fetching data",
+  status_screenshot: "Taking screenshot",
   status_filling: "Filling input",
   status_selecting: "Selecting option",
   status_toggling: "Toggling checkbox",
@@ -244,6 +246,7 @@ const ptBR: Translations = {
   status_highlighted: "Elemento destacado",
   status_reading_page: "Lendo a página",
   status_fetching: "Buscando dados",
+  status_screenshot: "Capturando tela",
   status_filling: "Preenchendo campo",
   status_selecting: "Selecionando opção",
   status_toggling: "Alternando checkbox",
@@ -340,6 +343,7 @@ const es: Translations = {
   status_highlighted: "Elemento resaltado",
   status_reading_page: "Leyendo p\u00e1gina",
   status_fetching: "Obteniendo datos",
+  status_screenshot: "Capturando pantalla",
   status_filling: "Rellenando campo",
   status_selecting: "Seleccionando opci\u00f3n",
   status_toggling: "Alternando casilla",
@@ -418,6 +422,7 @@ const fr: Translations = {
   status_highlighted: "\u00c9l\u00e9ment surlign\u00e9",
   status_reading_page: "Lecture de la page",
   status_fetching: "R\u00e9cup\u00e9ration des donn\u00e9es",
+  status_screenshot: "Capture d'écran",
   status_filling: "Remplissage du champ",
   status_selecting: "S\u00e9lection d'option",
   status_toggling: "Basculement de case",
@@ -496,6 +501,7 @@ const de: Translations = {
   status_highlighted: "Element hervorgehoben",
   status_reading_page: "Seite wird gelesen",
   status_fetching: "Daten werden abgerufen",
+  status_screenshot: "Screenshot wird aufgenommen",
   status_filling: "Feld wird ausgef\u00fcllt",
   status_selecting: "Option wird ausgew\u00e4hlt",
   status_toggling: "Kontrollk\u00e4stchen umschalten",
@@ -574,6 +580,7 @@ const it: Translations = {
   status_highlighted: "Elemento evidenziato",
   status_reading_page: "Lettura pagina",
   status_fetching: "Recupero dati",
+  status_screenshot: "Cattura schermata",
   status_filling: "Compilazione campo",
   status_selecting: "Selezione opzione",
   status_toggling: "Cambio casella",
@@ -651,6 +658,7 @@ const nl: Translations = {
   status_highlighted: "Element gemarkeerd",
   status_reading_page: "Pagina lezen",
   status_fetching: "Gegevens ophalen",
+  status_screenshot: "Screenshot maken",
   status_filling: "Veld invullen",
   status_selecting: "Optie selecteren",
   status_toggling: "Selectievakje wisselen",
@@ -728,6 +736,7 @@ const pl: Translations = {
   status_highlighted: "Wyr\u00f3\u017cniono element",
   status_reading_page: "Czytanie strony",
   status_fetching: "Pobieranie danych",
+  status_screenshot: "Robienie zrzutu ekranu",
   status_filling: "Wype\u0142nianie pola",
   status_selecting: "Wybieranie opcji",
   status_toggling: "Prze\u0142\u0105czanie pola wyboru",
@@ -819,6 +828,7 @@ const ru: Translations = {
     "\u0427\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b",
   status_fetching:
     "\u041f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0435 \u0434\u0430\u043d\u043d\u044b\u0445",
+  status_screenshot: "Taking screenshot",
   status_filling:
     "\u0417\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435 \u043f\u043e\u043b\u044f",
   status_selecting:
@@ -925,6 +935,7 @@ const uk: Translations = {
     "\u0427\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0438",
   status_fetching:
     "\u041e\u0442\u0440\u0438\u043c\u0430\u043d\u043d\u044f \u0434\u0430\u043d\u0438\u0445",
+  status_screenshot: "Taking screenshot",
   status_filling:
     "\u0417\u0430\u043f\u043e\u0432\u043d\u0435\u043d\u043d\u044f \u043f\u043e\u043b\u044f",
   status_selecting:
@@ -1033,6 +1044,7 @@ const el: Translations = {
     "\u0391\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1\u03c2",
   status_fetching:
     "\u039b\u03ae\u03c8\u03b7 \u03b4\u03b5\u03b4\u03bf\u03bc\u03ad\u03bd\u03c9\u03bd",
+  status_screenshot: "Taking screenshot",
   status_filling:
     "\u03a3\u03c5\u03bc\u03c0\u03bb\u03ae\u03c1\u03c9\u03c3\u03b7 \u03c0\u03b5\u03b4\u03af\u03bf\u03c5",
   status_selecting: "\u0395\u03c0\u03b9\u03bb\u03bf\u03b3\u03ae",
@@ -1130,6 +1142,7 @@ const tr: Translations = {
   status_highlighted: "\u00d6\u011fe vurguland\u0131",
   status_reading_page: "Sayfa okunuyor",
   status_fetching: "Veri al\u0131n\u0131yor",
+  status_screenshot: "Ekran görüntüsü alınıyor",
   status_filling: "Alan dolduruluyor",
   status_selecting: "Se\u00e7enek se\u00e7iliyor",
   status_toggling: "Onay kutusu de\u011fi\u015ftiriliyor",
@@ -1222,6 +1235,7 @@ const ar: Translations = {
     "\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0629",
   status_fetching:
     "\u062c\u0644\u0628 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a",
+  status_screenshot: "Taking screenshot",
   status_filling: "\u0645\u0644\u0621 \u0627\u0644\u062d\u0642\u0644",
   status_selecting:
     "\u0627\u062e\u062a\u064a\u0627\u0631 \u062e\u064a\u0627\u0631",
@@ -1329,6 +1343,7 @@ const hi: Translations = {
     "\u092a\u0947\u091c \u092a\u0922\u093c \u0930\u0939\u093e \u0939\u0948",
   status_fetching:
     "\u0921\u0947\u091f\u093e \u092a\u094d\u0930\u093e\u092a\u094d\u0924 \u0915\u0930 \u0930\u0939\u093e \u0939\u0948",
+  status_screenshot: "Taking screenshot",
   status_filling:
     "\u0907\u0928\u092a\u0941\u091f \u092d\u0930 \u0930\u0939\u093e \u0939\u0948",
   status_selecting:
@@ -1424,6 +1439,7 @@ const ja: Translations = {
   status_highlighted: "\u8981\u7d20\u3092\u30cf\u30a4\u30e9\u30a4\u30c8",
   status_reading_page: "\u30da\u30fc\u30b8\u3092\u8aad\u307f\u53d6\u308a\u4e2d",
   status_fetching: "\u30c7\u30fc\u30bf\u3092\u53d6\u5f97\u4e2d",
+  status_screenshot: "スクリーンショットを撮影中",
   status_filling: "\u5165\u529b\u4e2d",
   status_selecting: "\u30aa\u30d7\u30b7\u30e7\u30f3\u3092\u9078\u629e\u4e2d",
   status_toggling:
@@ -1510,6 +1526,7 @@ const ko: Translations = {
   status_highlighted: "\uc694\uc18c \uac15\uc870\ub428",
   status_reading_page: "\ud398\uc774\uc9c0 \uc77d\ub294 \uc911",
   status_fetching: "\ub370\uc774\ud130 \uac00\uc838\uc624\ub294 \uc911",
+  status_screenshot: "스크린샷 캡처 중",
   status_filling: "\uc785\ub825 \uc911",
   status_selecting: "\uc635\uc158 \uc120\ud0dd \uc911",
   status_toggling: "\uccb4\ud06c\ubc15\uc2a4 \uc804\ud658",
@@ -1592,6 +1609,7 @@ const zhCN: Translations = {
   status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
   status_reading_page: "\u6b63\u5728\u8bfb\u53d6\u9875\u9762",
   status_fetching: "\u6b63\u5728\u83b7\u53d6\u6570\u636e",
+  status_screenshot: "正在截图",
   status_filling: "\u6b63\u5728\u586b\u5199\u8f93\u5165",
   status_selecting: "\u6b63\u5728\u9009\u62e9\u9009\u9879",
   status_toggling: "\u6b63\u5728\u5207\u6362\u590d\u9009\u6846",
@@ -1661,6 +1679,7 @@ const zhTW: Translations = {
   status_highlighted: "\u5df2\u9ad8\u4eae\u5143\u7d20",
   status_reading_page: "\u6b63\u5728\u8b80\u53d6\u9801\u9762",
   status_fetching: "\u6b63\u5728\u7372\u53d6\u8cc7\u6599",
+  status_screenshot: "正在擷取畫面",
   status_filling: "\u6b63\u5728\u586b\u5beb\u8f38\u5165",
   status_selecting: "\u6b63\u5728\u9078\u64c7\u9078\u9805",
   status_toggling: "\u6b63\u5728\u5207\u63db\u6838\u53d6\u65b9\u584a",
@@ -1750,6 +1769,7 @@ const th: Translations = {
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32",
   status_fetching:
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e36\u0e07\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25",
+  status_screenshot: "Taking screenshot",
   status_filling:
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e01\u0e23\u0e2d\u0e01\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25",
   status_selecting:
@@ -1849,6 +1869,7 @@ const vi: Translations = {
   status_highlighted: "\u0110\u00e3 \u0111\u00e1nh d\u1ea5u ph\u1ea7n t\u1eed",
   status_reading_page: "\u0110ang \u0111\u1ecdc trang",
   status_fetching: "\u0110ang l\u1ea5y d\u1eef li\u1ec7u",
+  status_screenshot: "Đang chụp màn hình",
   status_filling: "\u0110ang \u0111i\u1ec1n d\u1eef li\u1ec7u",
   status_selecting: "\u0110ang ch\u1ecdn t\u00f9y ch\u1ecdn",
   status_toggling: "Chuy\u1ec3n \u0111\u1ed5i h\u1ed9p ki\u1ec3m",
@@ -1928,6 +1949,7 @@ const id: Translations = {
   status_highlighted: "Elemen disorot",
   status_reading_page: "Membaca halaman",
   status_fetching: "Mengambil data",
+  status_screenshot: "Mengambil tangkapan layar",
   status_filling: "Mengisi input",
   status_selecting: "Memilih opsi",
   status_toggling: "Mengubah kotak centang",
