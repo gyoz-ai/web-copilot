@@ -502,62 +502,26 @@ export async function handleQuery(
       errorType = "auth";
       errorMessage = `Invalid ${settings.provider} API key. Check your key in the gyoza settings.`;
     } else if (msgLower.includes("no output generated")) {
-      console.log(
-        "[gyoza:free-tier] no output generated — mode:",
-        settings.mode,
-        "hasToken:",
-        !!settings.managedToken,
-        "tokenLen:",
-        settings.managedToken?.length ?? 0,
-      );
       if (settings.mode === "managed" && settings.managedToken) {
-        // Fetch fresh tier from API — cached value may be stale
         try {
-          const url = `${PLATFORM_URL}/v1/ai/usage`;
-          console.log("[gyoza:free-tier] Fetching tier from:", url);
-          const usageRes = await fetch(url, {
+          const usageRes = await fetch(`${PLATFORM_URL}/v1/ai/usage`, {
             headers: { Authorization: `Bearer ${settings.managedToken}` },
           });
-          console.log(
-            "[gyoza:free-tier] Usage API response:",
-            usageRes.status,
-            usageRes.statusText,
-          );
           if (usageRes.ok) {
             const usage = await usageRes.json();
-            console.log(
-              "[gyoza:free-tier] Usage API body:",
-              JSON.stringify(usage).slice(0, 200),
-            );
             const freshTier = ((usage.tier as string) ?? "").toLowerCase();
             const PAID_TIERS = new Set(["pro", "max", "enterprise"]);
-            console.log(
-              "[gyoza:free-tier] freshTier:",
-              JSON.stringify(freshTier),
-              "isPaid:",
-              PAID_TIERS.has(freshTier),
-            );
             if (freshTier && !PAID_TIERS.has(freshTier)) {
               const tr = getTranslations(settings.language as LocaleCode);
               errorType = "free_tier";
               errorMessage = tr.error_free_tier;
-              console.log("[gyoza:free-tier] → showing free tier error");
             }
-          } else {
-            const body = await usageRes.text();
-            console.log(
-              "[gyoza:free-tier] Usage API error body:",
-              body.slice(0, 200),
-            );
           }
-        } catch (fetchErr) {
-          console.error("[gyoza:free-tier] Fetch failed:", fetchErr);
+        } catch {
+          // API unreachable — fall through to generic message
         }
-      } else {
-        console.log("[gyoza:free-tier] Skipped — not managed or no token");
       }
       if (!errorType) {
-        console.log("[gyoza:free-tier] → falling through to generic error");
         errorMessage =
           "The AI failed to generate a response. This may be a temporary issue — try again.";
       }
