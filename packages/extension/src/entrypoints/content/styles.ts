@@ -74,7 +74,7 @@ export const WIDGET_STYLES = `
     position: fixed;
     bottom: 80px;
     right: 20px;
-    width: 380px;
+    width: 420px;
     max-height: 520px;
     height: fit-content;
     border-radius: 16px;
@@ -146,10 +146,49 @@ export const WIDGET_STYLES = `
     border-radius: 6px;
     color: var(--g-text-muted);
     transition: all 0.2s ease;
+    position: relative;
   }
   .gyozai-icon-btn:hover {
     color: var(--g-brand-500);
     background: oklch(0.66 0.18 72 / 0.08);
+  }
+  /* CSS tooltip for icon buttons */
+  .gyozai-icon-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: oklch(0.15 0.01 50 / 0.95);
+    color: var(--g-text-primary);
+    font-size: 11px;
+    line-height: 1.3;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
+    box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
+  }
+  /* Also apply to send/stop buttons */
+  .gyozai-send-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: oklch(0.15 0.01 50 / 0.95);
+    color: var(--g-text-primary);
+    font-size: 11px;
+    line-height: 1.3;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    border: 1px solid oklch(0.3 0.01 50 / 0.5);
+    box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
   }
   .gyozai-icon-btn-active {
     color: var(--g-brand-500);
@@ -373,6 +412,7 @@ export const WIDGET_STYLES = `
 
   .gyozai-input {
     flex: 1;
+    min-width: 0;
     border-radius: 10px;
     outline: none;
     font-size: 13px;
@@ -397,6 +437,7 @@ export const WIDGET_STYLES = `
     border: none;
     background: linear-gradient(135deg, var(--g-brand-500), var(--g-brand-600));
     color: #fff;
+    position: relative;
     cursor: pointer;
     padding: 9px;
     border-radius: 10px;

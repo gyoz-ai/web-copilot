@@ -2415,6 +2415,7 @@ export function GyozaiWidget() {
                 className="gyozai-send-btn"
                 onClick={handleSubmit}
                 disabled={!input.trim() && pendingImages.length === 0}
+                title="Send message"
               >
                 <svg
                   width="16"
