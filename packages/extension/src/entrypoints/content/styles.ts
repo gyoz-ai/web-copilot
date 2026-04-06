@@ -106,22 +106,23 @@ export const WIDGET_STYLES = `
 
   .gyozai-resize-handle {
     position: absolute;
-    top: 0;
-    right: 0;
-    width: 24px;
-    height: 24px;
-    cursor: nwse-resize;
+    top: 2px;
+    right: 2px;
+    width: 28px;
+    height: 28px;
+    cursor: nwse-resize !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
+    z-index: 10;
     opacity: 0.5;
     transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
     color: var(--g-text-secondary);
-    border-radius: 0 16px 0 8px;
+    border-radius: 0 14px 0 8px;
   }
 
-  .gyozai-resize-handle svg {
+  .gyozai-resize-handle * {
+    cursor: nwse-resize !important;
     pointer-events: none;
   }
 
