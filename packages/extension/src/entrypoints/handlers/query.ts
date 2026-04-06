@@ -25,9 +25,10 @@ export async function handleQuery(
   const settings = await getSettings();
 
   // ─── Free tier guard — managed mode requires a paid plan ───
+  const PAID_PLANS = new Set(["pro", "max"]);
   if (
     settings.mode === "managed" &&
-    (!settings.managedPlan || settings.managedPlan === "free")
+    !PAID_PLANS.has(settings.managedPlan ?? "")
   ) {
     const tr = getTranslations(settings.language as LocaleCode);
     sendResponse({
