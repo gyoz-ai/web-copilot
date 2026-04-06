@@ -35,6 +35,7 @@ export async function handleQuery(
     mode as "manifest" | "no-manifest",
     caps,
     settings.yoloMode,
+    settings.chatOnly,
   );
   const userPrompt = buildUserPrompt({
     query: message.query,
@@ -195,6 +196,8 @@ export async function handleQuery(
           (tc) => tc.toolName === "task_complete",
         );
         if (!calledTaskComplete) return false;
+        // Chat-only mode: actions aren't possible, so always allow completion
+        if (settings.chatOnly) return true;
         // If the AI performed actions OR is reporting failure, stop normally.
         // If it claims success without any actions, the tool itself returns
         // a warning (stopped: false) — let the model continue working.
@@ -225,6 +228,10 @@ export async function handleQuery(
           lastToolName === "task_complete"
         )
           return {};
+
+        // Chat-only mode: let the model stop after show_message since it
+        // can't take actions and just needs to explain to the user.
+        if (settings.chatOnly && lastToolName === "show_message") return {};
 
         // Otherwise (show_message narration, get_page_context, etc.),
         // force tool use so the model keeps working instead of stopping
