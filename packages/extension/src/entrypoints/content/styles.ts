@@ -344,8 +344,8 @@ export const WIDGET_STYLES = `
     margin-bottom: 6px;
   }
   .gyozai-msg-image-frame {
-    width: 80px;
-    height: 80px;
+    width: calc(50% - 3px);
+    aspect-ratio: 1;
     border-radius: 8px;
     overflow: hidden;
     background: oklch(0.15 0.01 50);
