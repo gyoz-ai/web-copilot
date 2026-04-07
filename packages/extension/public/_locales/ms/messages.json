@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Pembantu AI terapung percuma — tiada bar sisi, tiada tukar tab. Klik butang, isi borang, muat naik fail di",
+    "message": "Pembantu AI terapung — tiada bar sisi. Klik, isi borang, navigasi mana-mana laman. BYOK atau langgan.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

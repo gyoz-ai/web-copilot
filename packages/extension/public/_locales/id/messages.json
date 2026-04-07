@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Asisten AI mengambang gratis — tanpa sidebar, tanpa berpindah tab. Klik tombol, isi formulir, unggah file di",
+    "message": "Asisten AI mengambang — tanpa sidebar. Klik, isi formulir, navigasi situs mana pun. BYOK atau berlangganan.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

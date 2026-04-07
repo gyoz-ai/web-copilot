@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Δωρεάν αιωρούμενος βοηθός AI — χωρίς πλαϊνή μπάρα, χωρίς αλλαγή καρτέλας. Κάντε κλικ σε κουμπιά, συμπληρώστε",
+    "message": "Αιωρούμενος βοηθός AI — χωρίς πλαϊνή μπάρα. Κλικ, φόρμες, πλοήγηση παντού. BYOK ή συνδρομή.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

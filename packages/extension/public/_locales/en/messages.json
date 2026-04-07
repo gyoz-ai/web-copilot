@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Free floating AI assistant — no sidebar, no tab switching. Click, fill forms, navigate any site. BYOK or subscribe.",
+    "message": "Floating AI assistant — no sidebar, no tab switching. Click, fill forms, navigate any site. BYOK or subscribe.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

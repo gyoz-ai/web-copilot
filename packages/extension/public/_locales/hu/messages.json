@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Ingyenes lebegő AI asszisztens — nincs oldalsáv, nincs lapváltás. Kattintson gombokra, töltsön ki űrlapokat,",
+    "message": "Lebegő AI asszisztens — nincs oldalsáv. Kattintson, űrlapok, navigáljon bárhol. BYOK vagy előfizetés.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

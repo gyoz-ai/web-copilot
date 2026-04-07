@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "무료 플로팅 AI 어시스턴트 — 사이드바 없음, 탭 전환 없음. 버튼 클릭, 양식 작성, 어떤 웹사이트에서든 파일 업로드. BYOK 또는 구독",
+    "message": "플로팅 AI 어시스턴트 — 사이드바 없음. 클릭, 양식 작성, 모든 사이트 탐색. BYOK 또는 구독.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

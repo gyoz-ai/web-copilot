@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "मुफ्त फ्लोटिंग AI सहायक — कोई साइडबार नहीं, टैब नहीं बदलना। बटन क्लिक करें, फॉर्म भरें, किसी भी वेबसाइट पर फाइल",
+    "message": "फ्लोटिंग AI सहायक — कोई साइडबार नहीं। क्लिक, फॉर्म भरें, किसी भी साइट पर जाएं। BYOK या सदस्यता।",
     "description": "A short description of the extension"
   },
   "commandToggle": {

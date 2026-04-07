@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "مساعد ذكاء اصطناعي عائم مجاني — بدون شريط جانبي، بدون تبديل علامات تبويب. انقر على الأزرار، املأ النماذج، ارفع",
+    "message": "مساعد ذكاء اصطناعي عائم — بدون شريط جانبي. انقر، املأ النماذج، تنقل في أي موقع. مفتاحك أو اشتراك.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

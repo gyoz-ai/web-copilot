@@ -9,7 +9,7 @@
     "dev:firefox": "bun run generate:locales && wxt --browser firefox",
     "build": "bun run generate:locales && wxt build",
     "build:firefox": "bun run generate:locales && wxt build --browser firefox",
-    "build:safari": "bun run generate:locales && wxt build --browser safari && xcrun safari-web-extension-converter .output/safari-mv2 --bundle-identifier com.gyoz.ai --app-name gyoza --project-location ./safari-app --swift --force --no-open --no-prompt && bun run scripts/safari-localize.ts",
+    "build:safari": "bun run generate:locales && wxt build --browser safari && xcrun safari-web-extension-converter .output/safari-mv2 --bundle-identifier com.gyoz.ai --app-name gyoza --project-location ./safari-app --swift --force --no-open --no-prompt",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip --browser firefox",
     "zip:safari": "wxt zip --browser safari",

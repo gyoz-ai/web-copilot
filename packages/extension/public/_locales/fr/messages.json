@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Assistant IA flottant et gratuit — pas de barre latérale, pas de changement d’onglet. Cliquez sur des boutons,",
+    "message": "Assistant IA flottant — sans barre latérale. Cliquez, formulaires, naviguez partout. BYOK ou abonnement.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

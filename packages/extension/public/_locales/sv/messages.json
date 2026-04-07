@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis svävande AI-assistent — ingen sidofält, ingen flikväxling. Klicka på knappar, fyll i formulär, ladda upp",
+    "message": "Svävande AI-assistent — inget sidofält. Klicka, formulär, navigera vilken sida som helst. BYOK eller abonnemang.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

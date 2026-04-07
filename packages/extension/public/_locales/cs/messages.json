@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Bezplatný plovoucí AI asistent — žádný postranní panel, žádné přepínání karet. Klikejte na tlačítka, vyplňujte",
+    "message": "Plovoucí AI asistent — žádný panel. Klikejte, vyplňujte formuláře, procházejte weby. BYOK nebo předplatné.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Ilmainen kelluva AI-apuri — ei sivupalkkia, ei välilehden vaihtoa. Napsauta painikkeita, täytä lomakkeita,",
+    "message": "Kelluva AI-apuri — ei sivupalkkia. Napsauta, täytä lomakkeita, selaa mitä tahansa sivustoa. BYOK tai tilaus.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

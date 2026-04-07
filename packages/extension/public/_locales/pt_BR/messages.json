@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Assistente IA flutuante e grátis — sem barra lateral, sem trocar de aba. Clica botões, preenche formulários,",
+    "message": "Assistente IA flutuante — sem barra lateral. Clique, formulários, navegue qualquer site. BYOK ou assinatura.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

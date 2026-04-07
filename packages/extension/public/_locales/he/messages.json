@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "עוזר AI צף חינם — בלי סרגל צד, בלי החלפת לשוניות. לחצו על כפתורים, מלאו טפסים, העלו קבצים בכל אתר. BYOK או מנוי",
+    "message": "עוזר AI צף — בלי סרגל צד. לחצו, מלאו טפסים, נווטו בכל אתר. מפתח משלכם או מנוי.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

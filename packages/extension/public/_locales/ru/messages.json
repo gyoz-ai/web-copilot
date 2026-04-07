@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Бесплатный плавающий ИИ-ассистент — без боковой панели, без переключения вкладок. Нажимайте кнопки, заполняйте",
+    "message": "Плавающий ИИ-ассистент — без боковой панели. Клик, формы, навигация по любому сайту. BYOK или подписка.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

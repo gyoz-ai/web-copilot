@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis svævende AI-assistent — ingen sidebjælke, ingen faneskift. Klik på knapper, udfyld formularer, upload",
+    "message": "Svævende AI-assistent — ingen sidebjælke. Klik, udfyld formularer, naviger alle sider. BYOK eller abonnement.",
     "description": "A short description of the extension"
   },
   "commandToggle": {

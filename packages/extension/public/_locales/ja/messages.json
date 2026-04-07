@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "無料のフローティングAIアシスタント — サイドバーなし、タブ切り替えなし。ボタンクリック、フォーム入力、どのサイトでもファイルアップロード。BYOKまたはサブスクリプション",
+    "message": "フローティングAIアシスタント — サイドバー不要。クリック、フォーム入力、あらゆるサイトを操作。BYOKまたはサブスク。",
     "description": "A short description of the extension"
   },
   "commandToggle": {

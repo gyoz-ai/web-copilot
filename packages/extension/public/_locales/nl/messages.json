@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis zwevende AI-assistent — geen zijbalk, geen tabwisseling. Klik op knoppen, vul formulieren in, upload",
+    "message": "Zwevende AI-assistent — geen zijbalk. Klik, vul formulieren in, navigeer elke site. BYOK of abonnement.",
     "description": "A short description of the extension"
   },
   "commandToggle": {
