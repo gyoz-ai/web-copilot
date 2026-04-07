@@ -56,6 +56,7 @@ import {
   loadConversation,
   persistConversation,
   removeConversation,
+  waitForPageReady,
 } from "./helpers";
 
 // These are set by index.tsx at module scope and shared with this component.
@@ -775,8 +776,8 @@ export function GyozaiWidget() {
           },
         ]);
 
-        // Small delay to let the new page render fully
-        await new Promise((r) => setTimeout(r, 500));
+        // Wait for the page to fully load before capturing context
+        await waitForPageReady();
 
         // Capture the requested snapshots on the NEW page
         const pageCtx = capturePageContext(pendingNav.snapshotTypes);

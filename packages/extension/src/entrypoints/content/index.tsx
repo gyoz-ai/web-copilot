@@ -13,6 +13,7 @@ import {
 } from "../../lib/i18n";
 import { GyozaiWidget, setPreloadState } from "./GyozaiWidget";
 import { WIDGET_STYLES } from "./styles";
+import { waitForPageReady } from "./helpers";
 import { storageGet } from "../../lib/storage";
 import {
   capturePageContext,
@@ -175,26 +176,30 @@ const SNAPSHOT_MAP: Record<string, SnapshotType> = {
 
 browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "gyozai_tool_capture_context") {
-    try {
-      const types: SnapshotType[] = (msg.snapshotTypes || []).map(
-        (t: string) => SNAPSHOT_MAP[t] || "all",
-      );
-      // For fullPage requests, use the rich html-screen-capture-js snapshot
-      // which includes visibility filtering and form values.
-      const wantsFullPage = types.includes("all");
-      const pageCtx = capturePageContext(types);
-      const ctxText = formatPageContext(pageCtx);
-      const fullHtml = wantsFullPage ? captureCleanHtml() : "";
-      // Combine structured elements + full HTML when both available
-      const combined = [ctxText, fullHtml].filter(Boolean).join("\n\n");
-      sendResponse({ context: combined || captureCleanHtml() });
-    } catch (e) {
-      sendResponse({
-        context:
-          "Failed to capture: " + (e instanceof Error ? e.message : String(e)),
-      });
-    }
-    return false;
+    (async () => {
+      try {
+        await waitForPageReady();
+        const types: SnapshotType[] = (msg.snapshotTypes || []).map(
+          (t: string) => SNAPSHOT_MAP[t] || "all",
+        );
+        // For fullPage requests, use the rich html-screen-capture-js snapshot
+        // which includes visibility filtering and form values.
+        const wantsFullPage = types.includes("all");
+        const pageCtx = capturePageContext(types);
+        const ctxText = formatPageContext(pageCtx);
+        const fullHtml = wantsFullPage ? captureCleanHtml() : "";
+        // Combine structured elements + full HTML when both available
+        const combined = [ctxText, fullHtml].filter(Boolean).join("\n\n");
+        sendResponse({ context: combined || captureCleanHtml() });
+      } catch (e) {
+        sendResponse({
+          context:
+            "Failed to capture: " +
+            (e instanceof Error ? e.message : String(e)),
+        });
+      }
+    })();
+    return true; // keep message channel open for async sendResponse
   }
 });
 

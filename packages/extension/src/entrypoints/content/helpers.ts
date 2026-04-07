@@ -25,6 +25,27 @@ export function sanitizeError(error: string): string {
   return firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
 }
 
+// ─── Page readiness ──────────────────────────────────────────────────────────
+
+/** Wait for the page to fully load before capturing context. */
+export function waitForPageReady(timeoutMs = 10000): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.readyState === "complete") {
+      setTimeout(resolve, 150);
+      return;
+    }
+    const timer = setTimeout(() => {
+      window.removeEventListener("load", onLoad);
+      resolve();
+    }, timeoutMs);
+    const onLoad = () => {
+      clearTimeout(timer);
+      setTimeout(resolve, 150);
+    };
+    window.addEventListener("load", onLoad, { once: true });
+  });
+}
+
 // ─── Pending navigation state (per-tab, for cross-page auto-resume) ─────────
 
 export interface PendingNavState {
