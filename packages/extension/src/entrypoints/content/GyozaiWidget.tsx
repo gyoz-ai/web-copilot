@@ -2030,41 +2030,6 @@ export function GyozaiWidget() {
           );
         })()}
 
-      {/* Avatar widget */}
-      <Avatar
-        size={agentSize}
-        expression={expression}
-        isTalking={isTypewriting}
-        position={avatarPosition}
-        onDragEnd={(pos) => {
-          setAvatarPosition(pos);
-          // Persist to local storage (survives browser close)
-          browser.storage.local
-            .set({ gyozai_avatar_position: pos })
-            .catch(() => {});
-        }}
-        onClick={() => {}}
-        wrapperRef={avatarWrapperRef}
-        onDragStateChange={(dragging) => {
-          const wasDragging = isDraggingAvatar;
-          setIsDraggingAvatar(dragging);
-          // When a real drag ends (was dragging → now not), the cursor is still
-          // on the avatar — force proximity open so the panel reappears.
-          // Brief grace period prevents the proximity leave from immediately
-          // closing the panel (cursor may be outside the new avatar position).
-          if (wasDragging && !dragging) {
-            dragDropGraceRef.current = true;
-            setTimeout(() => {
-              dragDropGraceRef.current = false;
-            }, 600);
-            hoverOpenRef.current = true;
-            forceInside();
-            setExpanded(true);
-          }
-        }}
-        onPositionChange={bumpAvatarPosTick}
-      />
-
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
         className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
@@ -2650,6 +2615,36 @@ export function GyozaiWidget() {
           </div>
         </div>
       </div>
+
+      {/* Avatar widget — rendered after panel so it appears on top in fullscreen */}
+      <Avatar
+        size={agentSize}
+        expression={expression}
+        isTalking={isTypewriting}
+        position={avatarPosition}
+        onDragEnd={(pos) => {
+          setAvatarPosition(pos);
+          browser.storage.local
+            .set({ gyozai_avatar_position: pos })
+            .catch(() => {});
+        }}
+        onClick={() => {}}
+        wrapperRef={avatarWrapperRef}
+        onDragStateChange={(dragging) => {
+          const wasDragging = isDraggingAvatar;
+          setIsDraggingAvatar(dragging);
+          if (wasDragging && !dragging) {
+            dragDropGraceRef.current = true;
+            setTimeout(() => {
+              dragDropGraceRef.current = false;
+            }, 600);
+            hoverOpenRef.current = true;
+            forceInside();
+            setExpanded(true);
+          }
+        }}
+        onPositionChange={bumpAvatarPosTick}
+      />
     </>
   );
 }

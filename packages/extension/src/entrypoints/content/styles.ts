@@ -250,6 +250,7 @@ export const WIDGET_STYLES = `
   .gyozai-empty {
     text-align: center;
     padding: 24px 16px;
+    margin-top: 8px;
     font-size: 13px;
     color: #fff;
     line-height: 1.5;
