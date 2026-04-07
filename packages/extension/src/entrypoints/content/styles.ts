@@ -114,6 +114,38 @@ export const WIDGET_STYLES = `
     border-radius: 0 !important;
   }
 
+  /* ─── Fullscreen Toggle ───────────────────────────────────── */
+
+  .gyozai-fullscreen-toggle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    opacity: 0.5;
+    transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+    color: var(--g-text-secondary);
+    border: none;
+    background: none;
+    padding: 0;
+    border-radius: 16px 0 8px 0;
+  }
+
+  .gyozai-fullscreen-toggle:hover {
+    opacity: 1;
+    color: var(--g-brand-500);
+    background: oklch(0.66 0.18 72 / 0.08);
+  }
+
+  .gyozai-fullscreen-toggle svg {
+    pointer-events: none;
+  }
+
   /* ─── Resize Handle ──────────────────────────────────────── */
 
   .gyozai-resize-handle {
