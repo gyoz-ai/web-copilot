@@ -34,7 +34,7 @@ export default defineConfig({
     name: "gyoza — AI Browser Assistant",
     description:
       "Free floating AI assistant — no sidebar, no tab switching. Click buttons, fill forms, upload files on any website. BYOK or subscribe.",
-    version: "0.0.13",
+    version: "0.0.14",
     browser_specific_settings: {
       gecko: {
         id: "gyoza@gyoz.ai",
