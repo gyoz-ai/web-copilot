@@ -788,6 +788,10 @@ export function createBrowserTools(
       }),
       execute: async ({ url }: { url: string }) => {
         ctx.navigated = true;
+        // Mark as mutating so background's webNavigation.onBeforeNavigate
+        // saves pending-nav and the new page can auto-resume the task.
+        ctx.actionCount++;
+        ctx.onMutatingAction?.();
         try {
           const [tab] = await browser.tabs.query({
             active: true,
@@ -802,9 +806,6 @@ export function createBrowserTools(
               : `Navigating to ${resolved}`,
           });
 
-          // pending-nav is saved by background's webNavigation.onBeforeNavigate
-          // listener — no need to save here.
-
           await execIsolated(
             ctx.tabId,
             ((targetUrl: string) => {
@@ -812,6 +813,13 @@ export function createBrowserTools(
             }) as (...args: never[]) => void,
             [resolved],
           );
+
+          // Abort the stream immediately — the content script will be
+          // destroyed by the navigation. Any further tool calls would
+          // target a dead page. The auto-resume on the new page will
+          // continue the task via pending-nav.
+          ctx.abortStream?.();
+
           return {
             success: true as const,
             navigatedTo: resolved,
