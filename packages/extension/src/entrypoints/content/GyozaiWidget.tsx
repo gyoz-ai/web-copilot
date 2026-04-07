@@ -65,6 +65,8 @@ export let _preloadedLocale: LocaleCode | null = null;
 export let _preloadedSession: WidgetSession | null = null;
 export let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 export let _preloadedExpression: string | null = null;
+export let _preloadedChatScale: number | null = null;
+export let _preloadedChatFullscreen: boolean | null = null;
 export let _preloadReady: Promise<void> = Promise.resolve();
 
 export function setPreloadState(state: {
@@ -73,6 +75,8 @@ export function setPreloadState(state: {
   session: WidgetSession | null;
   avatarPosition?: { x: number; y: number } | null;
   expression?: string | null;
+  chatScale?: number | null;
+  chatFullscreen?: boolean | null;
   ready: Promise<void>;
 }) {
   _preloadedTabId = state.tabId;
@@ -81,6 +85,9 @@ export function setPreloadState(state: {
   if (state.avatarPosition !== undefined)
     _preloadedAvatarPosition = state.avatarPosition;
   if (state.expression !== undefined) _preloadedExpression = state.expression;
+  if (state.chatScale !== undefined) _preloadedChatScale = state.chatScale;
+  if (state.chatFullscreen !== undefined)
+    _preloadedChatFullscreen = state.chatFullscreen;
   _preloadReady = state.ready;
 }
 
@@ -241,8 +248,12 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [stickyChat, setStickyChat] = useState(false);
   const stickyChatRef = useRef(false);
-  const [chatScale, setChatScale] = useState(1);
+  const [chatScale, setChatScale] = useState(_preloadedChatScale ?? 1);
   const [isResizing, setIsResizing] = useState(false);
+  const [chatFullscreen, setChatFullscreen] = useState(
+    _preloadedChatFullscreen ?? false,
+  );
+  const chatFullscreenRef = useRef(_preloadedChatFullscreen ?? false);
   const resizeStartRef = useRef<{
     pointerX: number;
     pointerY: number;
@@ -349,10 +360,13 @@ export function GyozaiWidget() {
     return () => window.removeEventListener("gyozai:reattached", onReattach);
   }, []);
 
-  // Keep ref in sync so closures always read fresh value
+  // Keep refs in sync so closures always read fresh value
   useEffect(() => {
     stickyChatRef.current = stickyChat;
   }, [stickyChat]);
+  useEffect(() => {
+    chatFullscreenRef.current = chatFullscreen;
+  }, [chatFullscreen]);
 
   // ─── Resize constants & handlers ──────────────────────────
   const SCALE_MIN = 0.7;
@@ -449,7 +463,7 @@ export function GyozaiWidget() {
     },
     onLeave: () => {
       // Don't close if sticky mode is on
-      if (stickyChatRef.current) return;
+      if (stickyChatRef.current || chatFullscreenRef.current) return;
       // Don't close if cursor is still inside the chatbox/input panel
       // or if we just dropped the avatar (grace period)
       if (
@@ -663,6 +677,8 @@ export function GyozaiWidget() {
             setBubbleOpacity(s.bubbleOpacity);
           if (typeof s?.stickyChat === "boolean") setStickyChat(s.stickyChat);
           if (typeof s?.chatScale === "number") setChatScale(s.chatScale);
+          if (typeof s?.chatFullscreen === "boolean")
+            setChatFullscreen(s.chatFullscreen);
         })
         .catch(() => {});
     });
@@ -694,6 +710,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.chatScale === "number") {
         setChatScale(newSettings.chatScale);
+      }
+      if (typeof newSettings?.chatFullscreen === "boolean") {
+        setChatFullscreen(newSettings.chatFullscreen);
       }
     };
     browser.storage.onChanged.addListener(handler);
@@ -940,7 +959,7 @@ export function GyozaiWidget() {
       y <= r.bottom + margin;
 
     const interval = setInterval(() => {
-      if (stickyChatRef.current) return;
+      if (stickyChatRef.current || chatFullscreenRef.current) return;
       if (
         !hoverOpenRef.current ||
         !expanded ||
@@ -2048,18 +2067,21 @@ export function GyozaiWidget() {
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
-        className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""}`}
+        className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
         style={{
-          display: expanded && !isDraggingAvatar ? "flex" : "none",
-          transform: chatScale !== 1 ? `scale(${chatScale})` : undefined,
-          transformOrigin: avatarWrapperRef.current
-            ? avatarWrapperRef.current.getBoundingClientRect().top >
-              window.innerHeight / 2
-              ? "bottom center"
-              : "top center"
-            : "bottom center",
-          transition: isResizing ? "none" : "transform 0.15s ease-out",
-          ...(avatarWrapperRef.current
+          display:
+            chatFullscreen || (expanded && !isDraggingAvatar) ? "flex" : "none",
+          ...(!chatFullscreen && {
+            transform: chatScale !== 1 ? `scale(${chatScale})` : undefined,
+            transformOrigin: avatarWrapperRef.current
+              ? avatarWrapperRef.current.getBoundingClientRect().top >
+                window.innerHeight / 2
+                ? "bottom center"
+                : "top center"
+              : "bottom center",
+            transition: isResizing ? "none" : "transform 0.15s ease-out",
+          }),
+          ...(!chatFullscreen && avatarWrapperRef.current
             ? (() => {
                 const rect = avatarWrapperRef.current.getBoundingClientRect();
                 const avatarCenterX = rect.left + rect.width / 2;
@@ -2086,43 +2108,45 @@ export function GyozaiWidget() {
           forceInside();
         }}
         onMouseLeave={() => {
-          if (isResizingRef.current) return;
+          if (chatFullscreen || isResizingRef.current) return;
           insidePanelRef.current = false;
           if (hoverOpenRef.current) {
             startLeave();
           }
         }}
       >
-        {/* Resize handle — top-right corner */}
-        <div
-          className={`gyozai-resize-handle${isResizing ? " gyozai-resize-handle-active" : ""}`}
-          onPointerDown={handleResizePointerDown}
-          onDoubleClick={() => {
-            setChatScale(1);
-            browser.runtime
-              .sendMessage({ type: "gyozai_get_settings" })
-              .then((s: ExtensionSettings) => {
-                browser.storage.local
-                  .set({ gyozai_settings: { ...s, chatScale: 1 } })
-                  .catch(() => {});
-              })
-              .catch(() => {});
-          }}
-          title="Drag to resize, double-click to reset"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
+        {/* Resize handle — top-right corner (hidden in fullscreen) */}
+        {!chatFullscreen && (
+          <div
+            className={`gyozai-resize-handle${isResizing ? " gyozai-resize-handle-active" : ""}`}
+            onPointerDown={handleResizePointerDown}
+            onDoubleClick={() => {
+              setChatScale(1);
+              browser.runtime
+                .sendMessage({ type: "gyozai_get_settings" })
+                .then((s: ExtensionSettings) => {
+                  browser.storage.local
+                    .set({ gyozai_settings: { ...s, chatScale: 1 } })
+                    .catch(() => {});
+                })
+                .catch(() => {});
+            }}
+            title="Drag to resize, double-click to reset"
           >
-            <path d="M2 10L10 2" />
-            <path d="M6 10L10 6" />
-          </svg>
-        </div>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <path d="M2 10L10 2" />
+              <path d="M6 10L10 6" />
+            </svg>
+          </div>
+        )}
 
         {/* History View */}
         {viewMode === "history" && (
@@ -2501,6 +2525,66 @@ export function GyozaiWidget() {
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
+              </button>
+              <button
+                className="gyozai-icon-btn"
+                onClick={() => {
+                  const next = !chatFullscreen;
+                  setChatFullscreen(next);
+                  if (next) {
+                    setChatScale(1);
+                    setExpanded(true);
+                  }
+                  browser.runtime
+                    .sendMessage({ type: "gyozai_get_settings" })
+                    .then((s: ExtensionSettings) => {
+                      browser.storage.local
+                        .set({
+                          gyozai_settings: {
+                            ...s,
+                            chatFullscreen: next,
+                            ...(next ? { chatScale: 1 } : {}),
+                          },
+                        })
+                        .catch(() => {});
+                    })
+                    .catch(() => {});
+                }}
+                title={chatFullscreen ? "Minimize" : "Maximize"}
+              >
+                {chatFullscreen ? (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="4 14 10 14 10 20" />
+                    <polyline points="20 10 14 10 14 4" />
+                    <line x1="14" y1="10" x2="21" y2="3" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                )}
               </button>
               <button
                 className="gyozai-icon-btn"

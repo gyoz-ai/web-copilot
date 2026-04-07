@@ -47,6 +47,8 @@ export interface ExtensionSettings {
   stickyChat: boolean;
   /** Scale factor for the chat panel (0.7–1.5). */
   chatScale: number;
+  /** Whether the chat panel is in fullscreen mode. */
+  chatFullscreen: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   bubbleOpacity: 0.85,
   stickyChat: false,
   chatScale: 1,
+  chatFullscreen: false,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {

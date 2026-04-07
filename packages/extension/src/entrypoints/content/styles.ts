@@ -98,8 +98,20 @@ export const WIDGET_STYLES = `
   }
 
   @keyframes gyozai-panel-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Fullscreen Mode ────────────────────────────────────── */
+
+  .gyozai-panel-fullscreen {
+    left: 0 !important;
+    top: 0 !important;
+    bottom: auto !important;
+    width: 100vw !important;
+    max-height: 100vh !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
   }
 
   /* ─── Resize Handle ──────────────────────────────────────── */

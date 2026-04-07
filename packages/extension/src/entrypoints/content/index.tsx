@@ -28,6 +28,8 @@ let _preloadedLocale: LocaleCode | null = null;
 let _preloadedSession: WidgetSession | null = null;
 let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 let _preloadedExpression: string | null = null;
+let _preloadedChatScale: number | null = null;
+let _preloadedChatFullscreen: boolean | null = null;
 
 const _preloadReady = browser.runtime
   .sendMessage({ type: "gyozai_get_tab_id" })
@@ -54,6 +56,10 @@ const _preloadReady = browser.runtime
                 ? detectBrowserLocale()
                 : resolveLocale(s.language);
           }
+          if (typeof s?.chatScale === "number")
+            _preloadedChatScale = s.chatScale as number;
+          if (typeof s?.chatFullscreen === "boolean")
+            _preloadedChatFullscreen = s.chatFullscreen as boolean;
         })
         .catch(() => {}),
       // Load persisted avatar position from local storage (survives browser restart)
@@ -84,6 +90,8 @@ const _preloadReady = browser.runtime
       session: _preloadedSession,
       avatarPosition: avatarPos,
       expression: expr,
+      chatScale: _preloadedChatScale,
+      chatFullscreen: _preloadedChatFullscreen,
       ready: Promise.resolve(),
     });
   })
