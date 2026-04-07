@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AIブラウザアシスタント"
+  },
+  "extDescription": {
+    "message": "無料のフローティングAIアシスタント — サイドバーなし、タブ切り替えなし。ボタンクリック、フォーム入力、どのサイトでもファイルアップロード。BYOKまたはサブスクリプション"
+  },
+  "commandToggle": {
+    "message": "gyozaウィジェットの切り替え"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI-selainapuri"
+  },
+  "extDescription": {
+    "message": "Ilmainen kelluva AI-apuri — ei sivupalkkia, ei välilehden vaihtoa. Napsauta painikkeita, täytä lomakkeita, lataa tiedostoja millä tahansa verkkosivulla. BYOK tai tilaa"
+  },
+  "commandToggle": {
+    "message": "Vaihda gyoza-widget"
+  }
+}

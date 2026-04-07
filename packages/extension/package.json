@@ -8,7 +8,7 @@
     "dev:firefox": "wxt --browser firefox",
     "build": "wxt build",
     "build:firefox": "wxt build --browser firefox",
-    "build:safari": "wxt build --browser safari && xcrun safari-web-extension-converter .output/safari-mv2 --bundle-identifier com.gyoz.ai --app-name gyoza --project-location ./safari-app --swift --force --no-open --no-prompt",
+    "build:safari": "wxt build --browser safari && xcrun safari-web-extension-converter .output/safari-mv2 --bundle-identifier com.gyoz.ai --app-name gyoza --project-location ./safari-app --swift --force --no-open --no-prompt && bun run scripts/safari-localize.ts",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip --browser firefox",
     "zip:safari": "wxt zip --browser safari",

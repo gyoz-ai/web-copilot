@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Asisten AI Browser"
+  },
+  "extDescription": {
+    "message": "Asisten AI mengambang gratis — tanpa sidebar, tanpa berpindah tab. Klik tombol, isi formulir, unggah file di situs web mana pun. BYOK atau berlangganan"
+  },
+  "commandToggle": {
+    "message": "Beralih widget gyoza"
+  }
+}

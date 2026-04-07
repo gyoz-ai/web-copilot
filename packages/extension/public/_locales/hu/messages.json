@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI böngésző asszisztens"
+  },
+  "extDescription": {
+    "message": "Ingyenes lebegő AI asszisztens — nincs oldalsáv, nincs lapváltás. Kattintson gombokra, töltsön ki űrlapokat, töltsön fel fájlokat bármely weboldalon. BYOK vagy előfizetés"
+  },
+  "commandToggle": {
+    "message": "gyoza widget váltása"
+  }
+}

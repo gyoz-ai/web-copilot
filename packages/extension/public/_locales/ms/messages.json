@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Pembantu AI Pelayar"
+  },
+  "extDescription": {
+    "message": "Pembantu AI terapung percuma — tiada bar sisi, tiada tukar tab. Klik butang, isi borang, muat naik fail di mana-mana laman web. BYOK atau langgan"
+  },
+  "commandToggle": {
+    "message": "Togol widget gyoza"
+  }
+}

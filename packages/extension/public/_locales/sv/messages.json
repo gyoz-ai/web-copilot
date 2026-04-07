@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI-webbläsarassistent"
+  },
+  "extDescription": {
+    "message": "Gratis svävande AI-assistent — ingen sidofält, ingen flikväxling. Klicka på knappar, fyll i formulär, ladda upp filer på vilken webbplats som helst. BYOK eller prenumerera"
+  },
+  "commandToggle": {
+    "message": "Växla gyoza-widget"
+  }
+}

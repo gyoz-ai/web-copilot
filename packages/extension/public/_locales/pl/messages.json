@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Asystent AI przeglądarki"
+  },
+  "extDescription": {
+    "message": "Darmowy pływający asystent AI — bez paska bocznego, bez przełączania kart. Klikaj przyciski, wypełniaj formularze, przesyłaj pliki na dowolnej stronie. BYOK lub subskrybuj"
+  },
+  "commandToggle": {
+    "message": "Przełącz widget gyoza"
+  }
+}

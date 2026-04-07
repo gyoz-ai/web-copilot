@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI-browserassistent"
+  },
+  "extDescription": {
+    "message": "Gratis svævende AI-assistent — ingen sidebjælke, ingen faneskift. Klik på knapper, udfyld formularer, upload filer på enhver hjemmeside. BYOK eller abonner"
+  },
+  "commandToggle": {
+    "message": "Skift gyoza-widget"
+  }
+}

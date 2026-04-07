@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Yapay Zeka Tarayıcı Asistanı"
+  },
+  "extDescription": {
+    "message": "Ücretsiz yüzen yapay zeka asistanı — kenar çubuğu yok, sekme değiştirme yok. Düğmelere tıklayın, formları doldurun, herhangi bir web sitesine dosya yükleyin. BYOK veya abone olun"
+  },
+  "commandToggle": {
+    "message": "gyoza widgetını aç/kapat"
+  }
+}

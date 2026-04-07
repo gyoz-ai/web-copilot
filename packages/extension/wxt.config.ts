@@ -31,9 +31,9 @@ export default defineConfig({
     keepProfileChanges: true,
   },
   manifest: {
-    name: "gyoza — AI Browser Assistant",
-    description:
-      "Free floating AI assistant — no sidebar, no tab switching. Click buttons, fill forms, upload files on any website. BYOK or subscribe",
+    name: "__MSG_extName__",
+    description: "__MSG_extDescription__",
+    default_locale: "en",
     version: "0.0.15",
     browser_specific_settings: {
       gecko: {
@@ -81,7 +81,7 @@ export default defineConfig({
           default: "Ctrl+Shift+E",
           mac: "Command+Shift+E",
         },
-        description: "Toggle gyoza widget",
+        description: "__MSG_commandToggle__",
       },
     },
   },

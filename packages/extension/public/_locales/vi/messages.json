@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Trợ lý AI trình duyệt"
+  },
+  "extDescription": {
+    "message": "Trợ lý AI nổi miễn phí — không thanh bên, không chuyển tab. Nhấp nút, điền biểu mẫu, tải tệp lên bất kỳ trang web nào. BYOK hoặc đăng ký"
+  },
+  "commandToggle": {
+    "message": "Bật/tắt widget gyoza"
+  }
+}

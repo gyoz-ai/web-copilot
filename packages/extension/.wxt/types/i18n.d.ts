@@ -72,8 +72,32 @@ declare module "wxt/browser" {
       substitutions?: string | string[],
       options?: GetMessageOptions,
     ): string;
+    /**
+     * "gyoza — AI Browser Assistant"
+     */
     getMessage(
-      messageName: "@@extension_id" | "@@ui_locale" | "@@bidi_dir" | "@@bidi_reversed_dir" | "@@bidi_start_edge" | "@@bidi_end_edge",
+      messageName: "extName",
+      substitutions?: string | string[],
+      options?: GetMessageOptions,
+    ): string;
+    /**
+     * "Free floating AI assistant — no sidebar, no tab switching. Click buttons, fill forms, upload files on any website. BYOK or subscribe"
+     */
+    getMessage(
+      messageName: "extDescription",
+      substitutions?: string | string[],
+      options?: GetMessageOptions,
+    ): string;
+    /**
+     * "Toggle gyoza widget"
+     */
+    getMessage(
+      messageName: "commandToggle",
+      substitutions?: string | string[],
+      options?: GetMessageOptions,
+    ): string;
+    getMessage(
+      messageName: "@@extension_id" | "@@ui_locale" | "@@bidi_dir" | "@@bidi_reversed_dir" | "@@bidi_start_edge" | "@@bidi_end_edge" | "extName" | "extDescription" | "commandToggle",
       substitutions?: string | string[],
       options?: GetMessageOptions,
     ): string;

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI浏览器助手"
+  },
+  "extDescription": {
+    "message": "免费悬浮AI助手 — 无侧边栏，无切换标签页。点击按钮、填写表单、在任何网站上传文件。BYOK或订阅"
+  },
+  "commandToggle": {
+    "message": "切换gyoza小组件"
+  }
+}

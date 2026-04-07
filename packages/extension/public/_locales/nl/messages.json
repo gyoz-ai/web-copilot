@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI-browserassistent"
+  },
+  "extDescription": {
+    "message": "Gratis zwevende AI-assistent — geen zijbalk, geen tabwisseling. Klik op knoppen, vul formulieren in, upload bestanden op elke website. BYOK of abonneer"
+  },
+  "commandToggle": {
+    "message": "gyoza-widget in-/uitschakelen"
+  }
+}

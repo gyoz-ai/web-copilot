@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Asistent AI pentru browser"
+  },
+  "extDescription": {
+    "message": "Asistent AI flotant gratuit — fără bară laterală, fără schimbarea filelor. Faceți clic pe butoane, completați formulare, încărcați fișiere pe orice site. BYOK sau abonați-vă"
+  },
+  "commandToggle": {
+    "message": "Comută widget-ul gyoza"
+  }
+}

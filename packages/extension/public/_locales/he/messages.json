@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — עוזר AI לדפדפן"
+  },
+  "extDescription": {
+    "message": "עוזר AI צף חינם — בלי סרגל צד, בלי החלפת לשוניות. לחצו על כפתורים, מלאו טפסים, העלו קבצים בכל אתר. BYOK או מנוי"
+  },
+  "commandToggle": {
+    "message": "החלפת וידג'ט gyoza"
+  }
+}

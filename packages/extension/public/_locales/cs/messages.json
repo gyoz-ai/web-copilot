@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI asistent prohlížeče"
+  },
+  "extDescription": {
+    "message": "Bezplatný plovoucí AI asistent — žádný postranní panel, žádné přepínání karet. Klikejte na tlačítka, vyplňujte formuláře, nahrávejte soubory na jakémkoli webu. BYOK nebo předplaťte"
+  },
+  "commandToggle": {
+    "message": "Přepnout widget gyoza"
+  }
+}

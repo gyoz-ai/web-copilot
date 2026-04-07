@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — Asistente IA para Navegador"
+  },
+  "extDescription": {
+    "message": "Asistente IA flotante y gratuito — sin barra lateral, sin cambiar de pestaña. Haz clic en botones, rellena formularios, sube archivos en cualquier sitio web. BYOK o suscríbete"
+  },
+  "commandToggle": {
+    "message": "Alternar widget gyoza"
+  }
+}

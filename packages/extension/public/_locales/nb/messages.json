@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "gyoza — AI-nettleserassistent"
+  },
+  "extDescription": {
+    "message": "Gratis flytende AI-assistent — ingen sidefelt, ingen fanebytte. Klikk på knapper, fyll ut skjemaer, last opp filer på hvilken som helst nettside. BYOK eller abonner"
+  },
+  "commandToggle": {
+    "message": "Veksle gyoza-widget"
+  }
+}
