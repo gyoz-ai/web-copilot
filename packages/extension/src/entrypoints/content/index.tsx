@@ -31,6 +31,7 @@ let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 let _preloadedExpression: string | null = null;
 let _preloadedChatScale: number | null = null;
 let _preloadedChatFullscreen: boolean | null = null;
+let _preloadedHasPendingNav = false;
 
 const _preloadReady = browser.runtime
   .sendMessage({ type: "gyozai_get_tab_id" })
@@ -78,6 +79,20 @@ const _preloadReady = browser.runtime
           if (expr) _preloadedExpression = expr;
         })
         .catch(() => {}),
+      // Check if a pending-nav exists for this tab — if so, the widget
+      // should show a loading indicator immediately on mount.
+      _preloadedTabId != null
+        ? storageGet(`gyozai_pending_nav_${_preloadedTabId}`)
+            .then((result) => {
+              const state = result[`gyozai_pending_nav_${_preloadedTabId}`] as
+                | { timestamp: number }
+                | undefined;
+              if (state && Date.now() - state.timestamp < 30000) {
+                _preloadedHasPendingNav = true;
+              }
+            })
+            .catch(() => {})
+        : Promise.resolve(),
     ]);
     // Session avatar position takes precedence over local storage
     const avatarPos =
@@ -93,6 +108,7 @@ const _preloadReady = browser.runtime
       expression: expr,
       chatScale: _preloadedChatScale,
       chatFullscreen: _preloadedChatFullscreen,
+      hasPendingNav: _preloadedHasPendingNav,
       ready: Promise.resolve(),
     });
   })

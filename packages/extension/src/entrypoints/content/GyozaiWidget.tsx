@@ -70,6 +70,7 @@ export let _preloadedAvatarPosition: { x: number; y: number } | null = null;
 export let _preloadedExpression: string | null = null;
 export let _preloadedChatScale: number | null = null;
 export let _preloadedChatFullscreen: boolean | null = null;
+export let _preloadedHasPendingNav = false;
 export let _preloadReady: Promise<void> = Promise.resolve();
 
 export function setPreloadState(state: {
@@ -80,6 +81,7 @@ export function setPreloadState(state: {
   expression?: string | null;
   chatScale?: number | null;
   chatFullscreen?: boolean | null;
+  hasPendingNav?: boolean;
   ready: Promise<void>;
 }) {
   _preloadedTabId = state.tabId;
@@ -91,6 +93,8 @@ export function setPreloadState(state: {
   if (state.chatScale !== undefined) _preloadedChatScale = state.chatScale;
   if (state.chatFullscreen !== undefined)
     _preloadedChatFullscreen = state.chatFullscreen;
+  if (state.hasPendingNav !== undefined)
+    _preloadedHasPendingNav = state.hasPendingNav;
   _preloadReady = state.ready;
 }
 
@@ -226,6 +230,7 @@ export function GyozaiWidget() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [confirmation, setConfirmation] = useState<{
@@ -301,6 +306,9 @@ export function GyozaiWidget() {
   const resumingRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Debounce conversation persistence during streaming to avoid 10+ writes
+  const convSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingConvSaveRef = useRef<(() => void) | null>(null);
 
   // Pending attachments (images, PDFs, text files) waiting to be sent with the next message
   interface PendingAttachment {
@@ -518,6 +526,13 @@ export function GyozaiWidget() {
         savedScrollTopRef.current = _preloadedSession.scrollTop ?? null;
         lastKnownScrollTopRef.current = _preloadedSession.scrollTop ?? 0;
         log("Session restored from storage");
+        // If a pending-nav was detected during preload, show loading
+        // immediately so the user sees the widget is busy (not idle).
+        if (_preloadedHasPendingNav) {
+          log("Pending-nav detected during preload — showing loading");
+          setLoading(true);
+          setResuming(true);
+        }
       }
       // Mark restored so the save effect can start persisting
       sessionRestoredRef.current = true;
@@ -581,6 +596,8 @@ export function GyozaiWidget() {
       log("Flushing session on page unload/hide");
       // Background worker write — survives page destruction
       saveSessionViaBackground(latest.tabId, latest.session);
+      // Also flush any debounced conversation save
+      flushConversationSave();
     };
     window.addEventListener("beforeunload", flush);
     const onVisChange = () => {
@@ -740,6 +757,8 @@ export function GyozaiWidget() {
   async function resumeFromPendingNav(tid: number) {
     if (resumingRef.current) return;
     resumingRef.current = true;
+    setResuming(true);
+    let didResume = false;
     try {
       // Loop: after a navigated SPA result, a NEW pending-nav may be waiting.
       // The SPA check message can't re-enter (resumingRef blocks it),
@@ -748,6 +767,7 @@ export function GyozaiWidget() {
       while (true) {
         const pendingNav = await loadAndClearPendingNav(tid);
         if (!pendingNav) break;
+        didResume = true;
 
         // Remember the URL before this iteration — used to detect SPA vs full-page nav
         const urlBeforeQuery = window.location.href;
@@ -777,18 +797,15 @@ export function GyozaiWidget() {
         const displayPath =
           window.location.pathname +
           (window.location.search ? window.location.search : "");
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: getTranslations(locale).status_navigated_to.replace(
+        setMessages((prev) =>
+          appendOrReplaceToolStatus(
+            prev,
+            getTranslations(locale).status_navigated_to.replace(
               "{path}",
               displayPath,
             ),
-            type: "tool-status" as const,
-          },
-        ]);
+          ),
+        );
 
         // Wait for the page to fully load before capturing context
         await waitForPageReady();
@@ -861,6 +878,13 @@ export function GyozaiWidget() {
       }
     } finally {
       resumingRef.current = false;
+      setResuming(false);
+      flushConversationSave();
+      // If preload set loading=true but no pending-nav was found (expired
+      // or already consumed), clear the early loading flag.
+      if (!didResume) {
+        setLoading(false);
+      }
     }
   }
 
@@ -1091,10 +1115,31 @@ export function GyozaiWidget() {
     [],
   );
 
-  // Auto-save whenever messages or clarify change
+  // Flush any pending debounced conversation save immediately.
+  const flushConversationSave = useCallback(() => {
+    if (convSaveTimerRef.current) {
+      clearTimeout(convSaveTimerRef.current);
+      convSaveTimerRef.current = null;
+    }
+    pendingConvSaveRef.current?.();
+    pendingConvSaveRef.current = null;
+  }, []);
+
+  // Auto-save whenever messages or clarify change (debounced 500ms).
+  // During multi-tool streaming, messages change 10+ times in rapid
+  // succession — debouncing collapses those into 1-2 storage writes.
   useEffect(() => {
     if (!initialized) return;
-    saveCurrentConversation(messages, clarify);
+    const doSave = () => saveCurrentConversation(messages, clarify);
+    pendingConvSaveRef.current = doSave;
+    if (convSaveTimerRef.current) clearTimeout(convSaveTimerRef.current);
+    convSaveTimerRef.current = setTimeout(() => {
+      doSave();
+      pendingConvSaveRef.current = null;
+    }, 500);
+    return () => {
+      if (convSaveTimerRef.current) clearTimeout(convSaveTimerRef.current);
+    };
   }, [messages, clarify, initialized, saveCurrentConversation]);
 
   // Start a fresh chat
@@ -1381,20 +1426,31 @@ export function GyozaiWidget() {
     return lines;
   }
 
+  // Replace the last tool-status or append a new one. Keeps only the latest
+  // intermediate status visible, reducing re-renders and message list growth.
+  function appendOrReplaceToolStatus(
+    prev: Message[],
+    content: string,
+  ): Message[] {
+    const newStatus: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content,
+      type: "tool-status" as const,
+    };
+    const lastMsg = prev[prev.length - 1];
+    if (lastMsg?.type === "tool-status") {
+      return [...prev.slice(0, -1), newStatus];
+    }
+    return [...prev, newStatus];
+  }
+
   // Add a tool-status message (visually distinct from normal chat)
   const addToolStatusMessage = useCallback((content: string) => {
     // Skip internal tool-status messages that shouldn't be shown to the user
     if (content.includes("[set_expression]") || content === "[set_expression]")
       return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content,
-        type: "tool-status" as const,
-      },
-    ]);
+    setMessages((prev) => appendOrReplaceToolStatus(prev, content));
   }, []);
 
   // ─── Listen for streaming events from background worker ───
@@ -1748,7 +1804,7 @@ export function GyozaiWidget() {
   const handleSubmit = async () => {
     const trimmed = input.trim();
     const hasImages = pendingImages.length > 0;
-    if ((!trimmed && !hasImages) || loading) return;
+    if ((!trimmed && !hasImages) || loading || resumingRef.current) return;
     setInput("");
     setError(null);
     setLoading(true);
@@ -1852,12 +1908,13 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      flushConversationSave();
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
   const handleClarifyOption = async (option: string) => {
-    if (loading) return;
+    if (loading || resumingRef.current) return;
     setClarify(null);
     setError(null);
     setLoading(true);
@@ -1876,6 +1933,7 @@ export function GyozaiWidget() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      flushConversationSave();
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
@@ -2497,7 +2555,7 @@ export function GyozaiWidget() {
             onPaste={handlePaste}
             placeholder={tr.widget_placeholder}
             className="gyozai-input"
-            disabled={loading}
+            disabled={loading || resuming}
             rows={1}
           />
           <input
