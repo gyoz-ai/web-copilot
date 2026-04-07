@@ -43,6 +43,8 @@ export interface ExtensionSettings {
   typingSound: boolean;
   /** Opacity of chat speech bubbles (0.0–1.0). */
   bubbleOpacity: number;
+  /** Chatbox background opacity (0.0 = frosted glass, 1.0 = solid). */
+  panelOpacity: number;
   /** Keep chatbox open regardless of cursor proximity. */
   stickyChat: boolean;
   /** Scale factor for the chat panel (0.7–1.5). */
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   typingAnimation: true,
   typingSound: true,
   bubbleOpacity: 0.85,
+  panelOpacity: 0.65,
   stickyChat: false,
   chatScale: 1,
   chatFullscreen: false,

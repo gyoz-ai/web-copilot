@@ -249,6 +249,7 @@ export function GyozaiWidget() {
   const [typingAnimation, setTypingAnimation] = useState(true);
   const [typingSound, setTypingSound] = useState(true);
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
+  const [panelOpacity, setPanelOpacity] = useState(0.65);
   const [stickyChat, setStickyChat] = useState(false);
   const stickyChatRef = useRef(false);
   const [chatScale, setChatScale] = useState(_preloadedChatScale ?? 1);
@@ -684,6 +685,8 @@ export function GyozaiWidget() {
             setTypingSound(s.typingSound);
           if (typeof s?.bubbleOpacity === "number")
             setBubbleOpacity(s.bubbleOpacity);
+          if (typeof s?.panelOpacity === "number")
+            setPanelOpacity(s.panelOpacity);
           if (typeof s?.stickyChat === "boolean") setStickyChat(s.stickyChat);
           if (typeof s?.chatScale === "number") setChatScale(s.chatScale);
           if (typeof s?.chatFullscreen === "boolean")
@@ -713,6 +716,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.bubbleOpacity === "number") {
         setBubbleOpacity(newSettings.bubbleOpacity);
+      }
+      if (typeof newSettings?.panelOpacity === "number") {
+        setPanelOpacity(newSettings.panelOpacity);
       }
       if (typeof newSettings?.stickyChat === "boolean") {
         setStickyChat(newSettings.stickyChat);
@@ -2066,6 +2072,9 @@ export function GyozaiWidget() {
         style={{
           display:
             chatFullscreen || (expanded && !isDraggingAvatar) ? "flex" : "none",
+          background: `oklch(0.13 0.015 50 / ${panelOpacity})`,
+          backdropFilter: `blur(${Math.round((1 - panelOpacity) * 24 + 2)}px)`,
+          WebkitBackdropFilter: `blur(${Math.round((1 - panelOpacity) * 24 + 2)}px)`,
           ...(!chatFullscreen && {
             transform: chatScale !== 1 ? `scale(${chatScale})` : undefined,
             transformOrigin: avatarWrapperRef.current

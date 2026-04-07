@@ -23,6 +23,7 @@ describe("storage", () => {
       expect(DEFAULT_SETTINGS.typingAnimation).toBe(true);
       expect(DEFAULT_SETTINGS.typingSound).toBe(true);
       expect(DEFAULT_SETTINGS.bubbleOpacity).toBe(0.85);
+      expect(DEFAULT_SETTINGS.panelOpacity).toBe(0.65);
     });
 
     it("stickyChat can be toggled independently", () => {
