@@ -1366,6 +1366,9 @@ export function GyozaiWidget() {
 
   // Add a tool-status message (visually distinct from normal chat)
   const addToolStatusMessage = useCallback((content: string) => {
+    // Skip internal tool-status messages that shouldn't be shown to the user
+    if (content.includes("[set_expression]") || content === "[set_expression]")
+      return;
     setMessages((prev) => [
       ...prev,
       {
@@ -2254,54 +2257,63 @@ export function GyozaiWidget() {
                   })()}
                 </div>
               )}
-              {messages.map((msg, idx) => {
-                const isToolStatus = msg.type === "tool-status";
-                const isLatestAssistant =
-                  msg.role === "assistant" &&
-                  !isToolStatus &&
-                  idx === messages.length - 1;
-                const msgClass = isToolStatus
-                  ? "gyozai-msg gyozai-msg-status"
-                  : `gyozai-msg gyozai-msg-${msg.role}`;
-                return (
-                  <div
-                    key={msg.id}
-                    className={msgClass}
-                    style={{ opacity: isToolStatus ? 1 : bubbleOpacity }}
-                  >
-                    {isToolStatus ? (
-                      msg.content
-                    ) : msg.role === "assistant" ? (
-                      typingAnimation &&
-                      isLatestAssistant &&
-                      !animatedMsgIdsRef.current.has(msg.id) ? (
-                        <TypewriterText
-                          text={msg.content}
-                          speed={5}
-                          enabled={true}
-                          soundEnabled={typingAnimation && typingSound}
-                          onTypingChange={(typing) => {
-                            setIsTypewriting(typing);
-                            if (!typing) animatedMsgIdsRef.current.add(msg.id);
-                          }}
-                        />
-                      ) : (
-                        <FormatMessage text={msg.content} />
-                      )
-                    ) : (
-                      <>
-                        {msg.imageIds && msg.imageIds.length > 0 && (
-                          <MessageImages
-                            imageIds={msg.imageIds}
-                            cache={imageCache}
+              {messages
+                .filter(
+                  (m) =>
+                    !(
+                      m.type === "tool-status" &&
+                      m.content.includes("set_expression")
+                    ),
+                )
+                .map((msg, idx) => {
+                  const isToolStatus = msg.type === "tool-status";
+                  const isLatestAssistant =
+                    msg.role === "assistant" &&
+                    !isToolStatus &&
+                    idx === messages.length - 1;
+                  const msgClass = isToolStatus
+                    ? "gyozai-msg gyozai-msg-status"
+                    : `gyozai-msg gyozai-msg-${msg.role}`;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={msgClass}
+                      style={{ opacity: isToolStatus ? 1 : bubbleOpacity }}
+                    >
+                      {isToolStatus ? (
+                        msg.content
+                      ) : msg.role === "assistant" ? (
+                        typingAnimation &&
+                        isLatestAssistant &&
+                        !animatedMsgIdsRef.current.has(msg.id) ? (
+                          <TypewriterText
+                            text={msg.content}
+                            speed={5}
+                            enabled={true}
+                            soundEnabled={typingAnimation && typingSound}
+                            onTypingChange={(typing) => {
+                              setIsTypewriting(typing);
+                              if (!typing)
+                                animatedMsgIdsRef.current.add(msg.id);
+                            }}
                           />
-                        )}
-                        {msg.content}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                        ) : (
+                          <FormatMessage text={msg.content} />
+                        )
+                      ) : (
+                        <>
+                          {msg.imageIds && msg.imageIds.length > 0 && (
+                            <MessageImages
+                              imageIds={msg.imageIds}
+                              cache={imageCache}
+                            />
+                          )}
+                          {msg.content}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               {loading && (
                 <div className="gyozai-msg gyozai-msg-assistant">
                   <div className="gyozai-typing">
