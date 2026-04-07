@@ -253,13 +253,21 @@ describe("hideWidgetHost / showWidgetHost", () => {
 
   test("hides and restores widget host", () => {
     const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    expect(host.style.display).toBe("");
+    expect(host.style.visibility).toBe("");
 
     const prev = hideWidgetHost();
-    expect(host.style.display).toBe("none");
+    expect(host.style.visibility).toBe("hidden");
+    // Verify override style injected into shadow DOM
+    expect(
+      host.shadowRoot?.getElementById("gyozai-screenshot-hide"),
+    ).not.toBeNull();
 
     showWidgetHost(prev);
-    expect(host.style.display).toBe("");
+    expect(host.style.visibility).toBe("");
+    // Override style should be removed
+    expect(
+      host.shadowRoot?.getElementById("gyozai-screenshot-hide"),
+    ).toBeNull();
   });
 
   test("returns empty string and no-ops when host does not exist", () => {
@@ -275,15 +283,15 @@ describe("hideWidgetHost / showWidgetHost", () => {
     expect(host.isConnected).toBe(true);
   });
 
-  test("preserves existing display value through hide/show cycle", () => {
+  test("preserves existing visibility value through hide/show cycle", () => {
     const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    host.style.display = "block";
+    host.style.visibility = "visible";
 
     const prev = hideWidgetHost();
-    expect(prev).toBe("block");
-    expect(host.style.display).toBe("none");
+    expect(prev).toBe("visible");
+    expect(host.style.visibility).toBe("hidden");
 
     showWidgetHost(prev);
-    expect(host.style.display).toBe("block");
+    expect(host.style.visibility).toBe("visible");
   });
 });

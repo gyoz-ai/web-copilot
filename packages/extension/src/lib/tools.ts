@@ -258,7 +258,16 @@ async function hideWidgetForScreenshot(
       tabId,
       ((hostId: string) => {
         const host = document.getElementById(hostId);
-        if (host) host.style.display = "none";
+        if (!host) return;
+        host.style.visibility = "hidden";
+        const shadow = host.shadowRoot;
+        if (shadow && !shadow.getElementById("gyozai-screenshot-hide")) {
+          const s = document.createElement("style");
+          s.id = "gyozai-screenshot-hide";
+          s.textContent =
+            "*, *::before, *::after { visibility: hidden !important; opacity: 0 !important; }";
+          shadow.appendChild(s);
+        }
       }) as (...args: never[]) => void,
       [WIDGET_HOST_ID],
     );
@@ -273,7 +282,9 @@ async function hideWidgetForScreenshot(
         tabId,
         ((hostId: string) => {
           const host = document.getElementById(hostId);
-          if (host) host.style.display = "";
+          if (!host) return;
+          host.style.visibility = "";
+          host.shadowRoot?.getElementById("gyozai-screenshot-hide")?.remove();
         }) as (...args: never[]) => void,
         [WIDGET_HOST_ID],
       );

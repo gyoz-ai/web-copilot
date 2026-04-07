@@ -163,21 +163,34 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
   };
 }
 
+const SCREENSHOT_HIDE_ID = "gyozai-screenshot-hide";
+
 /** Hide the widget host element (for clean screenshots).
- *  Uses display:none (not visibility:hidden) because child elements
- *  can override visibility:visible and remain painted.
- *  Returns the previous display value for restoration. */
+ *  Sets visibility:hidden on host AND injects an override stylesheet
+ *  inside the shadow root to force-hide all shadow DOM content.
+ *  Returns the previous visibility value for restoration. */
 export function hideWidgetHost(): string {
   const host = document.getElementById(HOST_ID);
   if (!host) return "";
-  const prev = host.style.display;
-  host.style.display = "none";
+  const prev = host.style.visibility;
+  host.style.visibility = "hidden";
+  // Belt-and-suspenders: inject override into shadow DOM so position:fixed
+  // children cannot escape the host's visibility:hidden in some browsers
+  const shadow = host.shadowRoot;
+  if (shadow && !shadow.getElementById(SCREENSHOT_HIDE_ID)) {
+    const s = document.createElement("style");
+    s.id = SCREENSHOT_HIDE_ID;
+    s.textContent =
+      "*, *::before, *::after { visibility: hidden !important; opacity: 0 !important; }";
+    shadow.appendChild(s);
+  }
   return prev;
 }
 
-/** Restore the widget host element display. */
+/** Restore the widget host element visibility. */
 export function showWidgetHost(prev = ""): void {
   const host = document.getElementById(HOST_ID);
   if (!host) return;
-  host.style.display = prev;
+  host.style.visibility = prev;
+  host.shadowRoot?.getElementById(SCREENSHOT_HIDE_ID)?.remove();
 }
