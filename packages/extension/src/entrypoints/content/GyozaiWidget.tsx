@@ -291,6 +291,8 @@ export function GyozaiWidget() {
   const lastUserQueryRef = useRef<string>("");
   // Streaming: tracks the current query's ID to correlate streaming events
   const currentQueryIdRef = useRef<string | null>(null);
+  // Count of messages rendered via streaming (to avoid duplicates in processAgentResult)
+  const streamedMsgCountRef = useRef(0);
   const latestLlmHistoryRef = useRef<Array<{ role: string; content: string }>>(
     [],
   );
@@ -1157,6 +1159,7 @@ export function GyozaiWidget() {
     // Generate a queryId for streaming event correlation
     const queryId = crypto.randomUUID();
     currentQueryIdRef.current = queryId;
+    streamedMsgCountRef.current = 0;
 
     const payload: Record<string, unknown> = {
       type: "gyozai_query",
@@ -1415,6 +1418,7 @@ export function GyozaiWidget() {
       switch (evt.kind) {
         case "message":
           addAssistantMessage(evt.content);
+          streamedMsgCountRef.current++;
           break;
         case "tool-status":
           addToolStatusMessage(evt.content);
@@ -1476,10 +1480,15 @@ export function GyozaiWidget() {
 
     // ─── BYOK tool-calling response ──────────────────────────
 
-    // Streamed responses: all UI updates already happened via streaming events.
-    // Continuation is handled by prepareStep (forces tool calls) and the
-    // pending-nav loop — no client-side follow-up hacks needed.
+    // Streamed responses: most UI updates already happened via streaming events.
+    // Render any messages that arrived in the final response but weren't streamed
+    // (e.g. task_complete summary lost to race condition with queryId clearing).
     if (result.streamed) {
+      const allMsgs = result.messages?.filter((m) => m.trim()) || [];
+      const unstreamed = allMsgs.slice(streamedMsgCountRef.current);
+      for (const msg of unstreamed) {
+        addAssistantMessage(msg);
+      }
       return;
     }
 
