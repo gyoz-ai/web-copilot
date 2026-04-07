@@ -189,7 +189,7 @@ jobs:
           FIREFOX_EXTENSION_GUID: ${{ secrets.FIREFOX_EXTENSION_GUID }}
 
   # ═══════════════════════════════════════════════════════════════════
-  # Safari — macOS + iOS/iPadOS (App Store Connect)
+  # Safari — macOS only (App Store Connect)
   # ═══════════════════════════════════════════════════════════════════
   release-safari:
     name: Build & Publish Safari Extension
@@ -235,7 +235,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: cd packages/extension && bunx wxt build --browser safari
 
-      # ─── Convert to Xcode project (universal: macOS + iOS) ──────
+      # ─── Convert to Xcode project (macOS only) ───────────────────
       - name: Convert to Xcode project
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -323,22 +323,6 @@ jobs:
             -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }}
 
-      # ─── Archive iOS app (iPhone + iPad) ───────────────────────
-      - name: Archive iOS app
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          xcodebuild archive \
-            -project "$XCODEPROJ" \
-            -scheme "gyoza (iOS)" \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            -archivePath $RUNNER_TEMP/gyoza-ios.xcarchive \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }}
-
       # ─── Upload macOS to App Store Connect ─────────────────────
       - name: Upload macOS to App Store Connect
         if: steps.check.outputs.skip != 'true'
@@ -351,19 +335,6 @@ jobs:
             -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }} \
             || echo "⚠ macOS upload submitted (check App Store Connect)"
-
-      # ─── Upload iOS to App Store Connect ───────────────────────
-      - name: Upload iOS to App Store Connect
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/gyoza-ios.xcarchive \
-            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/export-ios \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }} \
-            || echo "⚠ iOS upload submitted (check App Store Connect)"
 
       # ─── Cleanup ───────────────────────────────────────────────
       - name: Clean up keychain

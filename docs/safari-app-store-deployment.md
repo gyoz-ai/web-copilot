@@ -58,7 +58,7 @@ You need this so CI can upload builds without your password.
 1. Open https://appstoreconnect.apple.com/apps
 2. Click **+** → **New App**
 3. Fill in:
-   - Platforms: check **iOS** AND **macOS**
+   - Platforms: check **macOS** only
    - Name: `gyoza`
    - Primary Language: **English (U.S.)**
    - Bundle ID: select **com.gyoz.ai**
@@ -76,10 +76,8 @@ This is required before you can submit your first build for review.
 2. Left sidebar → **Pricing and Availability**
    - Price: Free (or configure subscriptions)
    - Availability: All countries (or select specific ones)
-3. Left sidebar → **1.0 Prepare for Submission** (under iOS or macOS)
-   - **Screenshots** — upload for each required device:
-     - iPhone 6.7" display (1290 x 2796 px)
-     - iPad 12.9" 3rd gen (2048 x 2732 px) — if supporting iPad
+3. Left sidebar → **1.0 Prepare for Submission** (under macOS)
+   - **Screenshots** — upload for Mac:
      - Mac (1280 x 800 px minimum)
    - **Description** — paste from `docs/store-localization.md`
    - **Keywords** — `AI,browser,assistant,chatgpt,claude,gemini,automation,web,copilot`
@@ -125,15 +123,7 @@ open safari-app/gyoza/gyoza.xcodeproj
 9. Review summary → **Upload**
 10. Wait for "Upload Successful" message
 
-### B4. Archive and upload the iOS app
-
-1. In Xcode top bar, select scheme: **gyoza (iOS)**
-2. Select destination: **Any iOS Device (arm64)**
-3. Menu → **Product** → **Archive** (wait for it to build)
-4. Organizer opens → **Distribute App**
-5. Same steps as macOS: **App Store Connect** → **Upload** → auto signing → **Upload**
-
-### B5. Submit for review
+### B4. Submit for review
 
 1. Open https://appstoreconnect.apple.com/apps → select **gyoza**
 2. Wait ~15 minutes for Apple to finish processing your builds
@@ -169,14 +159,14 @@ echo "Copied! Paste as APPLE_API_KEY_BASE64"
 1. Open https://github.com/gyoz-ai/web-copilot/settings/secrets/actions
 2. Click **New repository secret** for each:
 
-| Secret name | Value |
-|-------------|-------|
-| `APPLE_CERTIFICATE_BASE64` | The base64 of your .p12 file (from step C1) |
+| Secret name                  | Value                                        |
+| ---------------------------- | -------------------------------------------- |
+| `APPLE_CERTIFICATE_BASE64`   | The base64 of your .p12 file (from step C1)  |
 | `APPLE_CERTIFICATE_PASSWORD` | The password you set when exporting the .p12 |
-| `APPLE_API_KEY_BASE64` | The base64 of your .p8 file (from step C1) |
-| `APPLE_API_KEY_ID` | The Key ID from step A2 (e.g. `ABC123DEFG`) |
-| `APPLE_API_ISSUER_ID` | The Issuer ID from step A2 |
-| `APPLE_TEAM_ID` | `QF7B5DW2R7` |
+| `APPLE_API_KEY_BASE64`       | The base64 of your .p8 file (from step C1)   |
+| `APPLE_API_KEY_ID`           | The Key ID from step A2 (e.g. `ABC123DEFG`)  |
+| `APPLE_API_ISSUER_ID`        | The Issuer ID from step A2                   |
+| `APPLE_TEAM_ID`              | `QF7B5DW2R7`                                 |
 
 ### C3. Add the bundle ID variable
 
@@ -196,11 +186,12 @@ gh workflow run release.yml -f bump=patch
 ```
 
 The workflow will:
+
 1. Bump version in `wxt.config.ts` and `package.json`
 2. Build + publish Chrome and Firefox extensions
 3. Build Safari extension on a macOS runner
 4. Sign with your certificate
-5. Upload macOS + iOS builds to App Store Connect
+5. Upload macOS build to App Store Connect
 6. You still need to manually select the build and submit for review in App Store Connect
 
 ---
