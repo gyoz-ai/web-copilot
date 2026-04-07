@@ -164,18 +164,20 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
 }
 
 /** Hide the widget host element (for clean screenshots).
- *  Returns the previous visibility value for restoration. */
+ *  Uses display:none (not visibility:hidden) because child elements
+ *  can override visibility:visible and remain painted.
+ *  Returns the previous display value for restoration. */
 export function hideWidgetHost(): string {
   const host = document.getElementById(HOST_ID);
   if (!host) return "";
-  const prev = host.style.visibility;
-  host.style.visibility = "hidden";
+  const prev = host.style.display;
+  host.style.display = "none";
   return prev;
 }
 
-/** Restore the widget host element visibility. */
+/** Restore the widget host element display. */
 export function showWidgetHost(prev = ""): void {
   const host = document.getElementById(HOST_ID);
   if (!host) return;
-  host.style.visibility = prev;
+  host.style.display = prev;
 }

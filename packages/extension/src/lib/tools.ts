@@ -258,7 +258,7 @@ async function hideWidgetForScreenshot(
       tabId,
       ((hostId: string) => {
         const host = document.getElementById(hostId);
-        if (host) host.style.visibility = "hidden";
+        if (host) host.style.display = "none";
       }) as (...args: never[]) => void,
       [WIDGET_HOST_ID],
     );
@@ -273,7 +273,7 @@ async function hideWidgetForScreenshot(
         tabId,
         ((hostId: string) => {
           const host = document.getElementById(hostId);
-          if (host) host.style.visibility = "";
+          if (host) host.style.display = "";
         }) as (...args: never[]) => void,
         [WIDGET_HOST_ID],
       );

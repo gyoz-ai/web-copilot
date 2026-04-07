@@ -253,13 +253,13 @@ describe("hideWidgetHost / showWidgetHost", () => {
 
   test("hides and restores widget host", () => {
     const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    expect(host.style.visibility).toBe("");
+    expect(host.style.display).toBe("");
 
     const prev = hideWidgetHost();
-    expect(host.style.visibility).toBe("hidden");
+    expect(host.style.display).toBe("none");
 
     showWidgetHost(prev);
-    expect(host.style.visibility).toBe("");
+    expect(host.style.display).toBe("");
   });
 
   test("returns empty string and no-ops when host does not exist", () => {
@@ -275,15 +275,15 @@ describe("hideWidgetHost / showWidgetHost", () => {
     expect(host.isConnected).toBe(true);
   });
 
-  test("preserves existing visibility value through hide/show cycle", () => {
+  test("preserves existing display value through hide/show cycle", () => {
     const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    host.style.visibility = "visible";
+    host.style.display = "block";
 
     const prev = hideWidgetHost();
-    expect(prev).toBe("visible");
-    expect(host.style.visibility).toBe("hidden");
+    expect(prev).toBe("block");
+    expect(host.style.display).toBe("none");
 
     showWidgetHost(prev);
-    expect(host.style.visibility).toBe("visible");
+    expect(host.style.display).toBe("block");
   });
 });
