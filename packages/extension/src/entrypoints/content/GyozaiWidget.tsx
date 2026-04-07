@@ -2134,12 +2134,12 @@ export function GyozaiWidget() {
             title="Drag to resize, double-click to reset"
           >
             <svg
-              width="12"
-              height="12"
+              width="16"
+              height="16"
               viewBox="0 0 12 12"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
+              strokeWidth="2"
               strokeLinecap="round"
             >
               <path d="M2 10L10 2" />
@@ -2177,12 +2177,12 @@ export function GyozaiWidget() {
         >
           {chatFullscreen ? (
             <svg
-              width="12"
-              height="12"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -2193,12 +2193,12 @@ export function GyozaiWidget() {
             </svg>
           ) : (
             <svg
-              width="12"
-              height="12"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             >

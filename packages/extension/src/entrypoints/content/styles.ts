@@ -120,8 +120,8 @@ export const WIDGET_STYLES = `
     position: absolute;
     top: 0;
     left: 0;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -152,8 +152,8 @@ export const WIDGET_STYLES = `
     position: absolute;
     top: 0;
     right: 0;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     cursor: nwse-resize;
     display: flex;
     align-items: center;
