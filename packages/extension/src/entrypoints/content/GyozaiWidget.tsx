@@ -236,6 +236,7 @@ export function GyozaiWidget() {
   const activePortRef = useRef<ReturnType<
     typeof browser.runtime.connect
   > | null>(null);
+  const stoppedByUserRef = useRef(false);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   // Use preloaded locale if available, else detect from browser
@@ -1249,6 +1250,10 @@ export function GyozaiWidget() {
       });
       port.onDisconnect.addListener(() => {
         activePortRef.current = null;
+        if (stoppedByUserRef.current) {
+          stoppedByUserRef.current = false;
+          return;
+        }
         const err = browser.runtime.lastError;
         console.warn(
           "[gyoza:query] Port disconnected unexpectedly:",
@@ -1882,6 +1887,7 @@ export function GyozaiWidget() {
 
   function handleStop() {
     if (activePortRef.current) {
+      stoppedByUserRef.current = true;
       activePortRef.current.disconnect();
       activePortRef.current = null;
     }
