@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — مساعد ذكاء اصطناعي للمتصفح"
+    "message": "gyoza — مساعد ذكاء اصطناعي للمتصفح",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "مساعد ذكاء اصطناعي عائم مجاني — بدون شريط جانبي، بدون تبديل علامات تبويب. انقر على الأزرار، املأ النماذج، ارفع الملفات على أي موقع. BYOK أو اشتراك"
+    "message": "مساعد ذكاء اصطناعي عائم مجاني — بدون شريط جانبي، بدون تبديل علامات تبويب. انقر على الأزرار، املأ النماذج، ارفع",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "تبديل أداة gyoza"
+    "message": "تبديل أداة gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

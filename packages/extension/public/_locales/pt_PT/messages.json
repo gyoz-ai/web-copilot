@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — Assistente IA para Navegador"
+    "message": "gyoza — Assistente IA para Navegador",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Assistente IA flutuante e gratuito — sem barra lateral, sem mudar de separador. Clica botões, preenche formulários, envia ficheiros em qualquer site. BYOK ou subscreva"
+    "message": "Assistente IA flutuante e gratuito — sem barra lateral, sem mudar de separador. Clica botões, preenche",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Alternar widget gyoza"
+    "message": "Alternar widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

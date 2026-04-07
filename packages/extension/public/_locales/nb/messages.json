@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AI-nettleserassistent"
+    "message": "gyoza — AI-nettleserassistent",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis flytende AI-assistent — ingen sidefelt, ingen fanebytte. Klikk på knapper, fyll ut skjemaer, last opp filer på hvilken som helst nettside. BYOK eller abonner"
+    "message": "Gratis flytende AI-assistent — ingen sidefelt, ingen fanebytte. Klikk på knapper, fyll ut skjemaer, last opp",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Veksle gyoza-widget"
+    "message": "Veksle gyoza-widget",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AIブラウザアシスタント"
+    "message": "gyoza — AIブラウザアシスタント",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "無料のフローティングAIアシスタント — サイドバーなし、タブ切り替えなし。ボタンクリック、フォーム入力、どのサイトでもファイルアップロード。BYOKまたはサブスクリプション"
+    "message": "無料のフローティングAIアシスタント — サイドバーなし、タブ切り替えなし。ボタンクリック、フォーム入力、どのサイトでもファイルアップロード。BYOKまたはサブスクリプション",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "gyozaウィジェットの切り替え"
+    "message": "gyozaウィジェットの切り替え",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

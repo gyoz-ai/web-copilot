@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AI-browserassistent"
+    "message": "gyoza — AI-browserassistent",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis svævende AI-assistent — ingen sidebjælke, ingen faneskift. Klik på knapper, udfyld formularer, upload filer på enhver hjemmeside. BYOK eller abonner"
+    "message": "Gratis svævende AI-assistent — ingen sidebjælke, ingen faneskift. Klik på knapper, udfyld formularer, upload",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Skift gyoza-widget"
+    "message": "Skift gyoza-widget",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

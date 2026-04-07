@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AI asistent prohlížeče"
+    "message": "gyoza — AI asistent prohlížeče",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Bezplatný plovoucí AI asistent — žádný postranní panel, žádné přepínání karet. Klikejte na tlačítka, vyplňujte formuláře, nahrávejte soubory na jakémkoli webu. BYOK nebo předplaťte"
+    "message": "Bezplatný plovoucí AI asistent — žádný postranní panel, žádné přepínání karet. Klikejte na tlačítka, vyplňujte",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Přepnout widget gyoza"
+    "message": "Přepnout widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

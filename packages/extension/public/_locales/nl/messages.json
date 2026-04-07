@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AI-browserassistent"
+    "message": "gyoza — AI-browserassistent",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis zwevende AI-assistent — geen zijbalk, geen tabwisseling. Klik op knoppen, vul formulieren in, upload bestanden op elke website. BYOK of abonneer"
+    "message": "Gratis zwevende AI-assistent — geen zijbalk, geen tabwisseling. Klik op knoppen, vul formulieren in, upload",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "gyoza-widget in-/uitschakelen"
+    "message": "gyoza-widget in-/uitschakelen",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

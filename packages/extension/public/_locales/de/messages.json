@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — KI-Browser-Assistent"
+    "message": "gyoza — KI-Browser-Assistent",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Kostenloser schwebender KI-Assistent — keine Seitenleiste, kein Tab-Wechsel. Buttons klicken, Formulare ausfüllen, Dateien auf jeder Website hochladen. BYOK oder abonnieren"
+    "message": "Kostenloser schwebender KI-Assistent — keine Seitenleiste, kein Tab-Wechsel. Buttons klicken, Formulare",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "gyoza-Widget umschalten"
+    "message": "gyoza-Widget umschalten",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

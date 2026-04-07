@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — AI-webbläsarassistent"
+    "message": "gyoza — AI-webbläsarassistent",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Gratis svävande AI-assistent — ingen sidofält, ingen flikväxling. Klicka på knappar, fyll i formulär, ladda upp filer på vilken webbplats som helst. BYOK eller prenumerera"
+    "message": "Gratis svävande AI-assistent — ingen sidofält, ingen flikväxling. Klicka på knappar, fyll i formulär, ladda upp",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Växla gyoza-widget"
+    "message": "Växla gyoza-widget",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }

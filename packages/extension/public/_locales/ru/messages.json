@@ -1,11 +1,14 @@
 {
   "extName": {
-    "message": "gyoza — ИИ-ассистент браузера"
+    "message": "gyoza — ИИ-ассистент браузера",
+    "description": "The name of the extension"
   },
   "extDescription": {
-    "message": "Бесплатный плавающий ИИ-ассистент — без боковой панели, без переключения вкладок. Нажимайте кнопки, заполняйте формы, загружайте файлы на любом сайте. BYOK или подписка"
+    "message": "Бесплатный плавающий ИИ-ассистент — без боковой панели, без переключения вкладок. Нажимайте кнопки, заполняйте",
+    "description": "A short description of the extension"
   },
   "commandToggle": {
-    "message": "Переключить виджет gyoza"
+    "message": "Переключить виджет gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
   }
 }
