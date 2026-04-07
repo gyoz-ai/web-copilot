@@ -19,6 +19,7 @@ import {
   capturePageContext,
   formatPageContext,
   captureCleanHtml,
+  stripToFit,
 } from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
 
@@ -187,7 +188,11 @@ browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const wantsFullPage = types.includes("all");
         const pageCtx = capturePageContext(types);
         const ctxText = formatPageContext(pageCtx);
-        const fullHtml = wantsFullPage ? captureCleanHtml() : "";
+        let fullHtml = wantsFullPage ? captureCleanHtml() : "";
+        // Always strip data-attributes, inline-styles, etc. to reduce tokens
+        if (fullHtml) {
+          fullHtml = stripToFit(fullHtml, 30000).html;
+        }
         // Combine structured elements + full HTML when both available
         const combined = [ctxText, fullHtml].filter(Boolean).join("\n\n");
         sendResponse({ context: combined || captureCleanHtml() });

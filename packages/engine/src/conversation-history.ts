@@ -37,7 +37,7 @@ export class ConversationHistory {
       )
       .map((tc) => `[${tc.tool}]`)
       .join(" ");
-    const msgPart = messages.join("\n\n").slice(0, 300);
+    const msgPart = messages.join("\n\n").slice(0, 150);
     return [toolPart, msgPart].filter(Boolean).join("\n");
   }
 

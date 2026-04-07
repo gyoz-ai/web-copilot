@@ -1,6 +1,7 @@
-import { streamText, type ModelMessage } from "ai";
+import { streamText, type ModelMessage, type SystemModelMessage } from "ai";
 import {
   QueryEngine,
+  ConversationHistory,
   type QueryInput,
   type QueryResult,
 } from "@gyoz-ai/engine";
@@ -196,10 +197,26 @@ export async function handleQuery(
         ]
       : userPrompt;
 
+    // Window history to last 10 messages (5 turns) to reduce token usage.
+    // Storage still keeps up to 50 for UI display.
+    const MAX_SEND_MESSAGES = 10;
+    const windowedHistory = history.slice(-MAX_SEND_MESSAGES);
+
+    // Microcompact older entries — truncate verbose tool results
+    const compactor = new ConversationHistory();
+    compactor.load(
+      windowedHistory.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+    );
+    compactor.microcompact();
+    const compactedEntries = compactor.getEntries();
+
     const aiMessages: ModelMessage[] = [
-      ...history.map(
+      ...compactedEntries.map(
         (m): ModelMessage => ({
-          role: m.role as "user" | "assistant",
+          role: m.role,
           content: m.content,
         }),
       ),
@@ -245,12 +262,31 @@ export async function handleQuery(
     const hasPageAction = () =>
       allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));
 
+    // Anthropic prompt caching — mark system prompt + tools for caching
+    // so repeated requests get ~90% discount on those input tokens.
+    const isAnthropicByok =
+      settings.mode === "byok" && settings.provider === "claude";
+    const systemParam: string | SystemModelMessage[] = isAnthropicByok
+      ? [
+          {
+            role: "system" as const,
+            content: systemPrompt,
+            providerOptions: {
+              anthropic: { cacheControl: { type: "ephemeral" } },
+            },
+          },
+        ]
+      : systemPrompt;
+
     let streamError: Error | null = null;
     const stream = streamText({
       model: providerResult.model,
-      system: systemPrompt,
+      system: systemParam,
       messages: aiMessages,
       tools,
+      providerOptions: isAnthropicByok
+        ? { anthropic: { cacheControl: { type: "ephemeral" } } }
+        : undefined,
       abortSignal: abortController.signal,
       stopWhen: ({ steps }) => {
         if (steps.length >= 100) return true;
@@ -462,7 +498,7 @@ export async function handleQuery(
       )
       .map((tc) => `[${tc.tool}]`)
       .join(" ");
-    const msgContent = ctx.messages.join("\n\n").slice(0, 300);
+    const msgContent = ctx.messages.join("\n\n").slice(0, 150);
     const historyEntry = [toolSummary, msgContent].filter(Boolean).join("\n");
     if (historyEntry) {
       history.push({ role: "assistant", content: historyEntry });

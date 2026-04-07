@@ -169,7 +169,7 @@ function getCapturedDoc(): Document {
 
 // ─── Full HTML snapshot ─────────────────────────────────────────────────────────
 
-export function captureCleanHtml(maxLength: number = 60000): string {
+export function captureCleanHtml(maxLength: number = 30000): string {
   if (typeof document === "undefined") return "";
 
   const doc = getCapturedDoc();
