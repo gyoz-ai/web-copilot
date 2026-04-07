@@ -99,35 +99,49 @@ export async function getImages(imageIds: string[]): Promise<
     kind?: "image" | "file";
   }> = [];
 
-  const gets = imageIds.map(
-    (id) =>
-      new Promise<void>((resolve) => {
-        const req = store.get(id);
-        req.onsuccess = () => {
-          const record = req.result as StoredImage | undefined;
-          if (record) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              results.push({
-                id,
-                dataUrl: reader.result as string,
-                filename: record.filename,
-                kind: record.kind ?? "image",
-              });
-              resolve();
-            };
-            reader.onerror = () => resolve(); // skip missing
-            reader.readAsDataURL(record.data);
-          } else {
-            resolve();
-          }
-        };
-        req.onerror = () => resolve();
-      }),
+  // First: read all records from IDB within the transaction
+  const records = await Promise.all(
+    imageIds.map(
+      (id) =>
+        new Promise<{ id: string; record: StoredImage | undefined }>(
+          (resolve) => {
+            const req = store.get(id);
+            req.onsuccess = () =>
+              resolve({ id, record: req.result as StoredImage | undefined });
+            req.onerror = () => resolve({ id, record: undefined });
+          },
+        ),
+    ),
   );
 
-  await Promise.all(gets);
+  // Close DB before async FileReader work — records already hold blob refs
   db.close();
+
+  // Then: convert blobs to data URLs outside the transaction
+  await Promise.all(
+    records.map(
+      ({ id, record }) =>
+        new Promise<void>((resolve) => {
+          if (!record) {
+            resolve();
+            return;
+          }
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            results.push({
+              id,
+              dataUrl: reader.result as string,
+              filename: record.filename,
+              kind: record.kind ?? "image",
+            });
+            resolve();
+          };
+          reader.onerror = () => resolve();
+          reader.readAsDataURL(record.data);
+        }),
+    ),
+  );
+
   return results;
 }
 

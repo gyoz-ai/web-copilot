@@ -47,6 +47,7 @@ import type {
   ViewMode,
   StreamEventMessage,
 } from "./types";
+import { isSafariMobile } from "../../lib/platform";
 import {
   mapExtraRequests,
   sanitizeError,
@@ -450,6 +451,9 @@ export function GyozaiWidget() {
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
 
+  // Safari mobile: disable proximity, use tap to toggle instead
+  const isMobileSafari = isSafariMobile();
+
   // Proximity detection — open chatbox when cursor is near avatar
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
@@ -477,6 +481,7 @@ export function GyozaiWidget() {
       }
     },
     leaveDelay: 50,
+    disabled: isMobileSafari,
   });
 
   // ─── Restore session from browser.storage.session after preload ───
@@ -944,7 +949,9 @@ export function GyozaiWidget() {
 
   // Safety net: periodically check if cursor is still near panel/avatar
   // Shadow DOM onMouseLeave can miss fast exits — this catches them
+  // Disabled on Safari mobile (no cursor)
   useEffect(() => {
+    if (isMobileSafari) return;
     if (!expanded || !hoverOpenRef.current) return;
     let lastX = 0;
     let lastY = 0;
@@ -1694,7 +1701,10 @@ export function GyozaiWidget() {
       const response = await browser.runtime.sendMessage({
         type: "gyozai_capture_tab",
       });
-      if (response?.error) return;
+      if (response?.error) {
+        console.error("[gyoza] screenshot capture failed:", response.error);
+        return;
+      }
       const dataUrl = response.dataUrl as string;
       // Convert data URL to blob for IndexedDB storage
       const res = await fetch(dataUrl);
@@ -2017,6 +2027,7 @@ export function GyozaiWidget() {
                 ...verticalPos,
               }}
               onMouseEnter={() => {
+                if (isMobileSafari) return;
                 hoverOpenRef.current = true;
                 setExpanded(true);
               }}
@@ -2079,10 +2090,12 @@ export function GyozaiWidget() {
         }}
         ref={panelRef}
         onMouseEnter={() => {
+          if (isMobileSafari) return;
           insidePanelRef.current = true;
           forceInside();
         }}
         onMouseLeave={() => {
+          if (isMobileSafari) return;
           if (chatFullscreen || isResizingRef.current) return;
           insidePanelRef.current = false;
           if (hoverOpenRef.current) {
@@ -2641,12 +2654,16 @@ export function GyozaiWidget() {
             .set({ gyozai_avatar_position: pos })
             .catch(() => {});
         }}
-        onClick={() => {}}
+        onClick={() => {
+          if (isMobileSafari) {
+            setExpanded((prev) => !prev);
+          }
+        }}
         wrapperRef={avatarWrapperRef}
         onDragStateChange={(dragging) => {
           const wasDragging = isDraggingAvatar;
           setIsDraggingAvatar(dragging);
-          if (wasDragging && !dragging) {
+          if (wasDragging && !dragging && !isMobileSafari) {
             dragDropGraceRef.current = true;
             setTimeout(() => {
               dragDropGraceRef.current = false;

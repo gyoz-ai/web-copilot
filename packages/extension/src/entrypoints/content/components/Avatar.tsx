@@ -65,6 +65,7 @@ export function Avatar({
     initialPosition: position,
     size: px,
     onDragEnd,
+    onTap: onClick,
   });
 
   useEffect(() => {

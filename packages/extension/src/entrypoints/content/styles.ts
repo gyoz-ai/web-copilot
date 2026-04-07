@@ -27,6 +27,9 @@ export const WIDGET_STYLES = `
 
   * { box-sizing: border-box; }
 
+  /* Prevent double-tap zoom on touch devices */
+  :host { touch-action: manipulation; }
+
   /* ─── Scrollbar ─────────────────────────────────────────── */
 
   ::-webkit-scrollbar { width: 5px; }
@@ -75,6 +78,7 @@ export const WIDGET_STYLES = `
     bottom: 80px;
     right: 20px;
     width: 420px;
+    max-width: calc(100vw - 16px);
     max-height: 520px;
     height: fit-content;
     border-radius: 16px;
@@ -106,12 +110,14 @@ export const WIDGET_STYLES = `
 
   .gyozai-panel-fullscreen {
     left: 0 !important;
-    top: 0 !important;
-    bottom: auto !important;
-    width: 100vw !important;
-    max-height: 100vh !important;
-    height: 100vh !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: 0 !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
     border-radius: 0 !important;
+    overflow: hidden !important;
   }
 
   /* ─── Fullscreen Toggle ───────────────────────────────────── */
@@ -523,6 +529,11 @@ export const WIDGET_STYLES = `
   }
   .gyozai-input:disabled { opacity: 0.5; }
   .gyozai-input::placeholder { color: var(--g-text-muted); }
+
+  /* Prevent iOS auto-zoom on input focus (requires >= 16px) */
+  @media (pointer: coarse) {
+    .gyozai-input { font-size: 16px; }
+  }
 
   .gyozai-send-btn {
     display: flex;

@@ -12,6 +12,9 @@ interface UseDraggableOptions {
   size: number;
   /** Called when drag ends with the final position. */
   onDragEnd: (pos: Position) => void;
+  /** Called on tap (pointerup without drag). Needed because preventDefault on
+   *  pointerdown suppresses click events on Safari iOS. */
+  onTap?: () => void;
 }
 
 const DRAG_THRESHOLD = 5;
@@ -35,6 +38,7 @@ export function useDraggable({
   initialPosition,
   size,
   onDragEnd,
+  onTap,
 }: UseDraggableOptions) {
   const [position, setPosition] = useState<Position>(
     initialPosition
@@ -118,6 +122,8 @@ export function useDraggable({
             onDragEnd(pos);
             return pos;
           });
+        } else {
+          onTap?.();
         }
         startRef.current = null;
       };

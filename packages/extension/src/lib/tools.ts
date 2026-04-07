@@ -2193,10 +2193,10 @@ export function createBrowserTools(
       });
       const restore = await hideWidgetForScreenshot(ctx.tabId);
       try {
-        const dataUrl = await browser.tabs.captureVisibleTab({
-          format: "jpeg",
-          quality: 70,
-        });
+        const dataUrl = await browser.tabs.captureVisibleTab(
+          null as unknown as number,
+          { format: "jpeg", quality: 70 },
+        );
         // Store on ctx — prepareStep in query.ts injects this as a user image
         ctx.pendingScreenshotDataUrl = dataUrl;
         console.log(

@@ -88,7 +88,7 @@ export interface Translations {
   widget_stop: string; // "Stop"
   widget_send: string; // "Send message"
 
-  // Status pill — tool actions
+  // Status pill -tool actions
   status_navigating: string; // "Navigating to {url}"
   status_navigated_to: string; // "Navigated to {path}"
   status_clicked: string; // "Clicked element"
@@ -120,7 +120,7 @@ export interface Translations {
   popup_managed_subscribe_btn: string;
   popup_recipes: string;
   popup_all_recipes: string;
-  popup_recipes_for: string; // "Recipes — {domain}"
+  popup_recipes_for: string; // "Recipes -{domain}"
   popup_no_recipes_all: string;
   popup_no_recipes_site: string; // "No recipes for {domain}..."
   popup_import: string;
@@ -196,11 +196,11 @@ const en: Translations = {
   popup_managed_connected: "Connected to gyoza platform",
   popup_managed_sign_out: "Sign Out",
   popup_managed_subscribe_desc:
-    "Get started with gyoza Pro — no API key needed.",
+    "Get started with gyoza Pro -no API key needed.",
   popup_managed_subscribe_btn: "Get Started",
   popup_recipes: "Recipes",
   popup_all_recipes: "All Recipes",
-  popup_recipes_for: "Recipes \u2014 {domain}",
+  popup_recipes_for: "Recipes -{domain}",
   popup_no_recipes_all: "No recipes installed yet.",
   popup_no_recipes_site:
     "No recipes for {domain}. Import a recipe to enhance AI navigation.",
@@ -208,13 +208,13 @@ const en: Translations = {
   popup_back: "\u2190 Back",
   popup_settings: "Settings",
   popup_yolo_mode: "Yolo Mode",
-  popup_yolo_desc: "Skip confirmations — AI acts immediately without asking",
+  popup_yolo_desc: "Skip confirmations -AI acts immediately without asking",
   popup_chat_only: "Chat Only",
   popup_chat_only_desc:
-    "Only chat and read pages — no clicks, forms, or navigation",
+    "Only chat and read pages -no clicks, forms, or navigation",
   popup_sticky_chat: "Sticky Chat",
   popup_sticky_chat_desc:
-    "Keep chatbox open — ignore cursor proximity and stay visible",
+    "Keep chatbox open -ignore cursor proximity and stay visible",
   popup_auto_import_recipes: "Auto-import Recipes",
   popup_auto_import_recipes_desc:
     "Automatically import llms.txt recipes from websites you visit",
@@ -224,7 +224,7 @@ const en: Translations = {
   popup_language: "Language",
   popup_language_auto: "Auto (browser)",
   error_free_tier:
-    'You are on the free tier \u2014 only "Own Key" mode is available. Subscribe to gyoza Pro: https://gyoz.ai/pricing',
+    'You are on the free tier -only "Own Key" mode is available. Subscribe to gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ptBR: Translations = {
@@ -278,11 +278,11 @@ const ptBR: Translations = {
   popup_managed_connected: "Conectado à plataforma gyoza",
   popup_managed_sign_out: "Sair",
   popup_managed_subscribe_desc:
-    "Comece com o gyoza Pro — sem chave de API necessária.",
+    "Comece com o gyoza Pro -sem chave de API necessária.",
   popup_managed_subscribe_btn: "Começar",
   popup_recipes: "Receitas",
   popup_all_recipes: "Todas as Receitas",
-  popup_recipes_for: "Receitas \u2014 {domain}",
+  popup_recipes_for: "Receitas -{domain}",
   popup_no_recipes_all: "Nenhuma receita instalada.",
   popup_no_recipes_site:
     "Nenhuma receita para {domain}. Importe uma receita para melhorar a navega\u00e7\u00e3o com IA.",
@@ -291,13 +291,13 @@ const ptBR: Translations = {
   popup_settings: "Configura\u00e7\u00f5es",
   popup_yolo_mode: "Modo Yolo",
   popup_yolo_desc:
-    "Pular confirma\u00e7\u00f5es \u2014 IA age imediatamente sem perguntar",
+    "Pular confirma\u00e7\u00f5es -IA age imediatamente sem perguntar",
   popup_chat_only: "Apenas Chat",
   popup_chat_only_desc:
-    "Apenas conversar e ler p\u00e1ginas \u2014 sem cliques, formul\u00e1rios ou navega\u00e7\u00e3o",
+    "Apenas conversar e ler p\u00e1ginas -sem cliques, formul\u00e1rios ou navega\u00e7\u00e3o",
   popup_sticky_chat: "Chat Fixo",
   popup_sticky_chat_desc:
-    "Manter chat aberto \u2014 ignorar proximidade do cursor e ficar vis\u00edvel",
+    "Manter chat aberto -ignorar proximidade do cursor e ficar vis\u00edvel",
   popup_auto_import_recipes: "Importar Receitas Automaticamente",
   popup_auto_import_recipes_desc:
     "Importar automaticamente receitas llms.txt dos sites que você visita",
@@ -307,7 +307,7 @@ const ptBR: Translations = {
   popup_language: "Idioma",
   popup_language_auto: "Autom\u00e1tico (navegador)",
   error_free_tier:
-    'Voc\u00ea est\u00e1 no plano gratuito \u2014 apenas o modo "Chave Pr\u00f3pria" est\u00e1 dispon\u00edvel. Assine o gyoza Pro: https://gyoz.ai/pricing',
+    'Voc\u00ea est\u00e1 no plano gratuito -apenas o modo "Chave Pr\u00f3pria" est\u00e1 dispon\u00edvel. Assine o gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ptPT: Translations = {
@@ -319,7 +319,7 @@ const ptPT: Translations = {
   popup_mode_own_key: "Própria chave",
   popup_managed_sign_out: "Terminar Sessão",
   popup_managed_subscribe_desc:
-    "Comece com o gyoza Pro — sem chave de API necessária.",
+    "Comece com o gyoza Pro -sem chave de API necessária.",
   popup_managed_subscribe_btn: "Começar",
   popup_no_recipes_site:
     "Sem receitas para {domain}. Importe uma receita para melhorar a navega\u00e7\u00e3o com IA.",
@@ -378,12 +378,11 @@ const es: Translations = {
   popup_mode_own_key: "Tu propia clave",
   popup_managed_connected: "Conectado a la plataforma gyoza",
   popup_managed_sign_out: "Cerrar Sesi\u00f3n",
-  popup_managed_subscribe_desc:
-    "Empieza con gyoza Pro \u2014 sin clave de API.",
+  popup_managed_subscribe_desc: "Empieza con gyoza Pro -sin clave de API.",
   popup_managed_subscribe_btn: "Empezar",
   popup_recipes: "Recetas",
   popup_all_recipes: "Todas las Recetas",
-  popup_recipes_for: "Recetas \u2014 {domain}",
+  popup_recipes_for: "Recetas -{domain}",
   popup_no_recipes_all: "A\u00fan no hay recetas instaladas.",
   popup_no_recipes_site:
     "Sin recetas para {domain}. Importa una receta para mejorar la navegaci\u00f3n con IA.",
@@ -392,13 +391,13 @@ const es: Translations = {
   popup_settings: "Ajustes",
   popup_yolo_mode: "Modo Yolo",
   popup_yolo_desc:
-    "Omitir confirmaciones \u2014 la IA act\u00faa inmediatamente sin preguntar",
+    "Omitir confirmaciones -la IA act\u00faa inmediatamente sin preguntar",
   popup_chat_only: "Solo Chat",
   popup_chat_only_desc:
-    "Solo chatear y leer p\u00e1ginas \u2014 sin clics, formularios ni navegaci\u00f3n",
+    "Solo chatear y leer p\u00e1ginas -sin clics, formularios ni navegaci\u00f3n",
   popup_sticky_chat: "Chat Fijo",
   popup_sticky_chat_desc:
-    "Mantener chat abierto \u2014 ignorar proximidad del cursor y permanecer visible",
+    "Mantener chat abierto -ignorar proximidad del cursor y permanecer visible",
   popup_auto_import_recipes: "Importar Recetas Automáticamente",
   popup_auto_import_recipes_desc:
     "Importar automáticamente recetas llms.txt de los sitios que visitas",
@@ -408,7 +407,7 @@ const es: Translations = {
   popup_language: "Idioma",
   popup_language_auto: "Autom\u00e1tico (navegador)",
   error_free_tier:
-    'Est\u00e1s en el plan gratuito \u2014 solo el modo "Clave Propia" est\u00e1 disponible. Suscr\u00edbete a gyoza Pro: https://gyoz.ai/pricing',
+    'Est\u00e1s en el plan gratuito -solo el modo "Clave Propia" est\u00e1 disponible. Suscr\u00edbete a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const fr: Translations = {
@@ -462,11 +461,11 @@ const fr: Translations = {
   popup_managed_connected: "Connect\u00e9 \u00e0 la plateforme gyoza",
   popup_managed_sign_out: "Se D\u00e9connecter",
   popup_managed_subscribe_desc:
-    "Commencez avec gyoza Pro \u2014 pas besoin de cl\u00e9 API.",
+    "Commencez avec gyoza Pro -pas besoin de cl\u00e9 API.",
   popup_managed_subscribe_btn: "Commencer",
   popup_recipes: "Recettes",
   popup_all_recipes: "Toutes les Recettes",
-  popup_recipes_for: "Recettes \u2014 {domain}",
+  popup_recipes_for: "Recettes -{domain}",
   popup_no_recipes_all: "Aucune recette install\u00e9e.",
   popup_no_recipes_site:
     "Aucune recette pour {domain}. Importez une recette pour am\u00e9liorer la navigation IA.",
@@ -475,13 +474,13 @@ const fr: Translations = {
   popup_settings: "Param\u00e8tres",
   popup_yolo_mode: "Mode Yolo",
   popup_yolo_desc:
-    "Ignorer les confirmations \u2014 l'IA agit imm\u00e9diatement sans demander",
+    "Ignorer les confirmations -l'IA agit imm\u00e9diatement sans demander",
   popup_chat_only: "Chat uniquement",
   popup_chat_only_desc:
-    "Seulement discuter et lire les pages \u2014 pas de clics, formulaires ou navigation",
+    "Seulement discuter et lire les pages -pas de clics, formulaires ou navigation",
   popup_sticky_chat: "Chat \u00c9pingl\u00e9",
   popup_sticky_chat_desc:
-    "Garder le chat ouvert \u2014 ignorer la proximit\u00e9 du curseur et rester visible",
+    "Garder le chat ouvert -ignorer la proximit\u00e9 du curseur et rester visible",
   popup_auto_import_recipes: "Importer les recettes automatiquement",
   popup_auto_import_recipes_desc:
     "Importer automatiquement les recettes llms.txt des sites que vous visitez",
@@ -491,7 +490,7 @@ const fr: Translations = {
   popup_language: "Langue",
   popup_language_auto: "Automatique (navigateur)",
   error_free_tier:
-    'Vous êtes sur le plan gratuit \u2014 seul le mode "Clé Personnelle" est disponible. Abonnez-vous à gyoza Pro\u00a0: https://gyoz.ai/pricing',
+    'Vous êtes sur le plan gratuit -seul le mode "Clé Personnelle" est disponible. Abonnez-vous à gyoza Pro\u00a0: https://gyoz.ai/pricing',
 };
 
 const de: Translations = {
@@ -545,11 +544,11 @@ const de: Translations = {
   popup_managed_connected: "Verbunden mit der gyoza-Plattform",
   popup_managed_sign_out: "Abmelden",
   popup_managed_subscribe_desc:
-    "Starte mit gyoza Pro \u2014 kein API-Schl\u00fcssel n\u00f6tig.",
+    "Starte mit gyoza Pro -kein API-Schl\u00fcssel n\u00f6tig.",
   popup_managed_subscribe_btn: "Loslegen",
   popup_recipes: "Rezepte",
   popup_all_recipes: "Alle Rezepte",
-  popup_recipes_for: "Rezepte \u2014 {domain}",
+  popup_recipes_for: "Rezepte -{domain}",
   popup_no_recipes_all: "Noch keine Rezepte installiert.",
   popup_no_recipes_site:
     "Keine Rezepte f\u00fcr {domain}. Importieren Sie ein Rezept, um die KI-Navigation zu verbessern.",
@@ -558,13 +557,13 @@ const de: Translations = {
   popup_settings: "Einstellungen",
   popup_yolo_mode: "Yolo-Modus",
   popup_yolo_desc:
-    "Best\u00e4tigungen \u00fcberspringen \u2014 KI handelt sofort ohne zu fragen",
+    "Best\u00e4tigungen \u00fcberspringen -KI handelt sofort ohne zu fragen",
   popup_chat_only: "Nur Chat",
   popup_chat_only_desc:
-    "Nur chatten und Seiten lesen \u2014 keine Klicks, Formulare oder Navigation",
+    "Nur chatten und Seiten lesen -keine Klicks, Formulare oder Navigation",
   popup_sticky_chat: "Chat Fixiert",
   popup_sticky_chat_desc:
-    "Chat ge\u00f6ffnet halten \u2014 Cursorn\u00e4he ignorieren und sichtbar bleiben",
+    "Chat ge\u00f6ffnet halten -Cursorn\u00e4he ignorieren und sichtbar bleiben",
   popup_auto_import_recipes: "Rezepte automatisch importieren",
   popup_auto_import_recipes_desc:
     "llms.txt-Rezepte automatisch von besuchten Websites importieren",
@@ -574,7 +573,7 @@ const de: Translations = {
   popup_language: "Sprache",
   popup_language_auto: "Automatisch (Browser)",
   error_free_tier:
-    'Sie sind im kostenlosen Plan \u2014 nur der Modus "Eigener Schlüssel" ist verfügbar. Abonnieren Sie gyoza Pro: https://gyoz.ai/pricing',
+    'Sie sind im kostenlosen Plan -nur der Modus "Eigener Schlüssel" ist verfügbar. Abonnieren Sie gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const it: Translations = {
@@ -628,11 +627,11 @@ const it: Translations = {
   popup_managed_connected: "Connesso alla piattaforma gyoza",
   popup_managed_sign_out: "Esci",
   popup_managed_subscribe_desc:
-    "Inizia con gyoza Pro — nessuna chiave API necessaria.",
+    "Inizia con gyoza Pro -nessuna chiave API necessaria.",
   popup_managed_subscribe_btn: "Inizia",
   popup_recipes: "Ricette",
   popup_all_recipes: "Tutte le Ricette",
-  popup_recipes_for: "Ricette \u2014 {domain}",
+  popup_recipes_for: "Ricette -{domain}",
   popup_no_recipes_all: "Nessuna ricetta installata.",
   popup_no_recipes_site:
     "Nessuna ricetta per {domain}. Importa una ricetta per migliorare la navigazione IA.",
@@ -641,13 +640,13 @@ const it: Translations = {
   popup_settings: "Impostazioni",
   popup_yolo_mode: "Modalit\u00e0 Yolo",
   popup_yolo_desc:
-    "Salta le conferme \u2014 l'IA agisce immediatamente senza chiedere",
+    "Salta le conferme -l'IA agisce immediatamente senza chiedere",
   popup_chat_only: "Solo Chat",
   popup_chat_only_desc:
-    "Solo chattare e leggere pagine \u2014 nessun clic, moduli o navigazione",
+    "Solo chattare e leggere pagine -nessun clic, moduli o navigazione",
   popup_sticky_chat: "Chat Fisso",
   popup_sticky_chat_desc:
-    "Mantieni la chat aperta \u2014 ignora la prossimit\u00e0 del cursore e resta visibile",
+    "Mantieni la chat aperta -ignora la prossimit\u00e0 del cursore e resta visibile",
   popup_auto_import_recipes: "Importa ricette automaticamente",
   popup_auto_import_recipes_desc:
     "Importa automaticamente le ricette llms.txt dai siti che visiti",
@@ -657,7 +656,7 @@ const it: Translations = {
   popup_language: "Lingua",
   popup_language_auto: "Automatico (browser)",
   error_free_tier:
-    'Sei nel piano gratuito \u2014 solo la modalità "Chiave Propria" è disponibile. Abbonati a gyoza Pro: https://gyoz.ai/pricing',
+    'Sei nel piano gratuito -solo la modalità "Chiave Propria" è disponibile. Abbonati a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const nl: Translations = {
@@ -709,11 +708,11 @@ const nl: Translations = {
   popup_mode_own_key: "Eigen sleutel",
   popup_managed_connected: "Verbonden met gyoza-platform",
   popup_managed_sign_out: "Uitloggen",
-  popup_managed_subscribe_desc: "Begin met gyoza Pro — geen API-sleutel nodig.",
+  popup_managed_subscribe_desc: "Begin met gyoza Pro -geen API-sleutel nodig.",
   popup_managed_subscribe_btn: "Beginnen",
   popup_recipes: "Recepten",
   popup_all_recipes: "Alle Recepten",
-  popup_recipes_for: "Recepten \u2014 {domain}",
+  popup_recipes_for: "Recepten -{domain}",
   popup_no_recipes_all: "Nog geen recepten ge\u00efnstalleerd.",
   popup_no_recipes_site:
     "Geen recepten voor {domain}. Importeer een recept om AI-navigatie te verbeteren.",
@@ -722,13 +721,13 @@ const nl: Translations = {
   popup_settings: "Instellingen",
   popup_yolo_mode: "Yolo-modus",
   popup_yolo_desc:
-    "Bevestigingen overslaan \u2014 AI handelt direct zonder te vragen",
+    "Bevestigingen overslaan -AI handelt direct zonder te vragen",
   popup_chat_only: "Alleen Chat",
   popup_chat_only_desc:
-    "Alleen chatten en pagina's lezen \u2014 geen klikken, formulieren of navigatie",
+    "Alleen chatten en pagina's lezen -geen klikken, formulieren of navigatie",
   popup_sticky_chat: "Vaste Chat",
   popup_sticky_chat_desc:
-    "Chat open houden \u2014 cursorproximiteit negeren en zichtbaar blijven",
+    "Chat open houden -cursorproximiteit negeren en zichtbaar blijven",
   popup_auto_import_recipes: "Recepten automatisch importeren",
   popup_auto_import_recipes_desc:
     "Automatisch llms.txt-recepten importeren van bezochte websites",
@@ -738,7 +737,7 @@ const nl: Translations = {
   popup_language: "Taal",
   popup_language_auto: "Automatisch (browser)",
   error_free_tier:
-    'Je bent op het gratis plan \u2014 alleen de modus "Eigen Sleutel" is beschikbaar. Abonneer op gyoza Pro: https://gyoz.ai/pricing',
+    'Je bent op het gratis plan -alleen de modus "Eigen Sleutel" is beschikbaar. Abonneer op gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const pl: Translations = {
@@ -791,11 +790,11 @@ const pl: Translations = {
   popup_mode_own_key: "W\u0142asny klucz",
   popup_managed_connected: "Po\u0142\u0105czono z platform\u0105 gyoza",
   popup_managed_sign_out: "Wyloguj",
-  popup_managed_subscribe_desc: "Zacznij z gyoza Pro \u2014 bez klucza API.",
+  popup_managed_subscribe_desc: "Zacznij z gyoza Pro -bez klucza API.",
   popup_managed_subscribe_btn: "Rozpocznij",
   popup_recipes: "Przepisy",
   popup_all_recipes: "Wszystkie Przepisy",
-  popup_recipes_for: "Przepisy \u2014 {domain}",
+  popup_recipes_for: "Przepisy -{domain}",
   popup_no_recipes_all: "Brak zainstalowanych przepis\u00f3w.",
   popup_no_recipes_site:
     "Brak przepis\u00f3w dla {domain}. Importuj przepis, aby poprawi\u0107 nawigacj\u0119 AI.",
@@ -804,13 +803,13 @@ const pl: Translations = {
   popup_settings: "Ustawienia",
   popup_yolo_mode: "Tryb Yolo",
   popup_yolo_desc:
-    "Pomi\u0144 potwierdzenia \u2014 AI dzia\u0142a natychmiast bez pytania",
+    "Pomi\u0144 potwierdzenia -AI dzia\u0142a natychmiast bez pytania",
   popup_chat_only: "Tylko Chat",
   popup_chat_only_desc:
-    "Tylko czat i czytanie stron \u2014 bez klikania, formularzy i nawigacji",
+    "Tylko czat i czytanie stron -bez klikania, formularzy i nawigacji",
   popup_sticky_chat: "Przypi\u0119ty Chat",
   popup_sticky_chat_desc:
-    "Utrzymuj chat otwarty \u2014 ignoruj blisko\u015b\u0107 kursora i pozostawaj widoczny",
+    "Utrzymuj chat otwarty -ignoruj blisko\u015b\u0107 kursora i pozostawaj widoczny",
   popup_auto_import_recipes: "Automatycznie importuj przepisy",
   popup_auto_import_recipes_desc:
     "Automatycznie importuj przepisy llms.txt z odwiedzanych stron",
@@ -820,7 +819,7 @@ const pl: Translations = {
   popup_language: "J\u0119zyk",
   popup_language_auto: "Automatyczny (przegl\u0105darka)",
   error_free_tier:
-    'Jeste\u015b na darmowym planie \u2014 dost\u0119pny jest tylko tryb "W\u0142asny Klucz". Subskrybuj gyoza Pro: https://gyoz.ai/pricing',
+    'Jeste\u015b na darmowym planie -dost\u0119pny jest tylko tryb "W\u0142asny Klucz". Subskrybuj gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ru: Translations = {
@@ -896,13 +895,12 @@ const ru: Translations = {
     "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u043a \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435 gyoza",
   popup_managed_sign_out: "\u0412\u044b\u0439\u0442\u0438",
   popup_managed_subscribe_desc:
-    "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0441 gyoza Pro \u2014 \u043a\u043b\u044e\u0447 API \u043d\u0435 \u043d\u0443\u0436\u0435\u043d.",
+    "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0441 gyoza Pro -\u043a\u043b\u044e\u0447 API \u043d\u0435 \u043d\u0443\u0436\u0435\u043d.",
   popup_managed_subscribe_btn: "\u041d\u0430\u0447\u0430\u0442\u044c",
   popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u044b",
   popup_all_recipes:
     "\u0412\u0441\u0435 \u0420\u0435\u0446\u0435\u043f\u0442\u044b",
-  popup_recipes_for:
-    "\u0420\u0435\u0446\u0435\u043f\u0442\u044b \u2014 {domain}",
+  popup_recipes_for: "\u0420\u0435\u0446\u0435\u043f\u0442\u044b -{domain}",
   popup_no_recipes_all:
     "\u0420\u0435\u0446\u0435\u043f\u0442\u044b \u043d\u0435 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u044b.",
   popup_no_recipes_site:
@@ -912,14 +910,14 @@ const ru: Translations = {
   popup_settings: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438",
   popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
   popup_yolo_desc:
-    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f \u2014 \u0418\u0418 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u043d\u0435\u043c\u0435\u0434\u043b\u0435\u043d\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0440\u043e\u0441\u0430",
+    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f -\u0418\u0418 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u043d\u0435\u043c\u0435\u0434\u043b\u0435\u043d\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0440\u043e\u0441\u0430",
   popup_chat_only: "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442",
   popup_chat_only_desc:
-    "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442 \u0438 \u0447\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446 \u2014 \u0431\u0435\u0437 \u043a\u043b\u0438\u043a\u043e\u0432, \u0444\u043e\u0440\u043c \u0438 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438",
+    "\u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0442 \u0438 \u0447\u0442\u0435\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446 -\u0431\u0435\u0437 \u043a\u043b\u0438\u043a\u043e\u0432, \u0444\u043e\u0440\u043c \u0438 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438",
   popup_sticky_chat:
     "\u0417\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0439 \u0447\u0430\u0442",
   popup_sticky_chat_desc:
-    "\u0414\u0435\u0440\u0436\u0430\u0442\u044c \u0447\u0430\u0442 \u043e\u0442\u043a\u0440\u044b\u0442\u044b\u043c \u2014 \u0438\u0433\u043d\u043e\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0431\u043b\u0438\u0437\u043e\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0438 \u043e\u0441\u0442\u0430\u0432\u0430\u0442\u044c\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u044b\u043c",
+    "\u0414\u0435\u0440\u0436\u0430\u0442\u044c \u0447\u0430\u0442 \u043e\u0442\u043a\u0440\u044b\u0442\u044b\u043c -\u0438\u0433\u043d\u043e\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0431\u043b\u0438\u0437\u043e\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0438 \u043e\u0441\u0442\u0430\u0432\u0430\u0442\u044c\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u044b\u043c",
   popup_auto_import_recipes: "Автоимпорт рецептов",
   popup_auto_import_recipes_desc:
     "Автоматически импортировать рецепты llms.txt с посещаемых сайтов",
@@ -930,7 +928,7 @@ const ru: Translations = {
   popup_language_auto:
     "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
   error_free_tier:
-    '\u0412\u044b \u043d\u0430 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u043c \u043f\u043b\u0430\u043d\u0435 \u2014 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u0440\u0435\u0436\u0438\u043c "\u0421\u0432\u043e\u0439 \u041a\u043b\u044e\u0447". \u041f\u043e\u0434\u043f\u0438\u0448\u0438\u0442\u0435\u0441\u044c \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
+    '\u0412\u044b \u043d\u0430 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u043c \u043f\u043b\u0430\u043d\u0435 -\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u0440\u0435\u0436\u0438\u043c "\u0421\u0432\u043e\u0439 \u041a\u043b\u044e\u0447". \u041f\u043e\u0434\u043f\u0438\u0448\u0438\u0442\u0435\u0441\u044c \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const uk: Translations = {
@@ -1009,13 +1007,12 @@ const uk: Translations = {
     "\u041f\u0456\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u043e \u0434\u043e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0438 gyoza",
   popup_managed_sign_out: "\u0412\u0438\u0439\u0442\u0438",
   popup_managed_subscribe_desc:
-    "\u041f\u043e\u0447\u043d\u0456\u0442\u044c \u0437 gyoza Pro \u2014 \u043a\u043b\u044e\u0447 API \u043d\u0435 \u043f\u043e\u0442\u0440\u0456\u0431\u0435\u043d.",
+    "\u041f\u043e\u0447\u043d\u0456\u0442\u044c \u0437 gyoza Pro -\u043a\u043b\u044e\u0447 API \u043d\u0435 \u043f\u043e\u0442\u0440\u0456\u0431\u0435\u043d.",
   popup_managed_subscribe_btn: "\u041f\u043e\u0447\u0430\u0442\u0438",
   popup_recipes: "\u0420\u0435\u0446\u0435\u043f\u0442\u0438",
   popup_all_recipes:
     "\u0423\u0441\u0456 \u0420\u0435\u0446\u0435\u043f\u0442\u0438",
-  popup_recipes_for:
-    "\u0420\u0435\u0446\u0435\u043f\u0442\u0438 \u2014 {domain}",
+  popup_recipes_for: "\u0420\u0435\u0446\u0435\u043f\u0442\u0438 -{domain}",
   popup_no_recipes_all:
     "\u0420\u0435\u0446\u0435\u043f\u0442\u0456\u0432 \u043d\u0435 \u0432\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e.",
   popup_no_recipes_site:
@@ -1026,14 +1023,14 @@ const uk: Translations = {
     "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f",
   popup_yolo_mode: "\u0420\u0435\u0436\u0438\u043c Yolo",
   popup_yolo_desc:
-    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u0438 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043d\u044f \u2014 \u0428\u0406 \u0434\u0456\u0454 \u043d\u0435\u0433\u0430\u0439\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0438\u0442\u0443",
+    "\u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0442\u0438 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043d\u044f -\u0428\u0406 \u0434\u0456\u0454 \u043d\u0435\u0433\u0430\u0439\u043d\u043e \u0431\u0435\u0437 \u0437\u0430\u043f\u0438\u0442\u0443",
   popup_chat_only: "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442",
   popup_chat_only_desc:
-    "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442 \u0456 \u0447\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a \u2014 \u0431\u0435\u0437 \u043a\u043b\u0456\u043a\u0456\u0432, \u0444\u043e\u0440\u043c \u0442\u0430 \u043d\u0430\u0432\u0456\u0433\u0430\u0446\u0456\u0457",
+    "\u0422\u0456\u043b\u044c\u043a\u0438 \u0447\u0430\u0442 \u0456 \u0447\u0438\u0442\u0430\u043d\u043d\u044f \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a -\u0431\u0435\u0437 \u043a\u043b\u0456\u043a\u0456\u0432, \u0444\u043e\u0440\u043c \u0442\u0430 \u043d\u0430\u0432\u0456\u0433\u0430\u0446\u0456\u0457",
   popup_sticky_chat:
     "\u0417\u0430\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u0438\u0439 \u0447\u0430\u0442",
   popup_sticky_chat_desc:
-    "\u0422\u0440\u0438\u043c\u0430\u0442\u0438 \u0447\u0430\u0442 \u0432\u0456\u0434\u043a\u0440\u0438\u0442\u0438\u043c \u2014 \u0456\u0433\u043d\u043e\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043b\u0438\u0437\u044c\u043a\u0456\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0442\u0430 \u0437\u0430\u043b\u0438\u0448\u0430\u0442\u0438\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u0438\u043c",
+    "\u0422\u0440\u0438\u043c\u0430\u0442\u0438 \u0447\u0430\u0442 \u0432\u0456\u0434\u043a\u0440\u0438\u0442\u0438\u043c -\u0456\u0433\u043d\u043e\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043b\u0438\u0437\u044c\u043a\u0456\u0441\u0442\u044c \u043a\u0443\u0440\u0441\u043e\u0440\u0430 \u0442\u0430 \u0437\u0430\u043b\u0438\u0448\u0430\u0442\u0438\u0441\u044f \u0432\u0438\u0434\u0438\u043c\u0438\u043c",
   popup_auto_import_recipes: "Автоімпорт рецептів",
   popup_auto_import_recipes_desc:
     "Автоматично імпортувати рецепти llms.txt з відвіданих сайтів",
@@ -1044,7 +1041,7 @@ const uk: Translations = {
   popup_language_auto:
     "\u0410\u0432\u0442\u043e (\u0431\u0440\u0430\u0443\u0437\u0435\u0440)",
   error_free_tier:
-    '\u0412\u0438 \u043d\u0430 \u0431\u0435\u0437\u043a\u043e\u0448\u0442\u043e\u0432\u043d\u043e\u043c\u0443 \u043f\u043b\u0430\u043d\u0456 \u2014 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 \u043b\u0438\u0448\u0435 \u0440\u0435\u0436\u0438\u043c "\u0412\u043b\u0430\u0441\u043d\u0438\u0439 \u041a\u043b\u044e\u0447". \u041f\u0456\u0434\u043f\u0438\u0448\u0456\u0442\u044c\u0441\u044f \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
+    '\u0412\u0438 \u043d\u0430 \u0431\u0435\u0437\u043a\u043e\u0448\u0442\u043e\u0432\u043d\u043e\u043c\u0443 \u043f\u043b\u0430\u043d\u0456 -\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 \u043b\u0438\u0448\u0435 \u0440\u0435\u0436\u0438\u043c "\u0412\u043b\u0430\u0441\u043d\u0438\u0439 \u041a\u043b\u044e\u0447". \u041f\u0456\u0434\u043f\u0438\u0448\u0456\u0442\u044c\u0441\u044f \u043d\u0430 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const el: Translations = {
@@ -1122,14 +1119,14 @@ const el: Translations = {
   popup_managed_sign_out:
     "\u0391\u03c0\u03bf\u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7",
   popup_managed_subscribe_desc:
-    "\u039e\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03c4\u03b5 \u03bc\u03b5 \u03c4\u03bf gyoza Pro \u2014 \u03b4\u03b5\u03bd \u03c7\u03c1\u03b5\u03b9\u03ac\u03b6\u03b5\u03c4\u03b1\u03b9 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API.",
+    "\u039e\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03c4\u03b5 \u03bc\u03b5 \u03c4\u03bf gyoza Pro -\u03b4\u03b5\u03bd \u03c7\u03c1\u03b5\u03b9\u03ac\u03b6\u03b5\u03c4\u03b1\u03b9 \u03ba\u03bb\u03b5\u03b9\u03b4\u03af API.",
   popup_managed_subscribe_btn:
     "\u039e\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03c4\u03b5",
   popup_recipes: "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
   popup_all_recipes:
     "\u038c\u03bb\u03b5\u03c2 \u03bf\u03b9 \u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2",
   popup_recipes_for:
-    "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2 \u2014 {domain}",
+    "\u03a3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2 -{domain}",
   popup_no_recipes_all:
     "\u0394\u03b5\u03bd \u03c5\u03c0\u03ac\u03c1\u03c7\u03bf\u03c5\u03bd \u03c3\u03c5\u03bd\u03c4\u03b1\u03b3\u03ad\u03c2.",
   popup_no_recipes_site:
@@ -1140,15 +1137,15 @@ const el: Translations = {
   popup_yolo_mode:
     "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 Yolo",
   popup_yolo_desc:
-    "\u03a0\u03b1\u03c1\u03ac\u03bb\u03b5\u03b9\u03c8\u03b7 \u03b5\u03c0\u03b9\u03b2\u03b5\u03b2\u03b1\u03b9\u03ce\u03c3\u03b5\u03c9\u03bd \u2014 \u03c4\u03bf AI \u03b5\u03bd\u03b5\u03c1\u03b3\u03b5\u03af \u03b1\u03bc\u03ad\u03c3\u03c9\u03c2",
+    "\u03a0\u03b1\u03c1\u03ac\u03bb\u03b5\u03b9\u03c8\u03b7 \u03b5\u03c0\u03b9\u03b2\u03b5\u03b2\u03b1\u03b9\u03ce\u03c3\u03b5\u03c9\u03bd -\u03c4\u03bf AI \u03b5\u03bd\u03b5\u03c1\u03b3\u03b5\u03af \u03b1\u03bc\u03ad\u03c3\u03c9\u03c2",
   popup_chat_only:
     "\u039c\u03cc\u03bd\u03bf \u03a3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
   popup_chat_only_desc:
-    "\u039c\u03cc\u03bd\u03bf \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03ba\u03b1\u03b9 \u03b1\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03c9\u03bd \u2014 \u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b9\u03ba, \u03c6\u03cc\u03c1\u03bc\u03b5\u03c2 \u03ae \u03c0\u03bb\u03bf\u03ae\u03b3\u03b7\u03c3\u03b7",
+    "\u039c\u03cc\u03bd\u03bf \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03ba\u03b1\u03b9 \u03b1\u03bd\u03ac\u03b3\u03bd\u03c9\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03c9\u03bd -\u03c7\u03c9\u03c1\u03af\u03c2 \u03ba\u03bb\u03b9\u03ba, \u03c6\u03cc\u03c1\u03bc\u03b5\u03c2 \u03ae \u03c0\u03bb\u03bf\u03ae\u03b3\u03b7\u03c3\u03b7",
   popup_sticky_chat:
     "\u03a3\u03c4\u03b1\u03b8\u03b5\u03c1\u03ae \u03a3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1",
   popup_sticky_chat_desc:
-    "\u039a\u03c1\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7 \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03b1\u03bd\u03bf\u03b9\u03c7\u03c4\u03ae \u2014 \u03b1\u03b3\u03bd\u03bf\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7\u03bd \u03b5\u03b3\u03b3\u03cd\u03c4\u03b7\u03c4\u03b1 \u03ba\u03ad\u03c1\u03c3\u03bf\u03c1\u03b1",
+    "\u039a\u03c1\u03b1\u03c4\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7 \u03c3\u03c5\u03bd\u03bf\u03bc\u03b9\u03bb\u03af\u03b1 \u03b1\u03bd\u03bf\u03b9\u03c7\u03c4\u03ae -\u03b1\u03b3\u03bd\u03bf\u03ae\u03c3\u03c4\u03b5 \u03c4\u03b7\u03bd \u03b5\u03b3\u03b3\u03cd\u03c4\u03b7\u03c4\u03b1 \u03ba\u03ad\u03c1\u03c3\u03bf\u03c1\u03b1",
   popup_auto_import_recipes: "Αυτόματη εισαγωγή συνταγών",
   popup_auto_import_recipes_desc:
     "Αυτόματη εισαγωγή συνταγών llms.txt από ιστότοπους που επισκέπτεστε",
@@ -1159,7 +1156,7 @@ const el: Translations = {
   popup_language_auto:
     "\u0391\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03bf (\u03c0\u03c1\u03cc\u03b3\u03c1\u03b1\u03bc\u03bc\u03b1 \u03c0\u03b5\u03c1\u03b9\u03ae\u03b3\u03b7\u03c3\u03b7\u03c2)",
   error_free_tier:
-    '\u0395\u03af\u03c3\u03c4\u03b5 \u03c3\u03c4\u03bf \u03b4\u03c9\u03c1\u03b5\u03ac\u03bd \u03c0\u03bb\u03ac\u03bd\u03bf \u2014 \u03bc\u03cc\u03bd\u03bf \u03b7 \u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 "\u0394\u03b9\u03ba\u03cc \u03c3\u03b1\u03c2 \u039a\u03bb\u03b5\u03b9\u03b4\u03af" \u03b5\u03af\u03bd\u03b1\u03b9 \u03b4\u03b9\u03b1\u03b8\u03ad\u03c3\u03b9\u03bc\u03b7. \u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03b5\u03af\u03c4\u03b5 \u03c3\u03c4\u03bf gyoza Pro: https://gyoz.ai/pricing',
+    '\u0395\u03af\u03c3\u03c4\u03b5 \u03c3\u03c4\u03bf \u03b4\u03c9\u03c1\u03b5\u03ac\u03bd \u03c0\u03bb\u03ac\u03bd\u03bf -\u03bc\u03cc\u03bd\u03bf \u03b7 \u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 "\u0394\u03b9\u03ba\u03cc \u03c3\u03b1\u03c2 \u039a\u03bb\u03b5\u03b9\u03b4\u03af" \u03b5\u03af\u03bd\u03b1\u03b9 \u03b4\u03b9\u03b1\u03b8\u03ad\u03c3\u03b9\u03bc\u03b7. \u0395\u03b3\u03b3\u03c1\u03b1\u03c6\u03b5\u03af\u03c4\u03b5 \u03c3\u03c4\u03bf gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const tr: Translations = {
@@ -1214,11 +1211,11 @@ const tr: Translations = {
   popup_managed_connected: "gyoza platformuna ba\u011fl\u0131",
   popup_managed_sign_out: "\u00c7\u0131k\u0131\u015f Yap",
   popup_managed_subscribe_desc:
-    "gyoza Pro ile ba\u015flay\u0131n \u2014 API anahtar\u0131 gerekmez.",
+    "gyoza Pro ile ba\u015flay\u0131n -API anahtar\u0131 gerekmez.",
   popup_managed_subscribe_btn: "Ba\u015flay\u0131n",
   popup_recipes: "Tarifler",
   popup_all_recipes: "T\u00fcm Tarifler",
-  popup_recipes_for: "Tarifler \u2014 {domain}",
+  popup_recipes_for: "Tarifler -{domain}",
   popup_no_recipes_all: "Hen\u00fcz tarif y\u00fcklenmemi\u015f.",
   popup_no_recipes_site:
     "{domain} i\u00e7in tarif yok. AI navigasyonunu geli\u015ftirmek i\u00e7in bir tarif i\u00e7e aktar\u0131n.",
@@ -1226,14 +1223,13 @@ const tr: Translations = {
   popup_back: "\u2190 Geri",
   popup_settings: "Ayarlar",
   popup_yolo_mode: "Yolo Modu",
-  popup_yolo_desc:
-    "Onaylar\u0131 atla \u2014 AI sormadan hemen harekete ge\u00e7er",
+  popup_yolo_desc: "Onaylar\u0131 atla -AI sormadan hemen harekete ge\u00e7er",
   popup_chat_only: "Sadece Sohbet",
   popup_chat_only_desc:
-    "Sadece sohbet ve sayfa okuma \u2014 t\u0131klama, form veya gezinme yok",
+    "Sadece sohbet ve sayfa okuma -t\u0131klama, form veya gezinme yok",
   popup_sticky_chat: "Sabit Sohbet",
   popup_sticky_chat_desc:
-    "Sohbeti a\u00e7\u0131k tut \u2014 imle\u00e7 yak\u0131nl\u0131\u011f\u0131n\u0131 yoksay ve g\u00f6r\u00fcn\u00fcr kal",
+    "Sohbeti a\u00e7\u0131k tut -imle\u00e7 yak\u0131nl\u0131\u011f\u0131n\u0131 yoksay ve g\u00f6r\u00fcn\u00fcr kal",
   popup_auto_import_recipes: "Tarifleri otomatik içe aktar",
   popup_auto_import_recipes_desc:
     "Ziyaret ettiğiniz web sitelerinden llms.txt tariflerini otomatik içe aktar",
@@ -1243,7 +1239,7 @@ const tr: Translations = {
   popup_language: "Dil",
   popup_language_auto: "Otomatik (taray\u0131c\u0131)",
   error_free_tier:
-    '\u00dccretsiz plandas\u0131n\u0131z \u2014 yaln\u0131zca "Kendi Anahtar\u0131n\u0131z" modu kullan\u0131labilir. gyoza Pro\'ya abone olun: https://gyoz.ai/pricing',
+    '\u00dccretsiz plandas\u0131n\u0131z -yaln\u0131zca "Kendi Anahtar\u0131n\u0131z" modu kullan\u0131labilir. gyoza Pro\'ya abone olun: https://gyoz.ai/pricing',
 };
 
 const ar: Translations = {
@@ -1322,13 +1318,12 @@ const ar: Translations = {
   popup_managed_sign_out:
     "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c",
   popup_managed_subscribe_desc:
-    "\u0627\u0628\u062f\u0623 \u0645\u0639 gyoza Pro \u2014 \u0644\u0627 \u062d\u0627\u062c\u0629 \u0644\u0645\u0641\u062a\u0627\u062d API.",
+    "\u0627\u0628\u062f\u0623 \u0645\u0639 gyoza Pro -\u0644\u0627 \u062d\u0627\u062c\u0629 \u0644\u0645\u0641\u062a\u0627\u062d API.",
   popup_managed_subscribe_btn: "\u0627\u0628\u062f\u0623",
   popup_recipes: "\u0627\u0644\u0648\u0635\u0641\u0627\u062a",
   popup_all_recipes:
     "\u062c\u0645\u064a\u0639 \u0627\u0644\u0648\u0635\u0641\u0627\u062a",
-  popup_recipes_for:
-    "\u0627\u0644\u0648\u0635\u0641\u0627\u062a \u2014 {domain}",
+  popup_recipes_for: "\u0627\u0644\u0648\u0635\u0641\u0627\u062a -{domain}",
   popup_no_recipes_all:
     "\u0644\u0627 \u062a\u0648\u062c\u062f \u0648\u0635\u0641\u0627\u062a \u0645\u062b\u0628\u062a\u0629.",
   popup_no_recipes_site:
@@ -1338,14 +1333,14 @@ const ar: Translations = {
   popup_settings: "\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
   popup_yolo_mode: "\u0648\u0636\u0639 Yolo",
   popup_yolo_desc:
-    "\u062a\u062e\u0637\u064a \u0627\u0644\u062a\u0623\u0643\u064a\u062f\u0627\u062a \u2014 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a \u064a\u062a\u0635\u0631\u0641 \u0641\u0648\u0631\u0627\u064b",
+    "\u062a\u062e\u0637\u064a \u0627\u0644\u062a\u0623\u0643\u064a\u062f\u0627\u062a -\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a \u064a\u062a\u0635\u0631\u0641 \u0641\u0648\u0631\u0627\u064b",
   popup_chat_only: "\u0645\u062d\u0627\u062f\u062b\u0629 \u0641\u0642\u0637",
   popup_chat_only_desc:
-    "\u0641\u0642\u0637 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0648\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0627\u062a \u2014 \u0628\u062f\u0648\u0646 \u0646\u0642\u0631\u0627\u062a \u0623\u0648 \u0646\u0645\u0627\u0630\u062c \u0623\u0648 \u062a\u0646\u0642\u0644",
+    "\u0641\u0642\u0637 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0648\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u062d\u0627\u062a -\u0628\u062f\u0648\u0646 \u0646\u0642\u0631\u0627\u062a \u0623\u0648 \u0646\u0645\u0627\u0630\u062c \u0623\u0648 \u062a\u0646\u0642\u0644",
   popup_sticky_chat:
     "\u0645\u062d\u0627\u062f\u062b\u0629 \u0645\u062b\u0628\u062a\u0629",
   popup_sticky_chat_desc:
-    "\u0625\u0628\u0642\u0627\u0621 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0645\u0641\u062a\u0648\u062d\u0629 \u2014 \u062a\u062c\u0627\u0647\u0644 \u0642\u0631\u0628 \u0627\u0644\u0645\u0624\u0634\u0631 \u0648\u0627\u0644\u0628\u0642\u0627\u0621 \u0645\u0631\u0626\u064a\u064b\u0627",
+    "\u0625\u0628\u0642\u0627\u0621 \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0645\u0641\u062a\u0648\u062d\u0629 -\u062a\u062c\u0627\u0647\u0644 \u0642\u0631\u0628 \u0627\u0644\u0645\u0624\u0634\u0631 \u0648\u0627\u0644\u0628\u0642\u0627\u0621 \u0645\u0631\u0626\u064a\u064b\u0627",
   popup_auto_import_recipes: "استيراد الوصفات تلقائياً",
   popup_auto_import_recipes_desc:
     "استيراد وصفات llms.txt تلقائياً من المواقع التي تزورها",
@@ -1356,7 +1351,7 @@ const ar: Translations = {
   popup_language_auto:
     "\u062a\u0644\u0642\u0627\u0626\u064a (\u0627\u0644\u0645\u062a\u0635\u0641\u062d)",
   error_free_tier:
-    '\u0623\u0646\u062a \u0639\u0644\u0649 \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062c\u0627\u0646\u064a\u0629 \u2014 \u0641\u0642\u0637 \u0648\u0636\u0639 "\u0645\u0641\u062a\u0627\u062d\u0643 \u0627\u0644\u062e\u0627\u0635" \u0645\u062a\u0627\u062d. \u0627\u0634\u062a\u0631\u0643 \u0641\u064a gyoza Pro: https://gyoz.ai/pricing',
+    '\u0623\u0646\u062a \u0639\u0644\u0649 \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062c\u0627\u0646\u064a\u0629 -\u0641\u0642\u0637 \u0648\u0636\u0639 "\u0645\u0641\u062a\u0627\u062d\u0643 \u0627\u0644\u062e\u0627\u0635" \u0645\u062a\u0627\u062d. \u0627\u0634\u062a\u0631\u0643 \u0641\u064a gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const hi: Translations = {
@@ -1433,12 +1428,12 @@ const hi: Translations = {
     "gyoza \u092a\u094d\u0932\u0947\u091f\u092b\u0949\u0930\u094d\u092e \u0938\u0947 \u091c\u0941\u0921\u093c\u093e",
   popup_managed_sign_out: "\u0938\u093e\u0907\u0928 \u0906\u0909\u091f",
   popup_managed_subscribe_desc:
-    "gyoza Pro \u0915\u0947 \u0938\u093e\u0925 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902 \u2014 API \u0915\u0941\u0902\u091c\u0940 \u0915\u0940 \u091c\u093c\u0930\u0942\u0930\u0924 \u0928\u0939\u0940\u0902\u0964",
+    "gyoza Pro \u0915\u0947 \u0938\u093e\u0925 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902 -API \u0915\u0941\u0902\u091c\u0940 \u0915\u0940 \u091c\u093c\u0930\u0942\u0930\u0924 \u0928\u0939\u0940\u0902\u0964",
   popup_managed_subscribe_btn:
     "\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902",
   popup_recipes: "\u0930\u0947\u0938\u093f\u092a\u0940",
   popup_all_recipes: "\u0938\u092d\u0940 \u0930\u0947\u0938\u093f\u092a\u0940",
-  popup_recipes_for: "\u0930\u0947\u0938\u093f\u092a\u0940 \u2014 {domain}",
+  popup_recipes_for: "\u0930\u0947\u0938\u093f\u092a\u0940 -{domain}",
   popup_no_recipes_all:
     "\u0905\u092d\u0940 \u0915\u094b\u0908 \u0930\u0947\u0938\u093f\u092a\u0940 \u0928\u0939\u0940\u0902\u0964",
   popup_no_recipes_site:
@@ -1448,13 +1443,13 @@ const hi: Translations = {
   popup_settings: "\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938",
   popup_yolo_mode: "Yolo \u092e\u094b\u0921",
   popup_yolo_desc:
-    "\u092a\u0941\u0937\u094d\u091f\u093f \u091b\u094b\u0921\u093c\u0947\u0902 \u2014 AI \u0924\u0941\u0930\u0902\u0924 \u0915\u093e\u0930\u094d\u0930\u0935\u093e\u0908 \u0915\u0930\u0924\u093e \u0939\u0948",
+    "\u092a\u0941\u0937\u094d\u091f\u093f \u091b\u094b\u0921\u093c\u0947\u0902 -AI \u0924\u0941\u0930\u0902\u0924 \u0915\u093e\u0930\u094d\u0930\u0935\u093e\u0908 \u0915\u0930\u0924\u093e \u0939\u0948",
   popup_chat_only: "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f",
   popup_chat_only_desc:
-    "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f \u0914\u0930 \u092a\u0947\u091c \u092a\u0922\u093c\u0947\u0902 \u2014 \u0915\u094b\u0908 \u0915\u094d\u0932\u093f\u0915, \u092b\u0949\u0930\u094d\u092e \u092f\u093e \u0928\u0947\u0935\u093f\u0917\u0947\u0936\u0928 \u0928\u0939\u0940\u0902",
+    "\u0915\u0947\u0935\u0932 \u091a\u0948\u091f \u0914\u0930 \u092a\u0947\u091c \u092a\u0922\u093c\u0947\u0902 -\u0915\u094b\u0908 \u0915\u094d\u0932\u093f\u0915, \u092b\u0949\u0930\u094d\u092e \u092f\u093e \u0928\u0947\u0935\u093f\u0917\u0947\u0936\u0928 \u0928\u0939\u0940\u0902",
   popup_sticky_chat: "\u0938\u094d\u0925\u093f\u0930 \u091a\u0948\u091f",
   popup_sticky_chat_desc:
-    "\u091a\u0948\u091f \u0916\u0941\u0932\u093e \u0930\u0916\u0947\u0902 \u2014 \u0915\u0930\u094d\u0938\u0930 \u0928\u093f\u0915\u091f\u0924\u093e \u0905\u0928\u0926\u0947\u0916\u093e \u0915\u0930\u0947\u0902 \u0914\u0930 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902",
+    "\u091a\u0948\u091f \u0916\u0941\u0932\u093e \u0930\u0916\u0947\u0902 -\u0915\u0930\u094d\u0938\u0930 \u0928\u093f\u0915\u091f\u0924\u093e \u0905\u0928\u0926\u0947\u0916\u093e \u0915\u0930\u0947\u0902 \u0914\u0930 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902",
   popup_auto_import_recipes: "रेसिपी स्वचालित रूप से आयात करें",
   popup_auto_import_recipes_desc:
     "आपके द्वारा विज़िट की जाने वाली वेबसाइटों से llms.txt रेसिपी स्वचालित रूप से आयात करें",
@@ -1465,7 +1460,7 @@ const hi: Translations = {
   popup_language_auto:
     "\u0911\u091f\u094b (\u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930)",
   error_free_tier:
-    '\u0906\u092a \u092e\u0941\u092b\u094d\u0924 \u092f\u094b\u091c\u0928\u093e \u092a\u0930 \u0939\u0948\u0902 \u2014 \u0915\u0947\u0935\u0932 "\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u0940" \u092e\u094b\u0921 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0964 gyoza Pro \u0915\u0940 \u0938\u0926\u0938\u094d\u092f\u0924\u093e \u0932\u0947\u0902: https://gyoz.ai/pricing',
+    '\u0906\u092a \u092e\u0941\u092b\u094d\u0924 \u092f\u094b\u091c\u0928\u093e \u092a\u0930 \u0939\u0948\u0902 -\u0915\u0947\u0935\u0932 "\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u0940" \u092e\u094b\u0921 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0964 gyoza Pro \u0915\u0940 \u0938\u0926\u0938\u094d\u092f\u0924\u093e \u0932\u0947\u0902: https://gyoz.ai/pricing',
 };
 
 const ja: Translations = {
@@ -1526,11 +1521,11 @@ const ja: Translations = {
     "gyoza\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u306b\u63a5\u7d9a\u6e08\u307f",
   popup_managed_sign_out: "\u30b5\u30a4\u30f3\u30a2\u30a6\u30c8",
   popup_managed_subscribe_desc:
-    "gyoza Pro\u3067\u59cb\u3081\u307e\u3057\u3087\u3046 \u2014 API\u30ad\u30fc\u4e0d\u8981\u3002",
+    "gyoza Pro\u3067\u59cb\u3081\u307e\u3057\u3087\u3046 -API\u30ad\u30fc\u4e0d\u8981\u3002",
   popup_managed_subscribe_btn: "\u59cb\u3081\u308b",
   popup_recipes: "\u30ec\u30b7\u30d4",
   popup_all_recipes: "\u3059\u3079\u3066\u306e\u30ec\u30b7\u30d4",
-  popup_recipes_for: "\u30ec\u30b7\u30d4 \u2014 {domain}",
+  popup_recipes_for: "\u30ec\u30b7\u30d4 -{domain}",
   popup_no_recipes_all:
     "\u30ec\u30b7\u30d4\u306f\u307e\u3060\u3042\u308a\u307e\u305b\u3093\u3002",
   popup_no_recipes_site:
@@ -1540,13 +1535,13 @@ const ja: Translations = {
   popup_settings: "\u8a2d\u5b9a",
   popup_yolo_mode: "Yolo\u30e2\u30fc\u30c9",
   popup_yolo_desc:
-    "\u78ba\u8a8d\u3092\u30b9\u30ad\u30c3\u30d7 \u2014 AI\u304c\u78ba\u8a8d\u306a\u3057\u3067\u5373\u5ea7\u306b\u5b9f\u884c",
+    "\u78ba\u8a8d\u3092\u30b9\u30ad\u30c3\u30d7 -AI\u304c\u78ba\u8a8d\u306a\u3057\u3067\u5373\u5ea7\u306b\u5b9f\u884c",
   popup_chat_only: "\u30c1\u30e3\u30c3\u30c8\u306e\u307f",
   popup_chat_only_desc:
-    "\u30c1\u30e3\u30c3\u30c8\u3068\u30da\u30fc\u30b8\u306e\u95b2\u89a7\u306e\u307f \u2014 \u30af\u30ea\u30c3\u30af\u3001\u30d5\u30a9\u30fc\u30e0\u3001\u30ca\u30d3\u30b2\u30fc\u30b7\u30e7\u30f3\u306a\u3057",
+    "\u30c1\u30e3\u30c3\u30c8\u3068\u30da\u30fc\u30b8\u306e\u95b2\u89a7\u306e\u307f -\u30af\u30ea\u30c3\u30af\u3001\u30d5\u30a9\u30fc\u30e0\u3001\u30ca\u30d3\u30b2\u30fc\u30b7\u30e7\u30f3\u306a\u3057",
   popup_sticky_chat: "\u30c1\u30e3\u30c3\u30c8\u56fa\u5b9a",
   popup_sticky_chat_desc:
-    "\u30c1\u30e3\u30c3\u30c8\u3092\u958b\u3044\u305f\u307e\u307e\u306b\u3059\u308b \u2014 \u30ab\u30fc\u30bd\u30eb\u306e\u8fd1\u63a5\u3092\u7121\u8996\u3057\u3066\u8868\u793a\u3057\u7d9a\u3051\u308b",
+    "\u30c1\u30e3\u30c3\u30c8\u3092\u958b\u3044\u305f\u307e\u307e\u306b\u3059\u308b -\u30ab\u30fc\u30bd\u30eb\u306e\u8fd1\u63a5\u3092\u7121\u8996\u3057\u3066\u8868\u793a\u3057\u7d9a\u3051\u308b",
   popup_auto_import_recipes: "レシピの自動インポート",
   popup_auto_import_recipes_desc:
     "訪問したウェブサイトからllms.txtレシピを自動的にインポート",
@@ -1556,7 +1551,7 @@ const ja: Translations = {
   popup_language: "\u8a00\u8a9e",
   popup_language_auto: "\u81ea\u52d5\uff08\u30d6\u30e9\u30a6\u30b6\u30fc\uff09",
   error_free_tier:
-    "\u7121\u6599\u30d7\u30e9\u30f3\u3092\u3054\u5229\u7528\u4e2d\u3067\u3059 \u2014 \u300c\u81ea\u5206\u306e\u30ad\u30fc\u300d\u30e2\u30fc\u30c9\u306e\u307f\u5229\u7528\u53ef\u80fd\u3067\u3059\u3002gyoza Pro\u306b\u767b\u9332: https://gyoz.ai/pricing",
+    "\u7121\u6599\u30d7\u30e9\u30f3\u3092\u3054\u5229\u7528\u4e2d\u3067\u3059 -\u300c\u81ea\u5206\u306e\u30ad\u30fc\u300d\u30e2\u30fc\u30c9\u306e\u307f\u5229\u7528\u53ef\u80fd\u3067\u3059\u3002gyoza Pro\u306b\u767b\u9332: https://gyoz.ai/pricing",
 };
 
 const ko: Translations = {
@@ -1615,11 +1610,11 @@ const ko: Translations = {
   popup_managed_connected: "gyoza \ud50c\ub7ab\ud3fc\uc5d0 \uc5f0\uacb0\ub428",
   popup_managed_sign_out: "\ub85c\uadf8\uc544\uc6c3",
   popup_managed_subscribe_desc:
-    "gyoza Pro\ub85c \uc2dc\uc791\ud558\uc138\uc694 \u2014 API \ud0a4\uac00 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.",
+    "gyoza Pro\ub85c \uc2dc\uc791\ud558\uc138\uc694 -API \ud0a4\uac00 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.",
   popup_managed_subscribe_btn: "\uc2dc\uc791\ud558\uae30",
   popup_recipes: "\ub808\uc2dc\ud53c",
   popup_all_recipes: "\ubaa8\ub4e0 \ub808\uc2dc\ud53c",
-  popup_recipes_for: "\ub808\uc2dc\ud53c \u2014 {domain}",
+  popup_recipes_for: "\ub808\uc2dc\ud53c -{domain}",
   popup_no_recipes_all:
     "\uc124\uce58\ub41c \ub808\uc2dc\ud53c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.",
   popup_no_recipes_site:
@@ -1629,13 +1624,13 @@ const ko: Translations = {
   popup_settings: "\uc124\uc815",
   popup_yolo_mode: "Yolo \ubaa8\ub4dc",
   popup_yolo_desc:
-    "\ud655\uc778 \uac74\ub108\ub6f0\uae30 \u2014 AI\uac00 \ubb3b\uc9c0 \uc54a\uace0 \uc989\uc2dc \uc2e4\ud589",
+    "\ud655\uc778 \uac74\ub108\ub6f0\uae30 -AI\uac00 \ubb3b\uc9c0 \uc54a\uace0 \uc989\uc2dc \uc2e4\ud589",
   popup_chat_only: "\ucc44\ud305\ub9cc",
   popup_chat_only_desc:
-    "\ucc44\ud305\uacfc \ud398\uc774\uc9c0 \uc77d\uae30\ub9cc \u2014 \ud074\ub9ad, \uc591\uc2dd, \ud0d0\uc0c9 \uc5c6\uc74c",
+    "\ucc44\ud305\uacfc \ud398\uc774\uc9c0 \uc77d\uae30\ub9cc -\ud074\ub9ad, \uc591\uc2dd, \ud0d0\uc0c9 \uc5c6\uc74c",
   popup_sticky_chat: "\uace0\uc815 \ucc44\ud305",
   popup_sticky_chat_desc:
-    "\ucc44\ud305\ucc3d \uc5f4\ub9b0 \uc0c1\ud0dc \uc720\uc9c0 \u2014 \ucee4\uc11c \uadfc\uc811 \ubb34\uc2dc\ud558\uace0 \uacc4\uc18d \ud45c\uc2dc",
+    "\ucc44\ud305\ucc3d \uc5f4\ub9b0 \uc0c1\ud0dc \uc720\uc9c0 -\ucee4\uc11c \uadfc\uc811 \ubb34\uc2dc\ud558\uace0 \uacc4\uc18d \ud45c\uc2dc",
   popup_auto_import_recipes: "레시피 자동 가져오기",
   popup_auto_import_recipes_desc:
     "방문하는 웹사이트에서 llms.txt 레시피를 자동으로 가져오기",
@@ -1645,7 +1640,7 @@ const ko: Translations = {
   popup_language: "\uc5b8\uc5b4",
   popup_language_auto: "\uc790\ub3d9 (\ube0c\ub77c\uc6b0\uc800)",
   error_free_tier:
-    '\ubb34\ub8cc \ud50c\ub79c\uc785\ub2c8\ub2e4 \u2014 "\uc790\uccb4 \ud0a4" \ubaa8\ub4dc\ub9cc \uc0ac\uc6a9 \uac00\ub2a5\ud569\ub2c8\ub2e4. gyoza Pro \uad6c\ub3c5: https://gyoz.ai/pricing',
+    '\ubb34\ub8cc \ud50c\ub79c\uc785\ub2c8\ub2e4 -"\uc790\uccb4 \ud0a4" \ubaa8\ub4dc\ub9cc \uc0ac\uc6a9 \uac00\ub2a5\ud569\ub2c8\ub2e4. gyoza Pro \uad6c\ub3c5: https://gyoz.ai/pricing',
 };
 
 const zhCN: Translations = {
@@ -1701,11 +1696,11 @@ const zhCN: Translations = {
   popup_managed_connected: "\u5df2\u8fde\u63a5\u5230gyoza\u5e73\u53f0",
   popup_managed_sign_out: "\u9000\u51fa",
   popup_managed_subscribe_desc:
-    "\u5f00\u59cb\u4f7f\u7528gyoza Pro \u2014 \u65e0\u9700API\u5bc6\u94a5\u3002",
+    "\u5f00\u59cb\u4f7f\u7528gyoza Pro -\u65e0\u9700API\u5bc6\u94a5\u3002",
   popup_managed_subscribe_btn: "\u5f00\u59cb\u4f7f\u7528",
   popup_recipes: "\u914d\u65b9",
   popup_all_recipes: "\u6240\u6709\u914d\u65b9",
-  popup_recipes_for: "\u914d\u65b9 \u2014 {domain}",
+  popup_recipes_for: "\u914d\u65b9 -{domain}",
   popup_no_recipes_all: "\u5c1a\u672a\u5b89\u88c5\u914d\u65b9\u3002",
   popup_no_recipes_site:
     "{domain}\u65e0\u914d\u65b9\u3002\u5bfc\u5165\u914d\u65b9\u4ee5\u589e\u5f3aAI\u5bfc\u822a\u3002",
@@ -1714,13 +1709,13 @@ const zhCN: Translations = {
   popup_settings: "\u8bbe\u7f6e",
   popup_yolo_mode: "Yolo\u6a21\u5f0f",
   popup_yolo_desc:
-    "\u8df3\u8fc7\u786e\u8ba4 \u2014 AI\u65e0\u9700\u8be2\u95ee\u7acb\u5373\u6267\u884c",
+    "\u8df3\u8fc7\u786e\u8ba4 -AI\u65e0\u9700\u8be2\u95ee\u7acb\u5373\u6267\u884c",
   popup_chat_only: "\u4ec5\u804a\u5929",
   popup_chat_only_desc:
-    "\u4ec5\u804a\u5929\u548c\u9605\u8bfb\u9875\u9762 \u2014 \u65e0\u70b9\u51fb\u3001\u8868\u5355\u6216\u5bfc\u822a",
+    "\u4ec5\u804a\u5929\u548c\u9605\u8bfb\u9875\u9762 -\u65e0\u70b9\u51fb\u3001\u8868\u5355\u6216\u5bfc\u822a",
   popup_sticky_chat: "\u56fa\u5b9a\u804a\u5929",
   popup_sticky_chat_desc:
-    "\u4fdd\u6301\u804a\u5929\u6253\u5f00 \u2014 \u5ffd\u7565\u5149\u6807\u63a5\u8fd1\u5e76\u4fdd\u6301\u53ef\u89c1",
+    "\u4fdd\u6301\u804a\u5929\u6253\u5f00 -\u5ffd\u7565\u5149\u6807\u63a5\u8fd1\u5e76\u4fdd\u6301\u53ef\u89c1",
   popup_auto_import_recipes: "自动导入食谱",
   popup_auto_import_recipes_desc: "自动从您访问的网站导入llms.txt食谱",
   popup_theme: "\u4e3b\u9898",
@@ -1729,7 +1724,7 @@ const zhCN: Translations = {
   popup_language: "\u8bed\u8a00",
   popup_language_auto: "\u81ea\u52a8\uff08\u6d4f\u89c8\u5668\uff09",
   error_free_tier:
-    '\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8d39\u8ba1\u5212 \u2014 \u4ec5"\u81ea\u6709\u5bc6\u94a5"\u6a21\u5f0f\u53ef\u7528\u3002\u8ba2\u9605 gyoza Pro: https://gyoz.ai/pricing',
+    '\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8d39\u8ba1\u5212 -\u4ec5"\u81ea\u6709\u5bc6\u94a5"\u6a21\u5f0f\u53ef\u7528\u3002\u8ba2\u9605 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const zhTW: Translations = {
@@ -1773,7 +1768,7 @@ const zhTW: Translations = {
   popup_managed_connected: "\u5df2\u9023\u63a5\u5230gyoza\u5e73\u53f0",
   popup_managed_sign_out: "\u767b\u51fa",
   popup_managed_subscribe_desc:
-    "\u958b\u59cb\u4f7f\u7528gyoza Pro \u2014 \u7121\u9700API\u91d1\u9470\u3002",
+    "\u958b\u59cb\u4f7f\u7528gyoza Pro -\u7121\u9700API\u91d1\u9470\u3002",
   popup_managed_subscribe_btn: "\u958b\u59cb\u4f7f\u7528",
   popup_recipes: "\u914d\u65b9",
   popup_all_recipes: "\u6240\u6709\u914d\u65b9",
@@ -1784,13 +1779,13 @@ const zhTW: Translations = {
   popup_back: "\u2190 \u8fd4\u56de",
   popup_settings: "\u8a2d\u5b9a",
   popup_yolo_desc:
-    "\u8df3\u904e\u78ba\u8a8d \u2014 AI\u7121\u9700\u8a62\u554f\u7acb\u5373\u57f7\u884c",
+    "\u8df3\u904e\u78ba\u8a8d -AI\u7121\u9700\u8a62\u554f\u7acb\u5373\u57f7\u884c",
   popup_chat_only: "\u50c5\u804a\u5929",
   popup_chat_only_desc:
-    "\u50c5\u804a\u5929\u548c\u95b1\u8b80\u9801\u9762 \u2014 \u7121\u9ede\u64ca\u3001\u8868\u55ae\u6216\u5c0e\u89bd",
+    "\u50c5\u804a\u5929\u548c\u95b1\u8b80\u9801\u9762 -\u7121\u9ede\u64ca\u3001\u8868\u55ae\u6216\u5c0e\u89bd",
   popup_sticky_chat: "\u56fa\u5b9a\u804a\u5929",
   popup_sticky_chat_desc:
-    "\u4fdd\u6301\u804a\u5929\u958b\u555f \u2014 \u5ffd\u7565\u6e38\u6a19\u63a5\u8fd1\u4e26\u4fdd\u6301\u53ef\u898b",
+    "\u4fdd\u6301\u804a\u5929\u958b\u555f -\u5ffd\u7565\u6e38\u6a19\u63a5\u8fd1\u4e26\u4fdd\u6301\u53ef\u898b",
   popup_auto_import_recipes: "自動匯入食譜",
   popup_auto_import_recipes_desc: "自動從您造訪的網站匯入llms.txt食譜",
   popup_theme: "\u4e3b\u984c",
@@ -1799,7 +1794,7 @@ const zhTW: Translations = {
   popup_language: "\u8a9e\u8a00",
   popup_language_auto: "\u81ea\u52d5\uff08\u700f\u89bd\u5668\uff09",
   error_free_tier:
-    "\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8cbb\u65b9\u6848 \u2014 \u50c5\u300c\u81ea\u6709\u91d1\u9470\u300d\u6a21\u5f0f\u53ef\u7528\u3002\u8a02\u95b1 gyoza Pro: https://gyoz.ai/pricing",
+    "\u60a8\u6b63\u5728\u4f7f\u7528\u514d\u8cbb\u65b9\u6848 -\u50c5\u300c\u81ea\u6709\u91d1\u9470\u300d\u6a21\u5f0f\u53ef\u7528\u3002\u8a02\u95b1 gyoza Pro: https://gyoz.ai/pricing",
 };
 
 const th: Translations = {
@@ -1882,13 +1877,13 @@ const th: Translations = {
   popup_managed_sign_out:
     "\u0e2d\u0e2d\u0e01\u0e08\u0e32\u0e01\u0e23\u0e30\u0e1a\u0e1a",
   popup_managed_subscribe_desc:
-    "\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19\u0e01\u0e31\u0e1a gyoza Pro \u2014 \u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e43\u0e0a\u0e49\u0e04\u0e35\u0e22\u0e4c API",
+    "\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19\u0e01\u0e31\u0e1a gyoza Pro -\u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e43\u0e0a\u0e49\u0e04\u0e35\u0e22\u0e4c API",
   popup_managed_subscribe_btn:
     "\u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19",
   popup_recipes: "\u0e2a\u0e39\u0e15\u0e23",
   popup_all_recipes:
     "\u0e2a\u0e39\u0e15\u0e23\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14",
-  popup_recipes_for: "\u0e2a\u0e39\u0e15\u0e23 \u2014 {domain}",
+  popup_recipes_for: "\u0e2a\u0e39\u0e15\u0e23 -{domain}",
   popup_no_recipes_all:
     "\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e39\u0e15\u0e23\u0e17\u0e35\u0e48\u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07",
   popup_no_recipes_site:
@@ -1898,14 +1893,14 @@ const th: Translations = {
   popup_settings: "\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32",
   popup_yolo_mode: "\u0e42\u0e2b\u0e21\u0e14 Yolo",
   popup_yolo_desc:
-    "\u0e02\u0e49\u0e32\u0e21\u0e01\u0e32\u0e23\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19 \u2014 AI \u0e17\u0e33\u0e07\u0e32\u0e19\u0e17\u0e31\u0e19\u0e17\u0e35\u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e16\u0e32\u0e21",
+    "\u0e02\u0e49\u0e32\u0e21\u0e01\u0e32\u0e23\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19 -AI \u0e17\u0e33\u0e07\u0e32\u0e19\u0e17\u0e31\u0e19\u0e17\u0e35\u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e16\u0e32\u0e21",
   popup_chat_only:
     "\u0e41\u0e0a\u0e17\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19",
   popup_chat_only_desc:
-    "\u0e41\u0e0a\u0e17\u0e41\u0e25\u0e30\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u2014 \u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e04\u0e25\u0e34\u0e01 \u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21 \u0e2b\u0e23\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e19\u0e33\u0e17\u0e32\u0e07",
+    "\u0e41\u0e0a\u0e17\u0e41\u0e25\u0e30\u0e2d\u0e48\u0e32\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a\u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 -\u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e04\u0e25\u0e34\u0e01 \u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21 \u0e2b\u0e23\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e19\u0e33\u0e17\u0e32\u0e07",
   popup_sticky_chat: "\u0e41\u0e0a\u0e17\u0e04\u0e07\u0e17\u0e35\u0e48",
   popup_sticky_chat_desc:
-    "\u0e40\u0e1b\u0e34\u0e14\u0e41\u0e0a\u0e17\u0e04\u0e49\u0e32\u0e07\u0e44\u0e27\u0e49 \u2014 \u0e44\u0e21\u0e48\u0e2a\u0e19\u0e43\u0e08\u0e04\u0e27\u0e32\u0e21\u0e43\u0e01\u0e25\u0e49\u0e40\u0e04\u0e2d\u0e23\u0e4c\u0e40\u0e0b\u0e2d\u0e23\u0e4c\u0e41\u0e25\u0e30\u0e41\u0e2a\u0e14\u0e07\u0e15\u0e25\u0e2d\u0e14",
+    "\u0e40\u0e1b\u0e34\u0e14\u0e41\u0e0a\u0e17\u0e04\u0e49\u0e32\u0e07\u0e44\u0e27\u0e49 -\u0e44\u0e21\u0e48\u0e2a\u0e19\u0e43\u0e08\u0e04\u0e27\u0e32\u0e21\u0e43\u0e01\u0e25\u0e49\u0e40\u0e04\u0e2d\u0e23\u0e4c\u0e40\u0e0b\u0e2d\u0e23\u0e4c\u0e41\u0e25\u0e30\u0e41\u0e2a\u0e14\u0e07\u0e15\u0e25\u0e2d\u0e14",
   popup_auto_import_recipes: "นำเข้าสูตรอัตโนมัติ",
   popup_auto_import_recipes_desc:
     "นำเข้าสูตร llms.txt จากเว็บไซต์ที่คุณเยี่ยมชมโดยอัตโนมัติ",
@@ -1916,7 +1911,7 @@ const th: Translations = {
   popup_language_auto:
     "\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 (\u0e40\u0e1a\u0e23\u0e32\u0e27\u0e40\u0e0b\u0e2d\u0e23\u0e4c)",
   error_free_tier:
-    '\u0e04\u0e38\u0e13\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e41\u0e1c\u0e19\u0e1f\u0e23\u0e35 \u2014 \u0e21\u0e35\u0e40\u0e09\u0e1e\u0e32\u0e30\u0e42\u0e2b\u0e21\u0e14 "\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e40\u0e2d\u0e07" \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01 gyoza Pro: https://gyoz.ai/pricing',
+    '\u0e04\u0e38\u0e13\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e41\u0e1c\u0e19\u0e1f\u0e23\u0e35 -\u0e21\u0e35\u0e40\u0e09\u0e1e\u0e32\u0e30\u0e42\u0e2b\u0e21\u0e14 "\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e40\u0e2d\u0e07" \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 \u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01 gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const vi: Translations = {
@@ -1974,11 +1969,11 @@ const vi: Translations = {
     "\u0110\u00e3 k\u1ebft n\u1ed1i v\u1edbi n\u1ec1n t\u1ea3ng gyoza",
   popup_managed_sign_out: "\u0110\u0103ng xu\u1ea5t",
   popup_managed_subscribe_desc:
-    "B\u1eaft \u0111\u1ea7u v\u1edbi gyoza Pro \u2014 kh\u00f4ng c\u1ea7n kh\u00f3a API.",
+    "B\u1eaft \u0111\u1ea7u v\u1edbi gyoza Pro -kh\u00f4ng c\u1ea7n kh\u00f3a API.",
   popup_managed_subscribe_btn: "B\u1eaft \u0111\u1ea7u",
   popup_recipes: "C\u00f4ng th\u1ee9c",
   popup_all_recipes: "T\u1ea5t c\u1ea3 C\u00f4ng th\u1ee9c",
-  popup_recipes_for: "C\u00f4ng th\u1ee9c \u2014 {domain}",
+  popup_recipes_for: "C\u00f4ng th\u1ee9c -{domain}",
   popup_no_recipes_all: "Ch\u01b0a c\u00f3 c\u00f4ng th\u1ee9c n\u00e0o.",
   popup_no_recipes_site:
     "Kh\u00f4ng c\u00f3 c\u00f4ng th\u1ee9c cho {domain}. Nh\u1eadp c\u00f4ng th\u1ee9c \u0111\u1ec3 c\u1ea3i thi\u1ec7n \u0111i\u1ec1u h\u01b0\u1edbng AI.",
@@ -1987,13 +1982,13 @@ const vi: Translations = {
   popup_settings: "C\u00e0i \u0111\u1eb7t",
   popup_yolo_mode: "Ch\u1ebf \u0111\u1ed9 Yolo",
   popup_yolo_desc:
-    "B\u1ecf qua x\u00e1c nh\u1eadn \u2014 AI h\u00e0nh \u0111\u1ed9ng ngay m\u00e0 kh\u00f4ng h\u1ecfi",
+    "B\u1ecf qua x\u00e1c nh\u1eadn -AI h\u00e0nh \u0111\u1ed9ng ngay m\u00e0 kh\u00f4ng h\u1ecfi",
   popup_chat_only: "Ch\u1ec9 tr\u00f2 chuy\u1ec7n",
   popup_chat_only_desc:
-    "Ch\u1ec9 tr\u00f2 chuy\u1ec7n v\u00e0 \u0111\u1ecdc trang \u2014 kh\u00f4ng nh\u1ea5p, bi\u1ec3u m\u1eabu ho\u1eb7c \u0111i\u1ec1u h\u01b0\u1edbng",
+    "Ch\u1ec9 tr\u00f2 chuy\u1ec7n v\u00e0 \u0111\u1ecdc trang -kh\u00f4ng nh\u1ea5p, bi\u1ec3u m\u1eabu ho\u1eb7c \u0111i\u1ec1u h\u01b0\u1edbng",
   popup_sticky_chat: "Ghim Tr\u00f2 Chuy\u1ec7n",
   popup_sticky_chat_desc:
-    "Gi\u1eef tr\u00f2 chuy\u1ec7n m\u1edf \u2014 b\u1ecf qua v\u1ecb tr\u00ed con tr\u1ecf v\u00e0 lu\u00f4n hi\u1ec3n th\u1ecb",
+    "Gi\u1eef tr\u00f2 chuy\u1ec7n m\u1edf -b\u1ecf qua v\u1ecb tr\u00ed con tr\u1ecf v\u00e0 lu\u00f4n hi\u1ec3n th\u1ecb",
   popup_auto_import_recipes: "Tự động nhập công thức",
   popup_auto_import_recipes_desc:
     "Tự động nhập công thức llms.txt từ các trang web bạn truy cập",
@@ -2003,7 +1998,7 @@ const vi: Translations = {
   popup_language: "Ng\u00f4n ng\u1eef",
   popup_language_auto: "T\u1ef1 \u0111\u1ed9ng (tr\u00ecnh duy\u1ec7t)",
   error_free_tier:
-    'B\u1ea1n \u0111ang \u1edf g\u00f3i mi\u1ec5n ph\u00ed \u2014 ch\u1ec9 c\u00f3 ch\u1ebf \u0111\u1ed9 "Kh\u00f3a Ri\u00eang" kh\u1ea3 d\u1ee5ng. \u0110\u0103ng k\u00fd gyoza Pro: https://gyoz.ai/pricing',
+    'B\u1ea1n \u0111ang \u1edf g\u00f3i mi\u1ec5n ph\u00ed -ch\u1ec9 c\u00f3 ch\u1ebf \u0111\u1ed9 "Kh\u00f3a Ri\u00eang" kh\u1ea3 d\u1ee5ng. \u0110\u0103ng k\u00fd gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const id: Translations = {
@@ -2056,12 +2051,11 @@ const id: Translations = {
   popup_mode_own_key: "Kunci sendiri",
   popup_managed_connected: "Terhubung ke platform gyoza",
   popup_managed_sign_out: "Keluar",
-  popup_managed_subscribe_desc:
-    "Mulai dengan gyoza Pro \u2014 tanpa kunci API.",
+  popup_managed_subscribe_desc: "Mulai dengan gyoza Pro -tanpa kunci API.",
   popup_managed_subscribe_btn: "Mulai",
   popup_recipes: "Resep",
   popup_all_recipes: "Semua Resep",
-  popup_recipes_for: "Resep \u2014 {domain}",
+  popup_recipes_for: "Resep -{domain}",
   popup_no_recipes_all: "Belum ada resep terpasang.",
   popup_no_recipes_site:
     "Tidak ada resep untuk {domain}. Impor resep untuk meningkatkan navigasi AI.",
@@ -2069,14 +2063,13 @@ const id: Translations = {
   popup_back: "\u2190 Kembali",
   popup_settings: "Pengaturan",
   popup_yolo_mode: "Mode Yolo",
-  popup_yolo_desc:
-    "Lewati konfirmasi \u2014 AI bertindak langsung tanpa bertanya",
+  popup_yolo_desc: "Lewati konfirmasi -AI bertindak langsung tanpa bertanya",
   popup_chat_only: "Hanya Chat",
   popup_chat_only_desc:
-    "Hanya chat dan membaca halaman \u2014 tanpa klik, formulir, atau navigasi",
+    "Hanya chat dan membaca halaman -tanpa klik, formulir, atau navigasi",
   popup_sticky_chat: "Chat Tetap",
   popup_sticky_chat_desc:
-    "Biarkan chat terbuka \u2014 abaikan kedekatan kursor dan tetap terlihat",
+    "Biarkan chat terbuka -abaikan kedekatan kursor dan tetap terlihat",
   popup_auto_import_recipes: "Impor resep otomatis",
   popup_auto_import_recipes_desc:
     "Impor resep llms.txt secara otomatis dari situs web yang Anda kunjungi",
@@ -2086,7 +2079,7 @@ const id: Translations = {
   popup_language: "Bahasa",
   popup_language_auto: "Otomatis (browser)",
   error_free_tier:
-    'Anda di paket gratis \u2014 hanya mode "Kunci Sendiri" yang tersedia. Berlangganan gyoza Pro: https://gyoz.ai/pricing',
+    'Anda di paket gratis -hanya mode "Kunci Sendiri" yang tersedia. Berlangganan gyoza Pro: https://gyoz.ai/pricing',
 };
 
 const ms: Translations = {

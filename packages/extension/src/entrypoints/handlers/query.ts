@@ -27,7 +27,24 @@ export async function handleQuery(
 ): Promise<void> {
   const settings = await getSettings();
 
-  const providerResult = createProvider(settings);
+  let providerResult;
+  try {
+    providerResult = createProvider(settings);
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    const isNotSignedIn =
+      raw.includes("Not signed in") || raw.includes("not signed in");
+    const errorMessage = isNotSignedIn
+      ? `Not signed in - log in at https://gyoz.ai or switch to "Own Key" mode in settings.`
+      : raw;
+    sendResponse({
+      messages: [],
+      toolCalls: [],
+      error: errorMessage,
+      provider: settings.provider,
+    });
+    return;
+  }
   const tabId = sender.tab?.id ?? null;
   const convId = message.conversationId;
   const queryId = message.queryId;
@@ -512,20 +529,6 @@ export async function handleQuery(
       browser.storage.local
         .set({ gyozai_expression: ctx.expression })
         .catch(() => {});
-    }
-
-    // Desktop notification when tab is not focused (not available on Safari)
-    if (sender?.tab?.id && browser.notifications?.create) {
-      browser.tabs.get(sender.tab.id, (tab) => {
-        if (!tab.active && ctx.messages.length > 0) {
-          browser.notifications.create({
-            type: "basic",
-            iconUrl: "/icon-128.png",
-            title: "gyoza",
-            message: ctx.messages[0].slice(0, 100),
-          });
-        }
-      });
     }
 
     sendResponse({

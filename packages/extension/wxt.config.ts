@@ -58,11 +58,10 @@ export default defineConfig({
       "tabs",
       "storage",
       "scripting",
-      "notifications",
       "cookies",
       "webNavigation",
     ],
-    host_permissions: ["https://gyoz.ai/*"],
+    host_permissions: ["<all_urls>", "https://gyoz.ai/*"],
     web_accessible_resources: [
       {
         resources: [
