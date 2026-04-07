@@ -73,6 +73,8 @@ declare module "wxt/browser" {
       options?: GetMessageOptions,
     ): string;
     /**
+     * The name of the extension
+     *
      * "gyoza — AI Browser Assistant"
      */
     getMessage(
@@ -81,7 +83,9 @@ declare module "wxt/browser" {
       options?: GetMessageOptions,
     ): string;
     /**
-     * "Free floating AI assistant — no sidebar, no tab switching. Click buttons, fill forms, upload files on any website. BYOK or subscribe"
+     * A short description of the extension
+     *
+     * "Floating AI assistant — no sidebar, no tab switching. Click, fill forms, navigate any site. BYOK or subscribe."
      */
     getMessage(
       messageName: "extDescription",
@@ -89,6 +93,8 @@ declare module "wxt/browser" {
       options?: GetMessageOptions,
     ): string;
     /**
+     * Keyboard shortcut to toggle the widget
+     *
      * "Toggle gyoza widget"
      */
     getMessage(
