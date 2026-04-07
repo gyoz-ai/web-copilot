@@ -31,9 +31,9 @@ export default defineConfig({
     keepProfileChanges: true,
   },
   manifest: {
-    name: "gyoza",
+    name: "gyoza — AI Browser Assistant",
     description:
-      "AI companion for the browser. Ask questions, get answers, and let AI click and navigate for you.",
+      "Free floating AI assistant — no sidebar, no tab switching. Click buttons, fill forms, upload files on any website. BYOK or subscribe.",
     version: "0.0.13",
     browser_specific_settings: {
       gecko: {
