@@ -23,6 +23,7 @@ import {
 } from "@gyoz-ai/engine";
 import type { SnapshotType } from "@gyoz-ai/engine";
 import type { Conversation, ConversationSummary } from "../../lib/storage";
+import { hideWidgetHost, showWidgetHost } from "../../lib/injection";
 import type { WidgetSession } from "../../lib/session";
 import { saveImages, getImages } from "../../lib/image-store";
 import {
@@ -1686,7 +1687,10 @@ export function GyozaiWidget() {
 
   const handleScreenshot = useCallback(async () => {
     if (pendingImages.length >= MAX_IMAGES_PER_MESSAGE) return;
+    const prev = hideWidgetHost();
     try {
+      // Wait for browser to repaint with widget hidden
+      await new Promise((r) => setTimeout(r, 50));
       const response = await browser.runtime.sendMessage({
         type: "gyozai_capture_tab",
       });
@@ -1709,6 +1713,8 @@ export function GyozaiWidget() {
       );
     } catch {
       // Silently fail — screenshot not critical
+    } finally {
+      showWidgetHost(prev);
     }
   }, [pendingImages.length]);
 

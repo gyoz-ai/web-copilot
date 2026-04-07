@@ -245,6 +245,44 @@ async function execIsolated<T>(
   return results?.[0]?.result as T;
 }
 
+// ─── Screenshot widget-hiding helper ─────────────────────────────────────────
+// Hides the extension widget before capturing a screenshot, restores after.
+
+const WIDGET_HOST_ID = "gyozai-extension-root";
+
+async function hideWidgetForScreenshot(
+  tabId: number,
+): Promise<() => Promise<void>> {
+  try {
+    await execIsolated(
+      tabId,
+      ((hostId: string) => {
+        const host = document.getElementById(hostId);
+        if (host) host.style.visibility = "hidden";
+      }) as (...args: never[]) => void,
+      [WIDGET_HOST_ID],
+    );
+    await new Promise((r) => setTimeout(r, 50));
+  } catch {
+    // Content script may not be reachable — proceed with capture anyway
+  }
+
+  return async () => {
+    try {
+      await execIsolated(
+        tabId,
+        ((hostId: string) => {
+          const host = document.getElementById(hostId);
+          if (host) host.style.visibility = "";
+        }) as (...args: never[]) => void,
+        [WIDGET_HOST_ID],
+      );
+    } catch {
+      // Best effort
+    }
+  };
+}
+
 // ─── Post-action verification wrapper ─────────────────────────────────────────
 // Wraps any mutating tool's execute function with before/after page capture.
 // Captures page state BEFORE, runs the tool, then polls for changes AFTER.
@@ -2142,6 +2180,7 @@ export function createBrowserTools(
         kind: "tool-status",
         content: tr?.status_screenshot || "Taking screenshot",
       });
+      const restore = await hideWidgetForScreenshot(ctx.tabId);
       try {
         const dataUrl = await browser.tabs.captureVisibleTab({
           format: "jpeg",
@@ -2167,6 +2206,8 @@ export function createBrowserTools(
           success: false,
           description: `Failed to capture screenshot: ${e instanceof Error ? e.message : String(e)}`,
         };
+      } finally {
+        await restore();
       }
     },
   });

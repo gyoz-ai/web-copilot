@@ -7,7 +7,7 @@ import { browser } from "wxt/browser";
  *  stays alive with all its state intact.
  */
 
-const HOST_ID = "gyozai-extension-root";
+export const HOST_ID = "gyozai-extension-root";
 
 const S = "color: #E8950A; font-weight: bold";
 function log(...args: unknown[]) {
@@ -161,4 +161,21 @@ export function watchForRemoval(host: HTMLDivElement): () => void {
     window.removeEventListener("popstate", onNavChange);
     window.removeEventListener("gyozai:navchange", onNavChange);
   };
+}
+
+/** Hide the widget host element (for clean screenshots).
+ *  Returns the previous visibility value for restoration. */
+export function hideWidgetHost(): string {
+  const host = document.getElementById(HOST_ID);
+  if (!host) return "";
+  const prev = host.style.visibility;
+  host.style.visibility = "hidden";
+  return prev;
+}
+
+/** Restore the widget host element visibility. */
+export function showWidgetHost(prev = ""): void {
+  const host = document.getElementById(HOST_ID);
+  if (!host) return;
+  host.style.visibility = prev;
 }

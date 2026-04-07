@@ -1,10 +1,16 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { waitForBody, injectWidget, watchForRemoval } from "./injection";
+import {
+  waitForBody,
+  injectWidget,
+  watchForRemoval,
+  hideWidgetHost,
+  showWidgetHost,
+  HOST_ID,
+} from "./injection";
 
 // Bun uses happy-dom by default when running tests — DOM APIs are available.
 
 const MOCK_STYLES = ".test { color: red; }";
-const HOST_ID = "gyozai-extension-root";
 
 function noopRender(_container: HTMLDivElement) {}
 
@@ -237,5 +243,47 @@ describe("watchForRemoval", () => {
 
     // Same host, still in DOM
     expect(document.getElementById(HOST_ID)).toBe(host);
+  });
+});
+
+describe("hideWidgetHost / showWidgetHost", () => {
+  beforeEach(() => {
+    document.getElementById(HOST_ID)?.remove();
+  });
+
+  test("hides and restores widget host", () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    expect(host.style.visibility).toBe("");
+
+    const prev = hideWidgetHost();
+    expect(host.style.visibility).toBe("hidden");
+
+    showWidgetHost(prev);
+    expect(host.style.visibility).toBe("");
+  });
+
+  test("returns empty string and no-ops when host does not exist", () => {
+    const prev = hideWidgetHost();
+    expect(prev).toBe("");
+    // Should not throw
+    showWidgetHost(prev);
+  });
+
+  test("host stays connected when hidden (watchForRemoval safety)", () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    hideWidgetHost();
+    expect(host.isConnected).toBe(true);
+  });
+
+  test("preserves existing visibility value through hide/show cycle", () => {
+    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    host.style.visibility = "visible";
+
+    const prev = hideWidgetHost();
+    expect(prev).toBe("visible");
+    expect(host.style.visibility).toBe("hidden");
+
+    showWidgetHost(prev);
+    expect(host.style.visibility).toBe("visible");
   });
 });
