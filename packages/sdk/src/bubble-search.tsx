@@ -22,34 +22,45 @@ const PANEL_POSITION: Record<string, CSSProperties> = {
   "top-left": { top: 64, left: 0 },
 };
 
-// Simple gyoza SVG icon
+// Simple gyoza SVG icon — matches the logo: round dumpling with cute face
 const GyozaIcon = () => (
   <svg
     width="28"
     height="28"
-    viewBox="0 0 100 80"
+    viewBox="0 0 100 100"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
+    {/* Dumpling body */}
     <path
-      d="M50 5C25 5 5 30 5 50C5 65 20 75 50 75C80 75 95 65 95 50C95 30 75 5 50 5Z"
-      stroke="white"
+      d="M50 15C25 15 8 35 8 55C8 72 24 85 50 85C76 85 92 72 92 55C92 35 75 15 50 15Z"
+      stroke="#F5A623"
       strokeWidth="5"
       strokeLinecap="round"
       fill="none"
     />
+    {/* Crimped top edge */}
     <path
-      d="M20 35C30 25 40 20 50 20C60 20 70 25 80 35"
-      stroke="white"
+      d="M22 30C28 20 38 14 50 14C62 14 72 20 78 30"
+      stroke="#F5A623"
       strokeWidth="4"
       strokeLinecap="round"
       fill="none"
     />
-    <circle cx="38" cy="48" r="4" fill="white" />
-    <circle cx="62" cy="48" r="4" fill="white" />
     <path
-      d="M40 58C44 62 56 62 60 58"
-      stroke="white"
+      d="M18 35C22 28 30 22 38 22C42 24 44 28 48 26C52 24 56 22 62 22C70 22 78 28 82 35"
+      stroke="#F5A623"
+      strokeWidth="3"
+      strokeLinecap="round"
+      fill="none"
+    />
+    {/* Eyes */}
+    <circle cx="38" cy="55" r="5" fill="#F5A623" />
+    <circle cx="62" cy="55" r="5" fill="#F5A623" />
+    {/* Smile */}
+    <path
+      d="M40 66C44 72 56 72 60 66"
+      stroke="#F5A623"
       strokeWidth="3"
       strokeLinecap="round"
       fill="none"
