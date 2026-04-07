@@ -127,11 +127,11 @@ export const WIDGET_STYLES = `
     align-items: center;
     justify-content: center;
     z-index: 1;
-    opacity: 0.5;
+    opacity: 0.7;
     transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
-    color: var(--g-text-secondary);
+    color: var(--g-text-primary);
     border: none;
-    background: none;
+    background: var(--g-surface-2);
     padding: 0;
     border-radius: 16px 0 8px 0;
   }
@@ -139,7 +139,7 @@ export const WIDGET_STYLES = `
   .gyozai-fullscreen-toggle:hover {
     opacity: 1;
     color: var(--g-brand-500);
-    background: oklch(0.66 0.18 72 / 0.08);
+    background: var(--g-surface-3);
   }
 
   .gyozai-fullscreen-toggle svg {
@@ -159,9 +159,10 @@ export const WIDGET_STYLES = `
     align-items: center;
     justify-content: center;
     z-index: 1;
-    opacity: 0.5;
+    opacity: 0.7;
     transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
-    color: var(--g-text-secondary);
+    color: var(--g-text-primary);
+    background: var(--g-surface-2);
     border-radius: 0 16px 0 8px;
   }
 
@@ -172,7 +173,7 @@ export const WIDGET_STYLES = `
   .gyozai-resize-handle:hover {
     opacity: 1;
     color: var(--g-brand-500);
-    background: oklch(0.66 0.18 72 / 0.08);
+    background: var(--g-surface-3);
   }
 
   .gyozai-resize-handle-active {
