@@ -2258,21 +2258,7 @@ export function GyozaiWidget() {
                 </div>
               )}
               {messages
-                .filter((m) => {
-                  if (m.content.includes("set_expression")) {
-                    console.log(
-                      "%c[gyoza:debug] set_expression message found",
-                      "color: #ef4444; font-weight: bold",
-                      {
-                        id: m.id,
-                        role: m.role,
-                        type: m.type,
-                        content: m.content,
-                      },
-                    );
-                  }
-                  return !m.content.includes("set_expression");
-                })
+                .filter((m) => !m.content.includes("set_expression"))
                 .map((msg, idx) => {
                   const isToolStatus = msg.type === "tool-status";
                   const isLatestAssistant =
