@@ -10,7 +10,7 @@ import {
 
 // Bun uses happy-dom by default when running tests — DOM APIs are available.
 
-const MOCK_STYLES = ".test { color: red; }";
+const MOCK_CSS_URL = "chrome-extension://test/widget.css";
 
 function noopRender(_container: HTMLDivElement) {}
 
@@ -65,24 +65,29 @@ describe("injectWidget", () => {
   });
 
   test("creates host element with shadow DOM in body", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     expect(host.id).toBe(HOST_ID);
     expect(host.parentElement).toBe(document.body);
     expect(host.shadowRoot).not.toBeNull();
   });
 
-  test("injects styles into shadow DOM", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
-    // happy-dom doesn't fully support querySelector on shadow roots,
-    // so access children directly
-    const style = host.shadowRoot!.childNodes[0] as HTMLStyleElement;
-    expect(style.tagName).toBe("STYLE");
-    expect(style.textContent).toBe(MOCK_STYLES);
+  test("injects styles via link element in shadow DOM", () => {
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
+    const link = host.shadowRoot!.childNodes[0] as HTMLLinkElement;
+    expect(link.tagName).toBe("LINK");
+    expect(link.rel).toBe("stylesheet");
+    expect(link.href).toContain("widget.css");
+  });
+
+  test("renders container div as second child in shadow DOM", () => {
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
+    const container = host.shadowRoot!.childNodes[1] as HTMLDivElement;
+    expect(container.tagName).toBe("DIV");
   });
 
   test("calls renderWidget with the shadow container div", () => {
     const calls: HTMLDivElement[] = [];
-    injectWidget(document.body, MOCK_STYLES, trackingRender(calls));
+    injectWidget(document.body, MOCK_CSS_URL, trackingRender(calls));
     expect(calls).toHaveLength(1);
     expect(calls[0].tagName).toBe("DIV");
     // The container should be inside the shadow root
@@ -93,11 +98,11 @@ describe("injectWidget", () => {
 
   test("removes stale host before creating a new one", () => {
     // Create first host
-    const first = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const first = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     expect(first.isConnected).toBe(true);
 
     // Inject again — should replace, not duplicate
-    const second = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const second = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     expect(second.isConnected).toBe(true);
     expect(first.isConnected).toBe(false); // old one was removed
     // Only one host in the body
@@ -110,8 +115,8 @@ describe("injectWidget", () => {
   test("calls renderWidget each time (fresh React tree on re-inject)", () => {
     const calls: HTMLDivElement[] = [];
     const render = trackingRender(calls);
-    injectWidget(document.body, MOCK_STYLES, render);
-    injectWidget(document.body, MOCK_STYLES, render);
+    injectWidget(document.body, MOCK_CSS_URL, render);
+    injectWidget(document.body, MOCK_CSS_URL, render);
     expect(calls).toHaveLength(2);
     // Each call should get a different container (new shadow DOM)
     expect(calls[0]).not.toBe(calls[1]);
@@ -131,7 +136,7 @@ describe("watchForRemoval", () => {
   });
 
   test("re-attaches SAME host element when removed from DOM", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     // Remove the host (simulating SPA body replacement)
@@ -150,7 +155,7 @@ describe("watchForRemoval", () => {
     const calls: HTMLDivElement[] = [];
     const host = injectWidget(
       document.body,
-      MOCK_STYLES,
+      MOCK_CSS_URL,
       trackingRender(calls),
     );
     cleanup = watchForRemoval(host);
@@ -167,7 +172,7 @@ describe("watchForRemoval", () => {
   });
 
   test("re-attaches on popstate when host is missing", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     host.remove();
@@ -180,7 +185,7 @@ describe("watchForRemoval", () => {
   });
 
   test("re-attaches on gyozai:navchange event when host is missing", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     host.remove();
@@ -192,7 +197,7 @@ describe("watchForRemoval", () => {
   });
 
   test("dispatches gyozai:reattached event when host is re-appended", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     let reattachedFired = false;
@@ -214,7 +219,7 @@ describe("watchForRemoval", () => {
   });
 
   test("does not dispatch gyozai:reattached when host is still connected", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     let reattachedFired = false;
@@ -234,7 +239,7 @@ describe("watchForRemoval", () => {
   });
 
   test("does not re-attach if host is still connected", async () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     cleanup = watchForRemoval(host);
 
     // Fire nav event without removing host
@@ -252,7 +257,7 @@ describe("hideWidgetHost / showWidgetHost", () => {
   });
 
   test("hides and restores widget host", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     expect(host.style.visibility).toBe("");
 
     const prev = hideWidgetHost();
@@ -278,13 +283,13 @@ describe("hideWidgetHost / showWidgetHost", () => {
   });
 
   test("host stays connected when hidden (watchForRemoval safety)", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     hideWidgetHost();
     expect(host.isConnected).toBe(true);
   });
 
   test("preserves existing visibility value through hide/show cycle", () => {
-    const host = injectWidget(document.body, MOCK_STYLES, noopRender);
+    const host = injectWidget(document.body, MOCK_CSS_URL, noopRender);
     host.style.visibility = "visible";
 
     const prev = hideWidgetHost();

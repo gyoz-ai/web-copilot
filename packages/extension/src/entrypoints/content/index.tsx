@@ -12,7 +12,6 @@ import {
   type LocaleCode,
 } from "../../lib/i18n";
 import { GyozaiWidget, setPreloadState } from "./GyozaiWidget";
-import { WIDGET_STYLES } from "./styles";
 import { waitForPageReady } from "./helpers";
 import { storageGet } from "../../lib/storage";
 import {
@@ -241,7 +240,11 @@ export default defineContentScript({
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         const body = await waitForBody();
-        const host = injectWidget(body, WIDGET_STYLES, renderWidget);
+        const host = injectWidget(
+          body,
+          browser.runtime.getURL("/widget.css"),
+          renderWidget,
+        );
         watchForRemoval(host);
         log("Widget injected successfully");
         break;

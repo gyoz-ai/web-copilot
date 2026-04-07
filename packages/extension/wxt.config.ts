@@ -65,6 +65,7 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: [
+          "/widget.css",
           "/icon-128.png",
           "/icon-talking.gif",
           "/avatars/*/*.jpeg",

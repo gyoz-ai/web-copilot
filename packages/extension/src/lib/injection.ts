@@ -39,7 +39,7 @@ export function waitForBody(timeoutMs = 2000): Promise<HTMLElement> {
  *  Returns the host element so callers can observe it. */
 export function injectWidget(
   body: HTMLElement,
-  styles: string,
+  stylesheetUrl: string,
   renderWidget: (container: HTMLDivElement) => void,
 ): HTMLDivElement {
   // Remove stale host if it exists (leftover from a previous content script)
@@ -50,9 +50,14 @@ export function injectWidget(
   body.appendChild(host);
   const shadow = host.attachShadow({ mode: "open" });
 
-  const style = document.createElement("style");
-  style.textContent = styles;
-  shadow.appendChild(style);
+  // Load styles via <link> to bypass page CSP restrictions.
+  // Safari enforces the page's style-src CSP on inline <style> elements
+  // inside shadow DOM, breaking styling on strict-CSP sites (e.g. Stripe).
+  // Extension-bundled resources loaded via runtime.getURL are CSP-exempt.
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = stylesheetUrl;
+  shadow.appendChild(link);
 
   const container = document.createElement("div");
   shadow.appendChild(container);
