@@ -34,7 +34,7 @@ export default defineConfig({
     name: "__MSG_extName__",
     description: "__MSG_extDescription__",
     default_locale: "en",
-    version: "0.0.16",
+    version: "0.0.17",
     browser_specific_settings: {
       gecko: {
         id: "gyoza@gyoz.ai",
