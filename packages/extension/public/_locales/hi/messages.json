@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI ब्राउज़र सहायक",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "फ्लोटिंग AI सहायक — कोई साइडबार नहीं। क्लिक, फॉर्म भरें, किसी भी साइट पर जाएं। BYOK या सदस्यता।",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "gyoza विजेट टॉगल करें",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

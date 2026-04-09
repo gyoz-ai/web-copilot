@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Asisten AI Browser",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Asisten AI mengambang — tanpa sidebar. Klik, isi formulir, navigasi situs mana pun. BYOK atau berlangganan.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Beralih widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Pembantu AI Pelayar",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Pembantu AI terapung — tiada bar sisi. Klik, isi borang, navigasi mana-mana laman. BYOK atau langgan.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Togol widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Trợ lý AI trình duyệt",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Trợ lý AI nổi — không thanh bên. Nhấp, điền biểu mẫu, điều hướng bất kỳ trang nào. BYOK hoặc đăng ký.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Bật/tắt widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

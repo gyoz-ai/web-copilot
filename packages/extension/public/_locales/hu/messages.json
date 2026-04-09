@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI böngésző asszisztens",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Lebegő AI asszisztens — nincs oldalsáv. Kattintson, űrlapok, navigáljon bárhol. BYOK vagy előfizetés.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "gyoza widget váltása",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

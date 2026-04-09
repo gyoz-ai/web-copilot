@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI 브라우저 어시스턴트",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "플로팅 AI 어시스턴트 — 사이드바 없음. 클릭, 양식 작성, 모든 사이트 탐색. BYOK 또는 구독.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "gyoza 위젯 전환",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI-nettleserassistent",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Flytende AI-assistent — ingen sidefelt. Klikk, fyll ut skjemaer, naviger alle nettsteder. BYOK eller abonnement.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Veksle gyoza-widget",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}
