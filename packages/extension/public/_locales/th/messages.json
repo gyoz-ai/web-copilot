@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — ผู้ช่วย AI สำหรับเบราว์เซอร์",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "ผู้ช่วย AI ลอยตัว — ไม่มีแถบข้าง คลิก กรอกฟอร์ม ท่องเว็บไซต์ใดก็ได้ BYOK หรือสมัครสมาชิก",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "สลับวิดเจ็ต gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Assistant IA pour Navigateur",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Assistant IA flottant — sans barre latérale. Cliquez, formulaires, naviguez partout. BYOK ou abonnement.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Basculer le widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,343 @@
+name: Release Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Release & Publish
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # ─── Version bump ─────────────────────────────────────────
+      - name: Bump version
+        id: version
+        run: |
+          # Read current version from wxt.config.ts (negative lookbehind skips strict_min_version)
+          CURRENT=$(grep -oP '(?<!_)version:\s*"\K[^"]+' packages/extension/wxt.config.ts | head -1)
+          echo "Current version: $CURRENT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+
+          # Update version in wxt.config.ts
+          sed -i "s/version: \"$CURRENT\"/version: \"$NEW\"/" packages/extension/wxt.config.ts
+
+          # Update version in extension package.json
+          sed -i "s/\"version\": \"$CURRENT\"/\"version\": \"$NEW\"/" packages/extension/package.json
+
+      # ─── Typecheck & test ──────────────────────────────────────
+      - name: Typecheck & Test
+        run: |
+          bun turbo build --filter=@gyoz-ai/engine
+          bun turbo typecheck
+          bun turbo test --filter=@gyoz-ai/engine --filter=@gyoz-ai/extension
+
+      # ─── Build Chrome ──────────────────────────────────────────
+      - name: Build Chrome extension
+        run: cd packages/extension && bunx wxt zip
+
+      # ─── Build Firefox ─────────────────────────────────────────
+      - name: Build Firefox extension
+        run: cd packages/extension && bunx wxt zip --browser firefox
+
+      # ─── Collect source maps ───────────────────────────────────
+      - name: Collect source maps
+        run: |
+          mkdir -p packages/extension/.output/sourcemaps
+          find packages/extension/.output -name "*.map" -exec cp {} packages/extension/.output/sourcemaps/ \;
+          cd packages/extension/.output/sourcemaps
+          if [ "$(ls -A)" ]; then
+            tar -czf ../sourcemaps.tar.gz *
+            echo "SOURCEMAPS=true" >> "$GITHUB_ENV"
+          else
+            echo "SOURCEMAPS=false" >> "$GITHUB_ENV"
+          fi
+
+      # ─── Strip source maps from zips ───────────────────────────
+      - name: Strip source maps from distribution zips
+        run: |
+          cd packages/extension/.output
+          for zip in *.zip; do
+            [ -f "$zip" ] && zip -d "$zip" "*.map" 2>/dev/null || true
+          done
+
+      # ─── Commit version bump ───────────────────────────────────
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/extension/wxt.config.ts packages/extension/package.json
+          git commit -m "release: v${{ steps.version.outputs.version }}"
+          git pull origin main --rebase
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin main --tags
+
+      # ─── GitHub Release ────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "v${{ steps.version.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            packages/extension/.output/*.zip
+            packages/extension/.output/sourcemaps.tar.gz
+
+      # ─── Resolve zip paths ─────────────────────────────────────
+      - name: Resolve zip paths
+        id: zips
+        run: |
+          CHROME_ZIP=$(ls packages/extension/.output/*-chrome.zip | head -1)
+          FIREFOX_ZIP=$(ls packages/extension/.output/*-firefox.zip | head -1)
+          echo "chrome=$CHROME_ZIP" >> "$GITHUB_OUTPUT"
+          echo "firefox=$FIREFOX_ZIP" >> "$GITHUB_OUTPUT"
+
+      # ─── Publish to Chrome Web Store ───────────────────────────
+      - name: Upload to Chrome Web Store
+        if: env.CHROME_EXTENSION_ID != ''
+        uses: mobilefirstllc/cws-publish@latest
+        with:
+          action: "publish"
+          client_id: ${{ secrets.CHROME_CLIENT_ID }}
+          client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
+          zip_file: ${{ steps.zips.outputs.chrome }}
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+
+      # ─── Publish to Firefox Add-ons ────────────────────────────
+      - name: Upload to Firefox Add-ons
+        if: env.FIREFOX_JWT_ISSUER != ''
+        run: |
+          npm install -g web-ext
+          web-ext sign \
+            --api-key="${{ secrets.FIREFOX_JWT_ISSUER }}" \
+            --api-secret="${{ secrets.FIREFOX_JWT_SECRET }}" \
+            --channel=listed \
+            --source-dir=packages/extension/.output/firefox-mv2/ \
+            || echo "Firefox upload submitted (may need manual review)"
+        env:
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+
+      # ─── Verify Chrome Web Store (post-publish) ────────────────
+      - name: Verify Chrome Web Store listing
+        if: env.CHROME_EXTENSION_ID != ''
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://chrome.google.com/webstore/detail/${{ secrets.CHROME_EXTENSION_ID }}")
+          echo "Chrome Web Store status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ Chrome listing is live"
+          else
+            echo "⚠ Chrome listing returned $STATUS (may still be in review)"
+          fi
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+
+      # ─── Verify Firefox Add-ons (post-publish) ─────────────────
+      - name: Verify Firefox Add-ons listing
+        if: env.FIREFOX_EXTENSION_GUID != ''
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://addons.mozilla.org/api/v5/addons/addon/${{ secrets.FIREFOX_EXTENSION_GUID }}/")
+          echo "Firefox Add-ons API status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ Firefox listing is live"
+          else
+            echo "⚠ Firefox listing returned $STATUS (may still be in review)"
+          fi
+        env:
+          FIREFOX_EXTENSION_GUID: ${{ secrets.FIREFOX_EXTENSION_GUID }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Safari — macOS only (App Store Connect)
+  # ═══════════════════════════════════════════════════════════════════
+  release-safari:
+    if: false # disabled until App Store setup is finalized
+    name: Build & Publish Safari Extension
+    runs-on: macos-latest
+    needs: release
+    env:
+      APPLE_BUNDLE_ID: ${{ vars.APPLE_BUNDLE_ID || 'ai.gyoz.safari' }}
+    steps:
+      - name: Check Apple secrets are configured
+        id: check
+        env:
+          HAS_CERT: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          HAS_KEY: ${{ secrets.APPLE_API_KEY_BASE64 }}
+        run: |
+          if [ -z "$HAS_CERT" ] || [ -z "$HAS_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "⚠ Apple secrets not configured — skipping Safari build"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "✓ Apple secrets found"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          ref: main # picks up version-bumped commit from release job
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.check.outputs.skip != 'true'
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build engine
+        if: steps.check.outputs.skip != 'true'
+        run: bun turbo build --filter=@gyoz-ai/engine
+
+      # ─── Build Safari extension ──────────────────────────────────
+      - name: Build Safari extension
+        if: steps.check.outputs.skip != 'true'
+        run: cd packages/extension && bunx wxt build --browser safari
+
+      # ─── Convert to Xcode project (macOS only) ───────────────────
+      - name: Convert to Xcode project
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          xcrun safari-web-extension-converter packages/extension/.output/safari-mv2/ \
+            --project-location $RUNNER_TEMP/safari-xcode \
+            --app-name "gyoza" \
+            --bundle-identifier "$APPLE_BUNDLE_ID" \
+            --no-prompt \
+            --no-open
+
+          XCODEPROJ=$(find $RUNNER_TEMP/safari-xcode -name "*.xcodeproj" -maxdepth 2 | head -1)
+          echo "XCODEPROJ=$XCODEPROJ" >> "$GITHUB_ENV"
+          echo "Found Xcode project: $XCODEPROJ"
+
+      # ─── Install Apple signing certificate ─────────────────────
+      - name: Install Apple signing certificate
+        if: steps.check.outputs.skip != 'true'
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+
+          # Decode certificate
+          echo -n "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          security import "$CERT_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      # ─── Install App Store Connect API key ─────────────────────
+      - name: Install App Store Connect API key
+        if: steps.check.outputs.skip != 'true'
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "$APPLE_API_KEY_BASE64" | base64 --decode \
+            > ~/private_keys/AuthKey_${APPLE_API_KEY_ID}.p8
+
+      # ─── Create export options plist ───────────────────────────
+      - name: Create export options
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          cat > $RUNNER_TEMP/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+          </dict>
+          </plist>
+          PLIST
+
+      # ─── Archive macOS app ─────────────────────────────────────
+      - name: Archive macOS app
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          xcodebuild archive \
+            -project "$XCODEPROJ" \
+            -scheme "gyoza (macOS)" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -archivePath $RUNNER_TEMP/gyoza-macos.xcarchive \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }}
+
+      # ─── Upload macOS to App Store Connect ─────────────────────
+      - name: Upload macOS to App Store Connect
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/gyoza-macos.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export-macos \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER_ID }} \
+            || echo "⚠ macOS upload submitted (check App Store Connect)"
+
+      # ─── Cleanup ───────────────────────────────────────────────
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true

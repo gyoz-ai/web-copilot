@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Asistent AI pentru browser",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Asistent AI flotant — fără bară laterală. Clic, completați formulare, navigați orice site. BYOK sau abonament.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Comută widget-ul gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

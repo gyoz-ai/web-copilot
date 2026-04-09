@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI瀏覽器助手",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "免費AI懸浮助手 — 無側邊欄。點擊、填寫表單、瀏覽任何網站。自帶金鑰或訂閱。",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "切換gyoza小工具",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@gyoz-ai/extension",
+  "version": "0.0.17",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:locales": "bun run scripts/generate-locales.ts",
+    "dev": "bun run generate:locales && wxt",
+    "dev:firefox": "bun run generate:locales && wxt --browser firefox",
+    "build": "bun run generate:locales && wxt build",
+    "build:firefox": "bun run generate:locales && wxt build --browser firefox",
+    "build:safari": "bun run generate:locales && wxt build --browser safari && xcrun safari-web-extension-converter .output/safari-mv2 --bundle-identifier com.gyoz.ai --app-name gyoza --project-location ./safari-app --swift --force --no-open --no-prompt && bun run scripts/safari-post-convert.ts",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip --browser firefox",
+    "zip:safari": "wxt zip --browser safari",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf .output .wxt dist"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.66",
+    "@ai-sdk/google": "^3.0.58",
+    "@ai-sdk/openai": "^3.0.50",
+    "@ai-sdk/xai": "^3.0.77",
+    "@gyoz-ai/engine": "workspace:*",
+    "@wxt-dev/module-react": "^1.1.4",
+    "ai": "^6.0.146",
+    "preact": "^10.29.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "wxt": "^0.20.7",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "@types/chrome": "^0.0.309",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "^20.8.9",
+    "typescript": "^5"
+  }
+}

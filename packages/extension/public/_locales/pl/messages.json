@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Asystent AI przeglądarki",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Pływający asystent AI — bez paska bocznego. Klikaj, formularze, przeglądaj strony. BYOK lub subskrypcja.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Przełącz widget gyoza",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

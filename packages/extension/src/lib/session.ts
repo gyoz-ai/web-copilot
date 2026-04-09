@@ -1,0 +1,48 @@
+import { browser } from "wxt/browser";
+import { sessionGet } from "./storage";
+/** Per-tab widget session — survives full-page navigations within the same tab
+ *  but is cleared when the tab closes (background worker handles cleanup).
+ *
+ *  Uses browser.storage.session which is ephemeral (cleared on browser quit). */
+
+export interface WidgetSession {
+  expanded: boolean;
+  activeConvId: string | null;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    type?: "chat" | "tool-status";
+    imageIds?: string[];
+  }>;
+  input: string;
+  viewMode: "chat" | "history";
+  avatarPosition: { x: number; y: number } | null;
+  scrollTop?: number;
+  expression?: string;
+}
+
+const SESSION_PREFIX = "gyozai_tab_";
+
+function sessionKey(tabId: number) {
+  return `${SESSION_PREFIX}${tabId}`;
+}
+
+export async function saveWidgetSession(
+  tabId: number,
+  session: WidgetSession,
+): Promise<void> {
+  await browser.storage.session.set({ [sessionKey(tabId)]: session });
+}
+
+export async function loadWidgetSession(
+  tabId: number,
+): Promise<WidgetSession | null> {
+  const key = sessionKey(tabId);
+  const result = await sessionGet(key);
+  return (result[key] as WidgetSession) ?? null;
+}
+
+export async function clearWidgetSession(tabId: number): Promise<void> {
+  await browser.storage.session.remove(sessionKey(tabId));
+}

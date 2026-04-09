@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — Yapay Zeka Tarayıcı Asistanı",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Yüzen AI asistanı — kenar çubuğu yok. Tıklayın, form doldurun, her siteyi gezin. BYOK veya abonelik.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "gyoza widgetını aç/kapat",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}

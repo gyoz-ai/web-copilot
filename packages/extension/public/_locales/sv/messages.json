@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "gyoza — AI-webbläsarassistent",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Svävande AI-assistent — inget sidofält. Klicka, formulär, navigera vilken sida som helst. BYOK eller abonnemang.",
+    "description": "A short description of the extension"
+  },
+  "commandToggle": {
+    "message": "Växla gyoza-widget",
+    "description": "Keyboard shortcut to toggle the widget"
+  }
+}
