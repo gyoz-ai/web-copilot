@@ -25,6 +25,7 @@ const PROVIDERS = [
   { id: "claude", name: "Claude (Anthropic)" },
   { id: "openai", name: "ChatGPT (OpenAI)" },
   { id: "gemini", name: "Gemini (Google)" },
+  { id: "xai", name: "Grok (xAI)" },
 ] as const;
 
 const MODELS: Record<string, Array<{ id: string; name: string }>> = {
@@ -45,6 +46,14 @@ const MODELS: Record<string, Array<{ id: string; name: string }>> = {
       id: "gemini-3.1-flash-lite-preview",
       name: "Gemini 3.1 Flash Lite Preview",
     },
+  ],
+  xai: [
+    { id: "grok-4.20-0309-reasoning", name: "Grok 4.20 Reasoning" },
+    {
+      id: "grok-4.20-0309-non-reasoning",
+      name: "Grok 4.20 Non-Reasoning",
+    },
+    { id: "grok-4-1-fast-reasoning", name: "Grok 4.1 Fast Reasoning" },
   ],
 };
 
@@ -70,6 +79,19 @@ const MANAGED_MODEL_META: Record<
   },
   "gemini-3-flash-preview": { name: "Gemini 3 Flash", tier: "balanced" },
   "gemini-3.1-pro-preview": { name: "Gemini 3.1 Pro", tier: "expert" },
+  // xAI
+  "grok-4-1-fast-reasoning": {
+    name: "Grok 4.1 Fast Reasoning",
+    tier: "fast",
+  },
+  "grok-4.20-0309-non-reasoning": {
+    name: "Grok 4.20 Non-Reasoning",
+    tier: "balanced",
+  },
+  "grok-4.20-0309-reasoning": {
+    name: "Grok 4.20 Reasoning",
+    tier: "expert",
+  },
 };
 
 const TIER_COLORS: Record<string, { bg: string; fg: string }> = {

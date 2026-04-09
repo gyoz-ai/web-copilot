@@ -16,7 +16,7 @@ export async function sessionGet(keys: string | string[]): Promise<AnyRecord> {
   return (await browser.storage.session.get(keys)) as AnyRecord;
 }
 
-export type ProviderKey = "claude" | "openai" | "gemini";
+export type ProviderKey = "claude" | "openai" | "gemini" | "xai";
 
 export interface ManagedUsage {
   used: number;
@@ -56,7 +56,7 @@ export interface ExtensionSettings {
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   mode: "managed",
   provider: "claude",
-  apiKeys: { claude: "", openai: "", gemini: "" },
+  apiKeys: { claude: "", openai: "", gemini: "", xai: "" },
   model: "claude-haiku-4-5-20251001",
   yoloMode: false,
   chatOnly: false,
@@ -96,6 +96,7 @@ export async function getSettings(): Promise<ExtensionSettings> {
       claude: "",
       openai: "",
       gemini: "",
+      xai: "",
       [provider]: raw.apiKey,
     };
     delete (settings as Record<string, unknown>).apiKey;

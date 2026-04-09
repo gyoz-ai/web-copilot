@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createXai } from "@ai-sdk/xai";
 import type { ExtensionSettings } from "../storage";
 import type { ProviderResult } from "./types";
 
@@ -48,6 +49,12 @@ export function createProvider(settings: ExtensionSettings): ProviderResult {
         apiKey,
       });
       return { type: "model", model: google(settings.model) };
+    }
+    case "xai": {
+      const xai = createXai({
+        apiKey,
+      });
+      return { type: "model", model: xai(settings.model) };
     }
     default:
       throw new Error(`Unknown provider: ${settings.provider}`);

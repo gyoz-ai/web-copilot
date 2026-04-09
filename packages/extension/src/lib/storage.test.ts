@@ -26,6 +26,25 @@ describe("storage", () => {
       expect(DEFAULT_SETTINGS.panelOpacity).toBe(0.65);
     });
 
+    it("includes xai in default apiKeys", () => {
+      expect(DEFAULT_SETTINGS.apiKeys).toHaveProperty("xai");
+      expect(DEFAULT_SETTINGS.apiKeys.xai).toBe("");
+    });
+
+    it("supports all four providers in ProviderKey type", () => {
+      const settings: ExtensionSettings = { ...DEFAULT_SETTINGS };
+      const providers: Array<ExtensionSettings["provider"]> = [
+        "claude",
+        "openai",
+        "gemini",
+        "xai",
+      ];
+      for (const p of providers) {
+        settings.provider = p;
+        expect(settings.apiKeys[p]).toBe("");
+      }
+    });
+
     it("stickyChat can be toggled independently", () => {
       const withSticky: ExtensionSettings = {
         ...DEFAULT_SETTINGS,

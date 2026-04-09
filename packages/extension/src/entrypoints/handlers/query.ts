@@ -598,6 +598,7 @@ export async function handleQuery(
         claude: "https://console.anthropic.com/settings/billing",
         openai: "https://platform.openai.com/account/billing",
         gemini: "https://aistudio.google.com/billing",
+        xai: "https://console.x.ai/billing",
       };
       const url = DASHBOARD_URLS[settings.provider] || "";
       errorMessage = `Your ${settings.provider} API key has run out of credits. Top up at: ${url}`;
