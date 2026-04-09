@@ -67,7 +67,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   typingAnimation: true,
   typingSound: true,
   bubbleOpacity: 0.85,
-  panelOpacity: 0.65,
+  panelOpacity: 0.45,
   stickyChat: false,
   chatScale: 1,
   chatFullscreen: false,

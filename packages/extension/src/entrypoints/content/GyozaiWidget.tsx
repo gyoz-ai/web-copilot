@@ -225,8 +225,8 @@ export function GyozaiWidget() {
   const [expanded, setExpanded] = useState(
     _preloadedSession?.expanded ?? false,
   );
-  // Track whether expanded was set from preload (skip animation on initial render)
-  const expandedFromPreloadRef = useRef(_preloadedSession?.expanded ?? false);
+  // Track whether the panel open should animate (only on explicit user click)
+  const animatePanelRef = useRef(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -371,14 +371,15 @@ export function GyozaiWidget() {
     return () => window.removeEventListener("gyozai:reattached", onReattach);
   }, []);
 
-  // Clear preload flag after first paint so future expand/collapse animations work
+  // Clear animate flag after panel animation completes
   useEffect(() => {
-    if (expandedFromPreloadRef.current) {
-      requestAnimationFrame(() => {
-        expandedFromPreloadRef.current = false;
-      });
+    if (expanded && animatePanelRef.current) {
+      const timer = setTimeout(() => {
+        animatePanelRef.current = false;
+      }, 250);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [expanded]);
 
   // Keep refs in sync so closures always read fresh value
   useEffect(() => {
@@ -923,6 +924,7 @@ export function GyozaiWidget() {
     const handler = (msg: { type: string }) => {
       if (msg.type === "gyozai_toggle") {
         log("Toggle shortcut received");
+        animatePanelRef.current = true;
         setExpanded((prev) => {
           if (prev) {
             startNewChat();
@@ -2087,7 +2089,7 @@ export function GyozaiWidget() {
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
-        className={`gyozai-panel ${expanded ? (expandedFromPreloadRef.current ? "gyozai-panel-open-no-anim" : "gyozai-panel-open") : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
+        className={`gyozai-panel ${expanded ? (animatePanelRef.current ? "gyozai-panel-open" : "gyozai-panel-open-no-anim") : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
         style={{
           display:
             chatFullscreen || (expanded && !isDraggingAvatar) ? "flex" : "none",
@@ -2693,6 +2695,7 @@ export function GyozaiWidget() {
         }}
         onClick={() => {
           if (isMobileSafari) {
+            animatePanelRef.current = true;
             setExpanded((prev) => !prev);
           }
         }}
