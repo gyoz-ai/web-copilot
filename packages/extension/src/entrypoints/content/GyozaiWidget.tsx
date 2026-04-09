@@ -222,7 +222,11 @@ function MessageImages({
 }
 
 export function GyozaiWidget() {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(
+    _preloadedSession?.expanded ?? false,
+  );
+  // Track whether expanded was set from preload (skip animation on initial render)
+  const expandedFromPreloadRef = useRef(_preloadedSession?.expanded ?? false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -367,6 +371,15 @@ export function GyozaiWidget() {
     return () => window.removeEventListener("gyozai:reattached", onReattach);
   }, []);
 
+  // Clear preload flag after first paint so future expand/collapse animations work
+  useEffect(() => {
+    if (expandedFromPreloadRef.current) {
+      requestAnimationFrame(() => {
+        expandedFromPreloadRef.current = false;
+      });
+    }
+  }, []);
+
   // Keep refs in sync so closures always read fresh value
   useEffect(() => {
     stickyChatRef.current = stickyChat;
@@ -500,7 +513,7 @@ export function GyozaiWidget() {
           : "null",
       );
       if (_preloadedSession) {
-        setExpanded(_preloadedSession.expanded);
+        // expanded is already set via useState initial value from preload
         setInput(_preloadedSession.input);
         setMessages(_preloadedSession.messages);
         // Mark all restored messages as already animated — don't replay on refresh
@@ -2074,7 +2087,7 @@ export function GyozaiWidget() {
 
       {/* Chat panel — positioned dynamically relative to avatar */}
       <div
-        className={`gyozai-panel ${expanded ? "gyozai-panel-open" : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
+        className={`gyozai-panel ${expanded ? (expandedFromPreloadRef.current ? "gyozai-panel-open-no-anim" : "gyozai-panel-open") : ""} ${chatFullscreen ? "gyozai-panel-fullscreen" : ""}`}
         style={{
           display:
             chatFullscreen || (expanded && !isDraggingAvatar) ? "flex" : "none",

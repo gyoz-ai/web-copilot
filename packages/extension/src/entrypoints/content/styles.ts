@@ -101,6 +101,10 @@ export const WIDGET_STYLES = `
     animation: gyozai-panel-in 0.2s ease-out;
   }
 
+  .gyozai-panel-open-no-anim {
+    /* Restored from session — render instantly without animation */
+  }
+
   @keyframes gyozai-panel-in {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
