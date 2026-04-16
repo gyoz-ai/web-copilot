@@ -848,7 +848,7 @@ export function GyozaiWidget() {
           `The current page content is included below — do NOT call get_page_context. ` +
           `Read the page carefully and take the next actions needed. ` +
           `Do NOT navigate away — you were redirected here for a reason. ` +
-          `Use click, scroll_to, and other tools to interact with THIS page.`;
+          `Use click and other tools to interact with THIS page.`;
         log("Follow-up query:", followUpQuery);
 
         let navigated = false;

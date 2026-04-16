@@ -274,7 +274,6 @@ export async function handleQuery(
       "select_option",
       "toggle_checkbox",
       "submit_form",
-      "scroll_to",
     ]);
     const hasPageAction = () =>
       allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));

@@ -119,15 +119,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: false,
     maxResultChars: 500,
   },
-  scroll_to: {
-    name: "scroll_to",
-    description: "Scroll to element",
-    pageChange: false,
-    mutatesPage: false,
-    requiresFreshContext: false,
-    isConcurrencySafe: true,
-    maxResultChars: 500,
-  },
   report_action_result: {
     name: "report_action_result",
     description: "Evaluate action result",
@@ -136,15 +127,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     requiresFreshContext: false,
     isConcurrencySafe: true,
     maxResultChars: 500,
-  },
-  find_text: {
-    name: "find_text",
-    description: "Find text on page",
-    pageChange: false,
-    mutatesPage: false,
-    requiresFreshContext: false,
-    isConcurrencySafe: true,
-    maxResultChars: 2_000,
   },
   extract_table: {
     name: "extract_table",
@@ -618,7 +600,7 @@ export function createBrowserTools(
   // ── Always available: show_message ──────────────────────────────────────
   tools.show_message = tool<{ message: string }, { displayed: boolean }>({
     description:
-      "Display a message to the user in the chat. You MUST call this tool in EVERY response to explain what you are doing or what you found. Never perform actions without also showing a message.",
+      "Display a message to the user in the chat. Call this ONCE per response to explain what you did or found. Do NOT call it multiple times — combine your update into a single concise message. Never perform actions without also showing a message.",
     inputSchema: jsonSchema<{ message: string }>({
       type: "object" as const,
       properties: {
@@ -664,7 +646,7 @@ export function createBrowserTools(
     { acknowledged: boolean }
   >({
     description:
-      "REQUIRED after every page action (click, scroll_to, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
+      "REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
     inputSchema: jsonSchema<{
       success: boolean;
       summary: string;
@@ -1854,213 +1836,6 @@ export function createBrowserTools(
       ctx,
       tools.submit_form.execute!,
     );
-  }
-
-  // ── scroll_to ─────────────────────────────────────────────────────────
-  if (caps.click) {
-    tools.scroll_to = tool({
-      description:
-        "Scroll an element into view. IMPORTANT: Use the ACTUAL text visible on the page (from get_page_context), not a translated or assumed version. The page language may differ from yours.",
-      inputSchema: jsonSchema<{
-        selector?: string;
-        text?: string;
-        direction?: string;
-      }>({
-        type: "object" as const,
-        properties: {
-          selector: { type: "string", description: "CSS selector" },
-          text: {
-            type: "string",
-            description:
-              "Text content to find and scroll to. Must match the ACTUAL text on the page — use get_page_context first to get real text.",
-          },
-          direction: {
-            type: "string",
-            enum: ["up", "down"],
-            description: "Scroll direction if no specific element",
-          },
-        },
-      }),
-      execute: async ({
-        selector,
-        text,
-        direction,
-      }: {
-        selector?: string;
-        text?: string;
-        direction?: string;
-      }) => {
-        ctx.onStreamEvent?.({
-          kind: "tool-status",
-          content: tr?.status_scrolling || "Scrolling",
-        });
-        try {
-          const result = await execInPage(
-            ctx.tabId,
-            ((sel: string | null, txt: string | null, dir: string | null) => {
-              // 1. Try CSS selector first
-              if (sel) {
-                const el = document.querySelector(sel) as HTMLElement | null;
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  return { scrolled: true, target: sel };
-                }
-              }
-              if (txt) {
-                const lower = txt.toLowerCase();
-                // 2. Exact text content match (case-insensitive)
-                const walker = document.createTreeWalker(
-                  document.body,
-                  NodeFilter.SHOW_TEXT,
-                );
-                while (walker.nextNode()) {
-                  if (
-                    walker.currentNode.textContent
-                      ?.toLowerCase()
-                      .includes(lower)
-                  ) {
-                    const parent = walker.currentNode.parentElement;
-                    parent?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
-                    return { scrolled: true, target: `text: "${txt}"` };
-                  }
-                }
-                // 3. Fallback: search element attributes (id, class, aria-label, name, data-section)
-                const attrCandidates = document.querySelectorAll(
-                  `[id*="${CSS.escape(lower)}" i], [class*="${CSS.escape(lower)}" i], [aria-label*="${CSS.escape(lower)}" i], [name*="${CSS.escape(lower)}" i], [data-section*="${CSS.escape(lower)}" i]`,
-                );
-                if (attrCandidates.length > 0) {
-                  const el = attrCandidates[0] as HTMLElement;
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  return {
-                    scrolled: true,
-                    target: `attr match: "${txt}" on <${el.tagName.toLowerCase()}>`,
-                  };
-                }
-                // 4. Fallback: search headings and section-like elements for partial match
-                const sectionEls = document.querySelectorAll(
-                  "h1, h2, h3, h4, h5, h6, section, [role='region'], [role='heading']",
-                );
-                for (const el of sectionEls) {
-                  const elText = (el as HTMLElement).textContent || "";
-                  if (elText.toLowerCase().includes(lower)) {
-                    (el as HTMLElement).scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
-                    return {
-                      scrolled: true,
-                      target: `heading/section: "${elText.trim().slice(0, 60)}"`,
-                    };
-                  }
-                }
-              }
-              if (dir === "up") {
-                window.scrollBy({ top: -500, behavior: "smooth" });
-                return { scrolled: true, target: "up" };
-              }
-              if (dir === "down") {
-                window.scrollBy({ top: 500, behavior: "smooth" });
-                return { scrolled: true, target: "down" };
-              }
-              return { scrolled: false };
-            }) as (...args: never[]) => { scrolled: boolean; target?: string },
-            [selector || null, text || null, direction || null],
-          );
-          if (!result?.scrolled)
-            return {
-              success: false,
-              error: `Could not find "${text || selector || direction}" on the page. The page may use a different language than expected. Call get_page_context first to see the actual text/selectors, then retry with the real page content.`,
-            };
-          return { success: true, scrolledTo: result.target };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
-  }
-
-  // ── find_text ─────────────────────────────────────────────────────────
-  if (caps.click) {
-    tools.find_text = tool({
-      description:
-        "Search for text on the page. Returns matching elements and their context.",
-      inputSchema: jsonSchema<{ query: string; max_results?: number }>({
-        type: "object" as const,
-        properties: {
-          query: {
-            type: "string",
-            description: "Text to search for (case-insensitive)",
-          },
-          max_results: {
-            type: "number",
-            description: "Max matches to return (default: 10)",
-          },
-        },
-        required: ["query"],
-      }),
-      execute: async ({
-        query,
-        max_results,
-      }: {
-        query: string;
-        max_results?: number;
-      }) => {
-        ctx.onStreamEvent?.({
-          kind: "tool-status",
-          content: tr?.status_searching || "Searching page",
-        });
-        try {
-          const result = await execInPage(
-            ctx.tabId,
-            ((searchText: string, maxResults: number) => {
-              const matches: Array<{
-                text: string;
-                tag: string;
-                context: string;
-              }> = [];
-              const walker = document.createTreeWalker(
-                document.body,
-                NodeFilter.SHOW_TEXT,
-              );
-              while (walker.nextNode() && matches.length < maxResults) {
-                const nodeText = walker.currentNode.textContent || "";
-                if (nodeText.toLowerCase().includes(searchText.toLowerCase())) {
-                  const parent = walker.currentNode.parentElement;
-                  if (!parent) continue;
-                  matches.push({
-                    text: nodeText.trim().slice(0, 200),
-                    tag: parent.tagName.toLowerCase(),
-                    context: (
-                      parent.closest("section, article, div, main")
-                        ?.textContent || ""
-                    )
-                      .trim()
-                      .slice(0, 100),
-                  });
-                }
-              }
-              return { matches, total: matches.length };
-            }) as (...args: never[]) => {
-              matches: Array<{ text: string; tag: string; context: string }>;
-              total: number;
-            },
-            [query, max_results || 10],
-          );
-          return { success: true, ...result };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
   }
 
   // ── extract_table ─────────────────────────────────────────────────────

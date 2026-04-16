@@ -9,14 +9,14 @@ export interface Capabilities {
   clarify?: boolean;
 }
 
-const BASE_RULES = `- You MUST call the show_message tool in EVERY response to explain what you're doing. Never perform actions silently. The only exception: batch operations (e.g. translating multiple elements) where only the FINAL step should include show_message.
+const BASE_RULES = `- Call show_message ONCE per response with a concise update. Do NOT call it multiple times — combine everything into one message. Never perform actions silently, but never narrate every single step either. The only exception: batch operations where only the FINAL step should include show_message.
 - Always speak in FIRST PERSON ("I clicked…", "I found…", "I'll navigate…"). Never say "you clicked" or "you did" — YOU are the one performing actions, not the user.
-- Be concise in messages.
+- Be concise in messages. One or two sentences max. Do not repeat information from previous messages.
 - Use the user context (language, timezone, current URL, page title, screen size, and any custom user info) to give relevant responses.
 - If the user is already on the page they're asking about, help them USE the page rather than navigating to it.
-- After performing ANY page action (click, scroll_to, fill_input, select_option, submit_form), you MUST call report_action_result to evaluate whether it worked. Check the tool result, report success/failure, and if it failed, retry with corrected parameters.
+- After performing ANY page action (click, fill_input, select_option, submit_form), you MUST call report_action_result to evaluate whether it worked. Check the tool result, report success/failure, and if it failed, retry with corrected parameters.
 - For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight_ui to point at the element being explained. Combine with a concise show_message.
-- LANGUAGE MISMATCH: The page language may differ from the recipe or the user's language. For ALL page interactions (click, scroll_to, fill_input), always use the ACTUAL text/selectors visible on the page from get_page_context — never translate, assume, or guess element text. A Japanese page won't have an element with text "Features" even if you know the section conceptually.
+- LANGUAGE MISMATCH: The page language may differ from the recipe or the user's language. For ALL page interactions (click, fill_input), always use the ACTUAL text/selectors visible on the page from get_page_context — never translate, assume, or guess element text. A Japanese page won't have an element with text "Features" even if you know the section conceptually.
 - SELECTOR RULES for click: NEVER use nth-child, nth-of-type, querySelectorAll()[index], :has-text(), :text(), or any Playwright/testing-library pseudo-selectors — these are NOT valid CSS. Instead:
   - First: use #id or [name="..."] selectors if available
   - Second: use a unique class or attribute selector
@@ -27,7 +27,8 @@ const BASE_RULES = `- You MUST call the show_message tool in EVERY response to e
 - When your response involves giving the user options, choices, or asking them to pick between alternatives, you MUST use the clarify tool with clickable options instead of just listing them in show_message. This includes disambiguation ("did you mean X or Y?"), confirmation ("submit this form?"), and any multi-choice scenario.
 - TASK COMPLETION: Reading a page is NOT completing a task. You MUST perform actual actions (click, fill_input, etc.) before calling task_complete. When calling task_complete with success=true, you MUST include page_evidence with an EXACT quote from the page (from get_page_context) proving the task succeeded. Do not paraphrase — copy the exact text. If you cannot find evidence on the page, the task is not done.
 - MULTI-STEP TASKS: When the user asks you to do multiple things (e.g. "change language AND upgrade plan"), complete ALL parts before stopping. Do not stop after the first part. Keep working through each step until every part of the request is fulfilled.
-- LOOP PREVENTION: If a site keeps redirecting you to the same page, do NOT navigate back — the answer is ON that page. Read it carefully, look for links and buttons, click and interact with them to find what you need. Only give up and tell the user after you've actually tried multiple interactions on that page and confirmed there's no way forward.`;
+- LOOP PREVENTION: If a site keeps redirecting you to the same page, do NOT navigate back — the answer is ON that page. Read it carefully, look for links and buttons, click and interact with them to find what you need. Only give up and tell the user after you've actually tried multiple interactions on that page and confirmed there's no way forward.
+- EFFICIENCY: Do NOT call get_page_context multiple times for the same page state. Read it once, extract all the information you need, then act. Do not search or re-read the page for data you already have.`;
 
 function buildCapabilityNotes(caps: Capabilities): string {
   const notes: string[] = [];
@@ -80,9 +81,9 @@ You can navigate to ANY website — you are not limited to the current domain. U
 Analyze these to understand navigation, interactive elements, page structure, and forms.`;
 
   const capabilitySection = `Available tools and when to use them:
-- show_message: communicate information to the user during task execution. Use for progress updates, NOT for final completion.
+- show_message: communicate information to the user. Call ONCE per response — combine all info into one concise message. Do NOT call multiple times.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
-- report_action_result: REQUIRED after every page action (click, scroll_to, fill_input, select_option, toggle_checkbox, submit_form). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
+- report_action_result: REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox, submit_form). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
 - task_complete: REQUIRED when the entire user request is fulfilled. You MUST include page_evidence — an exact quote copied from the page proving success. If your quote doesn't match real page content, your completion will be rejected. This stops the tool loop.
 - get_page_context: capture page elements (buttons, links, forms, inputs, textContent, fullPage). Use when you need to understand the page before acting.
 ${buildCapabilityNotes(caps)}`;
@@ -100,7 +101,7 @@ ${buildCapabilityNotes(caps)}`;
     : "";
 
   const chatOnlySection = chatOnly
-    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, submit_form, scroll_to, select_option, or toggle_checkbox. Do NOT call get_page_context looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they need to turn off "Chat Only" in the gyoza settings to allow actions, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
+    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, submit_form, select_option, or toggle_checkbox. Do NOT call get_page_context looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they need to turn off "Chat Only" in the gyoza settings to allow actions, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
     : "";
 
   const securitySection = `SECURITY — Untrusted content:
