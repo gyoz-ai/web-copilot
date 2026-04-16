@@ -56,14 +56,23 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 500,
   },
-  get_page_context: {
-    name: "get_page_context",
-    description: "Capture page context",
+  search_page: {
+    name: "search_page",
+    description: "Search page HTML and JS",
     pageChange: false,
     mutatesPage: false,
     requiresFreshContext: false,
     isConcurrencySafe: true,
-    maxResultChars: 30_000,
+    maxResultChars: 5_000,
+  },
+  execute_page_function: {
+    name: "execute_page_function",
+    description: "Execute discovered JS function",
+    pageChange: true,
+    mutatesPage: true,
+    requiresFreshContext: true,
+    isConcurrencySafe: false,
+    maxResultChars: 2_000,
   },
   fetch_url: {
     name: "fetch_url",
@@ -280,10 +289,6 @@ async function hideWidgetForScreenshot(
 // Wraps any mutating tool's execute function with before/after page capture.
 // Captures page state BEFORE, runs the tool, then polls for changes AFTER.
 
-function countTag(text: string, tag: string): number {
-  return (text.match(new RegExp(tag, "g")) || []).length;
-}
-
 function findNewLines(before: string, after: string): string {
   const beforeSet = new Set(before.split("\n").map((l) => l.trim()));
   return after
@@ -297,10 +302,9 @@ function findNewLines(before: string, after: string): string {
 async function capturePageState(tabId: number): Promise<string> {
   try {
     const result = await browser.tabs.sendMessage(tabId, {
-      type: "gyozai_tool_capture_context",
-      snapshotTypes: ["buttons", "forms", "inputs", "textContent"],
+      type: "gyozai_capture_text",
     });
-    return (result?.context as string) || "";
+    return (result?.text as string) || "";
   } catch {
     return "";
   }
@@ -416,21 +420,16 @@ async function verifyPostAction(
       "color: #f59e0b; font-weight: bold",
     );
 
-    const newForms =
-      countTag(afterText, "<form") - countTag(beforeText, "<form");
-    const newFields =
-      countTag(afterText, "<field") - countTag(beforeText, "<field");
-    const newInputs =
-      countTag(afterText, "<input") - countTag(beforeText, "<input");
+    const lengthDiff = Math.abs(afterText.length - beforeText.length);
 
     console.log(
-      `%c  [gyoza:verify] Diff: ${newForms} forms, ${newFields} fields, ${newInputs} inputs`,
+      `%c  [gyoza:verify] Diff: ${lengthDiff} chars length change`,
       "color: #f59e0b",
     );
 
-    if (newForms > 0 || newFields > 2 || newInputs > 2) {
+    if (lengthDiff > 500) {
       console.log(
-        "%c  [gyoza:verify] → Action incomplete (new form/dialog)",
+        "%c  [gyoza:verify] → Action incomplete (significant page change)",
         "color: #ef4444; font-weight: bold",
       );
       return {
@@ -538,7 +537,7 @@ function withVerification<TArgs, TResult extends Record<string, unknown>>(
     if (verify.actionIncomplete) {
       return {
         success: false,
-        error: `Action opened a form/dialog that requires attention. ${countTag(verify.pageState || "", "<form")} forms, new fields appeared. Page state:\n${verify.pageState}\nYou must handle these before the action succeeds.`,
+        error: `Action caused a significant page change (new form/dialog). Page state:\n${verify.pageState}\nYou must handle these before the action succeeds.`,
       } as unknown as TResult;
     }
 
@@ -686,7 +685,7 @@ export function createBrowserTools(
     { stopped: boolean; warning?: string }
   >({
     description:
-      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST include page_evidence: quote EXACT text from the page that proves the task succeeded (copy-paste from get_page_context, not paraphrased). If you cannot quote evidence, the task is not verified.",
+      "Call this when the ENTIRE user request is fulfilled. This stops the tool loop. You MUST include page_evidence: quote EXACT text from the page that proves the task succeeded (copy-paste from search_page results, not paraphrased). If you cannot quote evidence, the task is not verified.",
     inputSchema: jsonSchema<{
       success: boolean;
       summary: string;
@@ -706,7 +705,7 @@ export function createBrowserTools(
         page_evidence: {
           type: "string",
           description:
-            "REQUIRED for success=true. Exact text copied from the page (from get_page_context) that proves the task was completed. Must be a verbatim quote, not paraphrased.",
+            "REQUIRED for success=true. Exact text copied from the page (from search_page) that proves the task was completed. Must be a verbatim quote, not paraphrased.",
         },
       },
       required: ["success", "summary"],
@@ -738,7 +737,7 @@ export function createBrowserTools(
         if (!normalizedPage.includes(normalizedEvidence)) {
           return {
             stopped: false,
-            warning: `Your page_evidence "${page_evidence}" was NOT found on the page. You may be hallucinating. Call get_page_context to re-read the page, then look for the ACTUAL text that confirms your task, or call task_complete with success=false.`,
+            warning: `Your page_evidence "${page_evidence}" was NOT found on the page. You may be hallucinating. Call search_page to re-read the page, then look for the ACTUAL text that confirms your task, or call task_complete with success=false.`,
           };
         }
       }
@@ -1206,68 +1205,222 @@ export function createBrowserTools(
     });
   }
 
-  // ── get_page_context ────────────────────────────────────────────────────
-  tools.get_page_context = tool<{ types: string[] }, { context: string }>({
+  // ── search_page ────────────────────────────────────────────────────
+  tools.search_page = tool({
     description:
-      "Capture structured elements from the current page. Use this to understand the page before acting. For TRANSLATION or EDITING: use 'fullPage' to get all selectors and text. For understanding: use 'textContent'. For navigation: use 'links'. For forms: use 'forms' and/or 'inputs'. For clicking buttons: use 'buttons'.",
-    inputSchema: jsonSchema<{ types: string[] }>({
+      "Search the current page's HTML and JavaScript for specific patterns. " +
+      "Returns matching snippets with surrounding context. " +
+      "Use this to find elements, text, forms, buttons, API endpoints, " +
+      "function definitions, event handlers — anything on the page. " +
+      "Search HTML for DOM elements, JS for string literals in all scripts (including external bundles). " +
+      "Adjust context_chars to control how much surrounding code you see around each match (default 150).",
+    inputSchema: jsonSchema<{
+      query: string | string[];
+      scope?: "all" | "html" | "js";
+      context_chars?: number;
+      max_results?: number;
+    }>({
       type: "object" as const,
       properties: {
-        types: {
-          type: "array",
-          items: {
-            type: "string",
-            enum: [
-              "buttons",
-              "links",
-              "forms",
-              "inputs",
-              "textContent",
-              "fullPage",
-            ],
-          },
+        query: {
           description:
-            "What to capture from the page. 'fullPage' = everything combined.",
+            "Text pattern(s) to search for (case-insensitive). " +
+            "Examples: '<button', '/api/', 'addToCart', '<form'",
+        },
+        scope: {
+          type: "string",
+          enum: ["all", "html", "js"],
+          description:
+            "Where to search: 'html' = page DOM, 'js' = all scripts, 'all' = both (default: 'all')",
+        },
+        context_chars: {
+          type: "number",
+          description:
+            "Characters of context around each match (default: 150). Use 300-500 for understanding code flow.",
+        },
+        max_results: {
+          type: "number",
+          description: "Maximum matches to return (default: 15)",
         },
       },
-      required: ["types"],
+      required: ["query"],
     }),
-    execute: async ({ types }: { types: string[] }) => {
+    execute: async ({
+      query,
+      scope = "all",
+      context_chars = 150,
+      max_results = 15,
+    }: {
+      query: string | string[];
+      scope?: "all" | "html" | "js";
+      context_chars?: number;
+      max_results?: number;
+    }) => {
       ctx.onStreamEvent?.({
         kind: "tool-status",
-        content: tr?.status_reading_page || "Reading page",
+        content: tr?.status_reading_page || "Searching page",
       });
-      try {
-        const result = await browser.tabs.sendMessage(ctx.tabId, {
-          type: "gyozai_tool_capture_context",
-          snapshotTypes: types,
-        });
-        if (result?.context) {
-          const ctx_text = result.context as string;
-          console.log(
-            `%c  [gyoza] get_page_context(${types.join(",")})%c ${ctx_text.length} chars`,
-            "color: #a855f7; font-weight: bold",
-            "color: #9ca3af",
-          );
-          console.groupCollapsed(
-            "%c  [gyoza] page context preview",
-            "color: #9ca3af",
-          );
-          console.log(ctx_text.slice(0, 2000));
-          console.groupEnd();
-          // Store for evidence validation in task_complete
-          ctx.lastPageContext = ctx_text;
-          return { context: ctx_text };
+
+      const patterns = Array.isArray(query) ? query : [query];
+      const htmlMatches: Array<{ match: string; position: number }> = [];
+      const jsMatches: Array<{
+        source: string;
+        match: string;
+        position: number;
+      }> = [];
+      let htmlSize = 0;
+      let jsFiles = 0;
+      let jsTotalSize = 0;
+
+      // HTML search — runs in content script
+      if (scope === "all" || scope === "html") {
+        try {
+          const result = await browser.tabs.sendMessage(ctx.tabId, {
+            type: "gyozai_search_html",
+            patterns,
+            contextChars: context_chars,
+            maxResults: max_results,
+          });
+          if (result?.matches) {
+            htmlMatches.push(...result.matches);
+            htmlSize = result.htmlSize || 0;
+          }
+        } catch {
+          // Content script not reachable
         }
-        return { context: "No page context captured (page may be loading)." };
-      } catch {
-        return {
-          context:
-            "Failed to capture page context (content script unavailable).",
-        };
       }
+
+      // Store for evidence validation in task_complete
+      if (htmlMatches.length > 0) {
+        ctx.lastPageContext = htmlMatches.map((m) => m.match).join("\n");
+      }
+
+      // JS search — runs in background script (has the cache)
+      if (scope === "all" || scope === "js") {
+        try {
+          const result = await browser.runtime.sendMessage({
+            type: "gyozai_search_scripts",
+            tabId: ctx.tabId,
+            patterns,
+            contextChars: context_chars,
+            maxResults: Math.max(1, max_results - htmlMatches.length),
+          });
+          if (result?.matches) {
+            jsMatches.push(...result.matches);
+            jsFiles = result.stats?.js_files || 0;
+            jsTotalSize = result.stats?.js_total_size || 0;
+          }
+        } catch {
+          // Background script not reachable
+        }
+      }
+
+      return {
+        html_matches: htmlMatches,
+        js_matches: jsMatches,
+        stats: {
+          html_size: htmlSize,
+          js_files: jsFiles,
+          js_total_size: jsTotalSize,
+        },
+      };
     },
   });
+
+  // ── execute_page_function ──────────────────────────────────────────
+  if (caps.click) {
+    tools.execute_page_function = tool({
+      description:
+        "Execute JavaScript code on the page that you discovered through search_page. " +
+        "Use this AFTER using search_page to find functions, API calls, or JS patterns. " +
+        "Call page functions, trigger events, read state, or make fetch calls " +
+        "that you found in the page's JavaScript. " +
+        "Examples: call addToCart('id'), read window.__NEXT_DATA__, " +
+        "or fetch an API endpoint you found in the JS bundle.",
+      inputSchema: jsonSchema<{
+        code: string;
+        description: string;
+      }>({
+        type: "object" as const,
+        properties: {
+          code: {
+            type: "string",
+            description:
+              "JavaScript code to execute in the page context. " +
+              "Must be based on functions/patterns you found via search_page.",
+          },
+          description: {
+            type: "string",
+            description: "Human-readable description of what this code does.",
+          },
+        },
+        required: ["code", "description"],
+      }),
+      execute: async ({
+        code,
+        description,
+      }: {
+        code: string;
+        description: string;
+      }) => {
+        ctx.onStreamEvent?.({
+          kind: "tool-status",
+          content: description,
+        });
+        try {
+          const result = await execInPage(
+            ctx.tabId,
+            ((jsCode: string) => {
+              try {
+                const fn = new Function(`return (async () => { ${jsCode} })()`);
+                return fn().then(
+                  (val: unknown) => ({
+                    success: true,
+                    result:
+                      typeof val === "object"
+                        ? JSON.stringify(val)
+                        : String(val ?? "undefined"),
+                  }),
+                  (err: Error) => ({
+                    success: false,
+                    error: err.message || String(err),
+                  }),
+                );
+              } catch (e) {
+                return Promise.resolve({
+                  success: false,
+                  error: e instanceof Error ? e.message : String(e),
+                });
+              }
+            }) as (...args: never[]) => Promise<{
+              success: boolean;
+              result?: string;
+              error?: string;
+            }>,
+            [code],
+          );
+
+          return result || { success: false, error: "No result returned" };
+        } catch (e) {
+          return {
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+          };
+        }
+      },
+    });
+    if (!yoloMode) {
+      tools.execute_page_function.execute = withConfirmation(
+        ctx,
+        (args: { description: string }) => args.description,
+        tools.execute_page_function.execute!,
+      );
+    }
+    tools.execute_page_function.execute = withVerification(
+      ctx,
+      tools.execute_page_function.execute!,
+    );
+  }
 
   // ── fetch_url ───────────────────────────────────────────────────────────
   if (caps.fetch) {

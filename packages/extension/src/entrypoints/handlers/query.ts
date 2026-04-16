@@ -274,6 +274,7 @@ export async function handleQuery(
       "select_option",
       "toggle_checkbox",
       "submit_form",
+      "execute_page_function",
     ]);
     const hasPageAction = () =>
       allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));
@@ -378,7 +379,7 @@ export async function handleQuery(
         // naturally — it's just responding to a greeting or question.
         if (lastToolName === "show_message" && !hasPageAction()) return {};
 
-        // Otherwise (show_message narration, get_page_context, etc.),
+        // Otherwise (show_message narration, search_page, etc.),
         // force tool use so the model keeps working instead of stopping
         // after just describing what it sees.
         const usedTools = new Set(
@@ -424,7 +425,7 @@ export async function handleQuery(
         }
         // Stream text from steps that didn't already show a message.
         // Skip if: (a) this step has show_message, OR (b) show_message was
-        // already called AFTER the last get_page_context (the model already
+        // already called AFTER the last search_page (the model already
         // communicated the result — follow-up text is just a rephrasing).
         const hasShowMessage = toolCalls?.some(
           (tc) =>
@@ -435,7 +436,7 @@ export async function handleQuery(
         let lastPageCtxIdx = -1;
         let lastShowMsgIdx = -1;
         for (let i = allToolCalls.length - 1; i >= 0; i--) {
-          if (lastPageCtxIdx < 0 && allToolCalls[i].tool === "get_page_context")
+          if (lastPageCtxIdx < 0 && allToolCalls[i].tool === "search_page")
             lastPageCtxIdx = i;
           if (lastShowMsgIdx < 0 && allToolCalls[i].tool === "show_message")
             lastShowMsgIdx = i;
