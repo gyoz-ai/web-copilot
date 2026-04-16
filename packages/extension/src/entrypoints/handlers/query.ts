@@ -75,7 +75,7 @@ export async function handleQuery(
   const modelId =
     providerResult.type === "model"
       ? (providerResult.model as { modelId?: string }).modelId || settings.model
-      : `managed:exec (chat=${settings.model})`;
+      : `dual: chat=${settings.model} | exec=server-selected`;
   console.log(
     "  Provider:",
     settings.provider,
@@ -296,15 +296,65 @@ export async function handleQuery(
       : systemPrompt;
 
     let streamError: Error | null = null;
-    // Use execution model for tool calling when available (managed dual mode),
-    // otherwise use the single model (BYOK)
-    const activeModel =
+    // Dual-model orchestration (managed mode):
+    //   • chat model       → user-facing reasoning & talking (greet, clarify,
+    //                         task_complete summary, conversational replies)
+    //   • execution model  → fast/cheap tool-execution loop on the page
+    // Single-model fallback (BYOK): same model used for everything.
+    const isDual = providerResult.type === "dual";
+    const chatModel =
+      providerResult.type === "dual"
+        ? providerResult.chatModel
+        : providerResult.model;
+    const executionModel =
       providerResult.type === "dual"
         ? providerResult.executionModel
         : providerResult.model;
 
+    // Tools that should be handled by the chat (user-facing) model.
+    // After one of these runs, the next step is talking → chat model.
+    const CHAT_TOOLS = new Set([
+      "show_message",
+      "report_action_result",
+      "clarify",
+      "task_complete",
+      "set_expression",
+    ]);
+
+    // Decide which model owns the next step based on the last tool used.
+    // First step always starts on the chat model — it understands intent
+    // and decides whether to talk or to start executing on the page.
+    const pickModelForStep = (
+      steps: ReadonlyArray<{
+        toolCalls?: ReadonlyArray<{ toolName: string }>;
+      }>,
+    ) => {
+      if (!isDual) return chatModel;
+      if (steps.length === 0) return chatModel;
+      const lastStep = steps[steps.length - 1];
+      const lastToolCalls = lastStep?.toolCalls || [];
+      if (lastToolCalls.length === 0) return chatModel;
+      // Any page-action tool in last step → keep grinding with execution model
+      const ranPageAction = lastToolCalls.some((tc) =>
+        PAGE_ACTION_TOOLS.has(tc.toolName),
+      );
+      if (ranPageAction) return executionModel;
+      // search_page is the discovery tool — execution model handles the
+      // search → analyze → execute pipeline without user-facing chat.
+      const ranSearch = lastToolCalls.some(
+        (tc) => tc.toolName === "search_page",
+      );
+      if (ranSearch) return executionModel;
+      // Last tool was conversational (show_message etc.) → chat model
+      const ranChat = lastToolCalls.some((tc) => CHAT_TOOLS.has(tc.toolName));
+      if (ranChat) return chatModel;
+      return executionModel;
+    };
+
     const stream = streamText({
-      model: activeModel,
+      // Initial model — chat model handles step 0 (understand intent).
+      // prepareStep swaps to executionModel as soon as page actions begin.
+      model: chatModel,
       system: systemParam,
       messages: aiMessages,
       tools,
@@ -340,7 +390,25 @@ export async function handleQuery(
         return false;
       },
       prepareStep: ({ steps, messages: stepMessages }) => {
-        if (steps.length === 0) return {};
+        // Decide which model handles THIS step (chat vs execution)
+        const stepModel = pickModelForStep(steps);
+
+        if (isDual) {
+          const modelLabel =
+            stepModel === executionModel ? "execution" : "chat";
+          console.log(
+            `%c  [gyoza] step #${steps.length} → ${modelLabel} model`,
+            modelLabel === "execution"
+              ? "color: #06b6d4; font-weight: bold"
+              : "color: #f59e0b; font-weight: bold",
+          );
+        }
+
+        if (steps.length === 0) {
+          // First step → chat model already set as streamText default.
+          // Returning model explicitly is fine but not required.
+          return { model: stepModel };
+        }
 
         // If page_screenshot was used, inject the image as a user message
         // so the model sees it as visual content (same path as chat image upload)
@@ -375,16 +443,18 @@ export async function handleQuery(
           lastToolName === "task_complete" ||
           lastToolName === "navigate"
         )
-          return {};
+          return { model: stepModel };
 
         // Chat-only mode: let the model stop after show_message since it
         // can't take actions and just needs to explain to the user.
-        if (settings.chatOnly && lastToolName === "show_message") return {};
+        if (settings.chatOnly && lastToolName === "show_message")
+          return { model: stepModel };
 
         // Conversational queries: if show_message was the last tool and no
         // page-action tools have been attempted yet, let the model stop
         // naturally — it's just responding to a greeting or question.
-        if (lastToolName === "show_message" && !hasPageAction()) return {};
+        if (lastToolName === "show_message" && !hasPageAction())
+          return { model: stepModel };
 
         // Otherwise (show_message narration, search_page, etc.),
         // force tool use so the model keeps working instead of stopping
@@ -399,7 +469,11 @@ export async function handleQuery(
           (t) => !exclude.has(t),
         ) as (keyof typeof tools)[];
 
-        return { toolChoice: "required" as const, activeTools: active };
+        return {
+          model: stepModel,
+          toolChoice: "required" as const,
+          activeTools: active,
+        };
       },
       onError: ({ error }) => {
         if (error instanceof Error) {
