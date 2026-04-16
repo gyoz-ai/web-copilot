@@ -1,4 +1,6 @@
 import type { LanguageModel } from "ai";
 
-// Provider result — always a Vercel AI SDK model (both BYOK and managed)
-export type ProviderResult = { type: "model"; model: LanguageModel };
+// Provider result — single model (BYOK) or dual model (managed with execution endpoint)
+export type ProviderResult =
+  | { type: "model"; model: LanguageModel }
+  | { type: "dual"; chatModel: LanguageModel; executionModel: LanguageModel };

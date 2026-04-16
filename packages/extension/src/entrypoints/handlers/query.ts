@@ -75,7 +75,7 @@ export async function handleQuery(
   const modelId =
     providerResult.type === "model"
       ? (providerResult.model as { modelId?: string }).modelId || settings.model
-      : `managed (${settings.model})`;
+      : `managed:exec (chat=${settings.model})`;
   console.log(
     "  Provider:",
     settings.provider,
@@ -296,8 +296,15 @@ export async function handleQuery(
       : systemPrompt;
 
     let streamError: Error | null = null;
+    // Use execution model for tool calling when available (managed dual mode),
+    // otherwise use the single model (BYOK)
+    const activeModel =
+      providerResult.type === "dual"
+        ? providerResult.executionModel
+        : providerResult.model;
+
     const stream = streamText({
-      model: providerResult.model,
+      model: activeModel,
       system: systemParam,
       messages: aiMessages,
       tools,

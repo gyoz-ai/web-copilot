@@ -10,16 +10,25 @@ export type { ProviderResult } from "./types";
 const PLATFORM_URL = "https://gyoz.ai/v1/ai";
 
 export function createProvider(settings: ExtensionSettings): ProviderResult {
-  // Managed mode → OpenAI-compatible proxy (same streamText() path as BYOK)
+  // Managed mode → dual model: chat (user-selected) + execution (server-selected)
   if (settings.mode === "managed") {
     if (!settings.managedToken) {
       throw new Error("Not signed in to gyoza platform");
     }
-    const managed = createOpenAI({
+    const chatProvider = createOpenAI({
       baseURL: PLATFORM_URL,
       apiKey: settings.managedToken,
     });
-    return { type: "model", model: managed.chat(settings.model) };
+    // Execution provider points to /execute endpoint — server picks the fast model.
+    // @ai-sdk/openai appends /chat/completions to baseURL, so we point to
+    // a base that results in POST /v1/ai/execute/chat/completions.
+    // Instead, we use the same base but the server routes model="execution"
+    // to the execution endpoint internally.
+    return {
+      type: "dual",
+      chatModel: chatProvider.chat(settings.model),
+      executionModel: chatProvider.chat("execution"),
+    };
   }
 
   // BYOK mode → Vercel AI SDK model (direct to provider)
