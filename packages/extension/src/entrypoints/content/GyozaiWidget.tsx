@@ -256,6 +256,7 @@ export function GyozaiWidget() {
   const [bubbleOpacity, setBubbleOpacity] = useState(0.85);
   const [panelOpacity, setPanelOpacity] = useState(0.65);
   const [stickyChat, setStickyChat] = useState(false);
+  const [ninjaMode, setNinjaMode] = useState(false);
   const stickyChatRef = useRef(false);
   const [chatScale, setChatScale] = useState(_preloadedChatScale ?? 1);
   const [isResizing, setIsResizing] = useState(false);
@@ -469,7 +470,6 @@ export function GyozaiWidget() {
   // false = chatbox was opened by click (stays open until clicked again)
   const hoverOpenRef = useRef(false);
 
-  // Safari mobile: disable proximity, use tap to toggle instead
   const isMobileSafari = isSafariMobile();
 
   // Proximity detection — open chatbox when cursor is near avatar
@@ -703,6 +703,7 @@ export function GyozaiWidget() {
           if (typeof s?.panelOpacity === "number")
             setPanelOpacity(s.panelOpacity);
           if (typeof s?.stickyChat === "boolean") setStickyChat(s.stickyChat);
+          if (typeof s?.ninjaMode === "boolean") setNinjaMode(s.ninjaMode);
           if (typeof s?.chatScale === "number") setChatScale(s.chatScale);
           if (typeof s?.chatFullscreen === "boolean")
             setChatFullscreen(s.chatFullscreen);
@@ -737,6 +738,9 @@ export function GyozaiWidget() {
       }
       if (typeof newSettings?.stickyChat === "boolean") {
         setStickyChat(newSettings.stickyChat);
+      }
+      if (typeof newSettings?.ninjaMode === "boolean") {
+        setNinjaMode(newSettings.ninjaMode);
       }
       if (typeof newSettings?.chatScale === "number") {
         setChatScale(newSettings.chatScale);
@@ -1955,8 +1959,9 @@ export function GyozaiWidget() {
       {/* Toast — always visible, even when panel is closed */}
       {toast && <div className="gyozai-floating-toast">{toast}</div>}
 
-      {/* Status pill / speech bubble — centered above avatar */}
-      {!expanded &&
+      {/* Status pill / speech bubble — centered above avatar (hidden in ninja mode) */}
+      {!ninjaMode &&
+        !expanded &&
         !isDraggingAvatar &&
         (() => {
           const rect = avatarWrapperRef.current?.getBoundingClientRect();
@@ -2726,46 +2731,48 @@ export function GyozaiWidget() {
         </div>
       </div>
 
-      {/* Avatar widget — rendered after panel so it appears on top in fullscreen */}
-      <Avatar
-        size={agentSize}
-        expression={expression}
-        isTalking={isTypewriting}
-        position={avatarPosition}
-        onDragEnd={(pos) => {
-          setAvatarPosition(pos);
-          browser.storage.local
-            .set({ gyozai_avatar_position: pos })
-            .catch(() => {});
-        }}
-        onClick={() => {
-          animatePanelRef.current = true;
-          setExpanded((prev) => {
-            if (prev) {
-              startNewChat();
+      {/* Avatar widget — hidden in ninja mode (only shortcut opens panel) */}
+      {!ninjaMode && (
+        <Avatar
+          size={agentSize}
+          expression={expression}
+          isTalking={isTypewriting}
+          position={avatarPosition}
+          onDragEnd={(pos) => {
+            setAvatarPosition(pos);
+            browser.storage.local
+              .set({ gyozai_avatar_position: pos })
+              .catch(() => {});
+          }}
+          onClick={() => {
+            animatePanelRef.current = true;
+            setExpanded((prev) => {
+              if (prev) {
+                startNewChat();
+                hoverOpenRef.current = false;
+                return false;
+              }
               hoverOpenRef.current = false;
-              return false;
+              return true;
+            });
+          }}
+          wrapperRef={avatarWrapperRef}
+          onDragStateChange={(dragging) => {
+            const wasDragging = isDraggingAvatar;
+            setIsDraggingAvatar(dragging);
+            if (wasDragging && !dragging && !isMobileSafari) {
+              dragDropGraceRef.current = true;
+              setTimeout(() => {
+                dragDropGraceRef.current = false;
+              }, 600);
+              hoverOpenRef.current = true;
+              forceInside();
+              setExpanded(true);
             }
-            hoverOpenRef.current = false;
-            return true;
-          });
-        }}
-        wrapperRef={avatarWrapperRef}
-        onDragStateChange={(dragging) => {
-          const wasDragging = isDraggingAvatar;
-          setIsDraggingAvatar(dragging);
-          if (wasDragging && !dragging && !isMobileSafari) {
-            dragDropGraceRef.current = true;
-            setTimeout(() => {
-              dragDropGraceRef.current = false;
-            }, 600);
-            hoverOpenRef.current = true;
-            forceInside();
-            setExpanded(true);
-          }
-        }}
-        onPositionChange={bumpAvatarPosTick}
-      />
+          }}
+          onPositionChange={bumpAvatarPosTick}
+        />
+      )}
     </>
   );
 }

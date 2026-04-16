@@ -735,6 +735,31 @@ body {
 
 /* ─── Reduced motion ─────────────────────────────────────── */
 
+/* ─── Shortcut Pro-tip ──────────────────────────────── */
+
+.popup-shortcut-tip {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary, #9ca3af);
+  background: var(--surface-1, #1a1816);
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.popup-shortcut-tip kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-left: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #e8950a;
+  background: rgba(232, 149, 10, 0.1);
+  border: 1px solid rgba(232, 149, 10, 0.3);
+  border-radius: 4px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

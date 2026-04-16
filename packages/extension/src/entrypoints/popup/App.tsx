@@ -743,6 +743,29 @@ export function App() {
               </button>
             </div>
 
+            {/* Ninja Mode */}
+            <div className="setting-row">
+              <div className="setting-info">
+                <div className="setting-label">Ninja Mode</div>
+                <div className="setting-desc">
+                  Hide avatar completely — use keyboard shortcut only
+                </div>
+              </div>
+              <button
+                className={`toggle-btn ${settings.ninjaMode ? "active" : ""}`}
+                onClick={() => {
+                  const updated = {
+                    ...settings,
+                    ninjaMode: !settings.ninjaMode,
+                  };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              >
+                {settings.ninjaMode ? "ON" : "OFF"}
+              </button>
+            </div>
+
             {/* Sticky Chat */}
             <div className="setting-row">
               <div className="setting-info">
@@ -921,6 +944,15 @@ export function App() {
           </div>
         </>
       )}
+      {/* Shortcut pro-tip — fixed at bottom */}
+      <div className="popup-shortcut-tip">
+        <span style={{ opacity: 0.5 }}>Shortcut:</span>{" "}
+        <kbd>
+          {navigator.platform?.includes("Mac")
+            ? "\u2318\u21e7E"
+            : "Ctrl+Shift+E"}
+        </kbd>
+      </div>
     </div>
   );
 }

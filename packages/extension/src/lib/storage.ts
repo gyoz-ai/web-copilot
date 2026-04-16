@@ -51,6 +51,8 @@ export interface ExtensionSettings {
   chatScale: number;
   /** Whether the chat panel is in fullscreen mode. */
   chatFullscreen: boolean;
+  /** Ninja mode — hide avatar completely, only accessible via keyboard shortcut. */
+  ninjaMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -71,6 +73,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   stickyChat: false,
   chatScale: 1,
   chatFullscreen: false,
+  ninjaMode: false,
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
