@@ -499,7 +499,7 @@ export function GyozaiWidget() {
       }
     },
     leaveDelay: 50,
-    disabled: isMobileSafari,
+    disabled: true,
   });
 
   // ─── Restore session from browser.storage.session after preload ───
@@ -950,6 +950,19 @@ export function GyozaiWidget() {
     browser.runtime.onMessage.addListener(handler);
     return () => browser.runtime.onMessage.removeListener(handler);
   }, []);
+
+  // ESC key closes panel globally (not just when input focused)
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && expanded) {
+        startNewChat();
+        hoverOpenRef.current = false;
+        setExpanded(false);
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [expanded]);
 
   // Auto-focus input when expanded
   useEffect(() => {
@@ -1920,7 +1933,7 @@ export function GyozaiWidget() {
     ]);
   }
 
-  // Avatar click disabled — chatbox opens via proximity only
+  // Avatar click toggles chatbox open/closed
 
   const tr = getTranslations(locale);
 
@@ -2236,6 +2249,31 @@ export function GyozaiWidget() {
               <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           )}
+        </button>
+
+        {/* Close button */}
+        <button
+          className="gyozai-close-btn"
+          onClick={() => {
+            startNewChat();
+            hoverOpenRef.current = false;
+            setExpanded(false);
+          }}
+          title="Close"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
 
         {/* History View */}
@@ -2701,10 +2739,16 @@ export function GyozaiWidget() {
             .catch(() => {});
         }}
         onClick={() => {
-          if (isMobileSafari) {
-            animatePanelRef.current = true;
-            setExpanded((prev) => !prev);
-          }
+          animatePanelRef.current = true;
+          setExpanded((prev) => {
+            if (prev) {
+              startNewChat();
+              hoverOpenRef.current = false;
+              return false;
+            }
+            hoverOpenRef.current = false;
+            return true;
+          });
         }}
         wrapperRef={avatarWrapperRef}
         onDragStateChange={(dragging) => {

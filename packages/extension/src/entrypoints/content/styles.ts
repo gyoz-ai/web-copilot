@@ -156,6 +156,38 @@ export const WIDGET_STYLES = `
     pointer-events: none;
   }
 
+  /* ─── Close Button ──────────────────────────────────────── */
+
+  .gyozai-close-btn {
+    position: absolute;
+    top: 0;
+    left: 32px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+    color: var(--g-text-primary);
+    border: none;
+    background: var(--g-surface-2);
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .gyozai-close-btn:hover {
+    opacity: 1;
+    color: #ef4444;
+    background: var(--g-surface-3);
+  }
+
+  .gyozai-close-btn svg {
+    pointer-events: none;
+  }
+
   /* ─── Resize Handle ──────────────────────────────────────── */
 
   .gyozai-resize-handle {
