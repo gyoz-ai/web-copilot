@@ -12,7 +12,7 @@ export interface WidgetSession {
     id: string;
     role: "user" | "assistant";
     content: string;
-    type?: "chat" | "tool-status";
+    type?: "chat" | "tool-status" | "system";
     imageIds?: string[];
   }>;
   input: string;

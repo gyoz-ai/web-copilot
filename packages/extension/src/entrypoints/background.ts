@@ -42,8 +42,42 @@ export default defineBackground({
       }
     >();
 
+    // ─── Script Cache (per-tab) ────────────────────────────────────────────
+    interface CachedScript {
+      key: string;
+      source: string;
+      type: "inline" | "external";
+      url?: string;
+      contentHash: string;
+      size: number;
+    }
+
+    interface TabScriptCache {
+      origin: string;
+      scripts: Map<string, CachedScript>;
+      totalSize: number;
+    }
+
+    const scriptCaches = new Map<number, TabScriptCache>();
+    const MAX_CACHE_SIZE_PER_TAB = 5 * 1024 * 1024;
+    const MAX_SCRIPT_SIZE = 1 * 1024 * 1024;
+
     browser.webNavigation.onBeforeNavigate.addListener((details) => {
       if (details.frameId !== 0) return; // Only main frame
+
+      // Clear script cache on cross-origin navigation
+      const existingCache = scriptCaches.get(details.tabId);
+      if (existingCache) {
+        try {
+          const newOrigin = new URL(details.url).origin;
+          if (existingCache.origin !== newOrigin) {
+            scriptCaches.delete(details.tabId);
+          }
+        } catch {
+          scriptCaches.delete(details.tabId);
+        }
+      }
+
       const query = activeQueries.get(details.tabId);
       if (!query) return;
 
@@ -423,6 +457,128 @@ export default defineBackground({
         case "gyozai_exec":
           handleLegacyExec(message, sendResponse);
           return true;
+        case "gyozai_cache_scripts": {
+          const tabId = message.tabId as number;
+          const origin = message.origin as string;
+          const scripts = message.scripts as Array<{
+            key: string;
+            type: "inline" | "external";
+            url?: string;
+            inlineContent?: string;
+            contentHash: string;
+          }>;
+
+          (async () => {
+            let cache = scriptCaches.get(tabId);
+            if (!cache || cache.origin !== origin) {
+              cache = { origin, scripts: new Map(), totalSize: 0 };
+              scriptCaches.set(tabId, cache);
+            }
+
+            for (const script of scripts) {
+              if (cache.scripts.has(script.key)) continue;
+
+              if (script.type === "inline" && script.inlineContent) {
+                if (script.inlineContent.length > MAX_SCRIPT_SIZE) continue;
+                cache.scripts.set(script.key, {
+                  key: script.key,
+                  source: script.inlineContent,
+                  type: "inline",
+                  contentHash: script.contentHash,
+                  size: script.inlineContent.length,
+                });
+                cache.totalSize += script.inlineContent.length;
+              }
+
+              if (script.type === "external" && script.url) {
+                try {
+                  const res = await fetch(script.url);
+                  const text = await res.text();
+                  if (text.length > MAX_SCRIPT_SIZE) continue;
+                  cache.scripts.set(script.key, {
+                    key: script.key,
+                    source: text,
+                    type: "external",
+                    url: script.url,
+                    contentHash: script.contentHash,
+                    size: text.length,
+                  });
+                  cache.totalSize += text.length;
+                } catch {
+                  // skip unfetchable scripts
+                }
+              }
+
+              // Evict if over budget
+              while (cache.totalSize > MAX_CACHE_SIZE_PER_TAB) {
+                const largest = [...cache.scripts.values()].sort(
+                  (a, b) => b.size - a.size,
+                )[0];
+                if (!largest) break;
+                cache.scripts.delete(largest.key);
+                cache.totalSize -= largest.size;
+              }
+            }
+            sendResponse({ cached: cache.scripts.size });
+          })();
+          return true;
+        }
+        case "gyozai_search_scripts": {
+          const tabId = message.tabId as number;
+          const patterns = message.patterns as string[];
+          const contextChars = (message.contextChars as number) || 150;
+          const maxResults = (message.maxResults as number) || 15;
+          const cache = scriptCaches.get(tabId);
+
+          if (!cache) {
+            sendResponse({
+              matches: [],
+              stats: { js_files: 0, js_total_size: 0 },
+            });
+            return false;
+          }
+
+          const matches: Array<{
+            source: string;
+            match: string;
+            position: number;
+          }> = [];
+
+          for (const [, script] of cache.scripts) {
+            for (const pattern of patterns) {
+              let idx = 0;
+              const lowerSource = script.source.toLowerCase();
+              const lowerPattern = pattern.toLowerCase();
+              while (
+                (idx = lowerSource.indexOf(lowerPattern, idx)) !== -1 &&
+                matches.length < maxResults
+              ) {
+                const start = Math.max(0, idx - contextChars);
+                const end = Math.min(
+                  script.source.length,
+                  idx + pattern.length + contextChars,
+                );
+                matches.push({
+                  source: script.url || script.key,
+                  match: script.source.slice(start, end),
+                  position: idx,
+                });
+                idx += pattern.length;
+              }
+              if (matches.length >= maxResults) break;
+            }
+            if (matches.length >= maxResults) break;
+          }
+
+          sendResponse({
+            matches,
+            stats: {
+              js_files: cache.scripts.size,
+              js_total_size: cache.totalSize,
+            },
+          });
+          return false;
+        }
         default:
           return false;
       }
@@ -442,6 +598,7 @@ export default defineBackground({
 
     browser.tabs.onRemoved.addListener((tabId) => {
       activeQueries.delete(tabId);
+      scriptCaches.delete(tabId);
       clearWidgetSession(tabId).catch(() => {});
     });
   },

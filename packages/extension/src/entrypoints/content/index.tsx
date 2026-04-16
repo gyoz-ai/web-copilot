@@ -14,13 +14,6 @@ import {
 import { GyozaiWidget, setPreloadState } from "./GyozaiWidget";
 import { waitForPageReady } from "./helpers";
 import { storageGet } from "../../lib/storage";
-import {
-  capturePageContext,
-  formatPageContext,
-  captureCleanHtml,
-  stripToFit,
-} from "@gyoz-ai/engine";
-import type { SnapshotType } from "@gyoz-ai/engine";
 
 // ─── Module-level preload ────────────────────────────────────────────────────
 
@@ -163,47 +156,55 @@ async function tryAutoImportRecipe() {
   }
 }
 
-// ─── Tool Execution Listener (for background worker tool calls) ─────────────
-
-const SNAPSHOT_MAP: Record<string, SnapshotType> = {
-  buttons: "buttons",
-  links: "links",
-  forms: "forms",
-  inputs: "inputs",
-  textContent: "textContent",
-  fullPage: "all",
-};
+// ─── Page Search Listener (for background worker tool calls) ──────────
 
 browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === "gyozai_tool_capture_context") {
+  if (msg.type === "gyozai_search_html") {
     (async () => {
       try {
         await waitForPageReady();
-        const types: SnapshotType[] = (msg.snapshotTypes || []).map(
-          (t: string) => SNAPSHOT_MAP[t] || "all",
-        );
-        // For fullPage requests, use the rich html-screen-capture-js snapshot
-        // which includes visibility filtering and form values.
-        const wantsFullPage = types.includes("all");
-        const pageCtx = capturePageContext(types);
-        const ctxText = formatPageContext(pageCtx);
-        let fullHtml = wantsFullPage ? captureCleanHtml() : "";
-        // Always strip data-attributes, inline-styles, etc. to reduce tokens
-        if (fullHtml) {
-          fullHtml = stripToFit(fullHtml, 30000).html;
+        const patterns = msg.patterns as string[];
+        const contextChars = (msg.contextChars as number) || 150;
+        const maxResults = (msg.maxResults as number) || 15;
+        const html = document.documentElement.outerHTML;
+        const matches: Array<{ match: string; position: number }> = [];
+        const lowerHtml = html.toLowerCase();
+
+        for (const pattern of patterns) {
+          let idx = 0;
+          const lowerPattern = pattern.toLowerCase();
+          while (
+            (idx = lowerHtml.indexOf(lowerPattern, idx)) !== -1 &&
+            matches.length < maxResults
+          ) {
+            const start = Math.max(0, idx - contextChars);
+            const end = Math.min(
+              html.length,
+              idx + pattern.length + contextChars,
+            );
+            matches.push({ match: html.slice(start, end), position: idx });
+            idx += pattern.length;
+          }
+          if (matches.length >= maxResults) break;
         }
-        // Combine structured elements + full HTML when both available
-        const combined = [ctxText, fullHtml].filter(Boolean).join("\n\n");
-        sendResponse({ context: combined || captureCleanHtml() });
+
+        sendResponse({ matches, htmlSize: html.length });
       } catch (e) {
         sendResponse({
-          context:
-            "Failed to capture: " +
-            (e instanceof Error ? e.message : String(e)),
+          matches: [],
+          htmlSize: 0,
+          error: e instanceof Error ? e.message : String(e),
         });
       }
     })();
-    return true; // keep message channel open for async sendResponse
+    return true;
+  }
+
+  if (msg.type === "gyozai_capture_text") {
+    // Simple text snapshot for post-action verification diffing
+    const text = document.body?.innerText?.slice(0, 5000) || "";
+    sendResponse({ text });
+    return false;
   }
 });
 
@@ -281,6 +282,79 @@ export default defineContentScript({
       if (msg.type === "gyozai_recipe_auto_added") {
         refreshInstalledRecipes();
       }
+    });
+
+    // ─── Script collection for JS search cache ───────────────────────
+    async function collectPageScripts() {
+      try {
+        const tabIdRes = await browser.runtime.sendMessage({
+          type: "gyozai_get_tab_id",
+        });
+        const tabId = tabIdRes?.tabId;
+        if (!tabId) return;
+
+        const scriptEls = document.querySelectorAll("script");
+        const scripts: Array<{
+          key: string;
+          type: "inline" | "external";
+          url?: string;
+          inlineContent?: string;
+          contentHash: string;
+        }> = [];
+        let inlineIdx = 0;
+
+        for (const el of scriptEls) {
+          if (el.src) {
+            scripts.push({
+              key: el.src,
+              type: "external",
+              url: el.src,
+              contentHash: el.src,
+            });
+          } else if (el.textContent && el.textContent.trim().length > 10) {
+            const content = el.textContent;
+            const hash = btoa(content.slice(0, 200)).slice(0, 16);
+            scripts.push({
+              key: `inline-${inlineIdx}-${hash}`,
+              type: "inline",
+              inlineContent: content,
+              contentHash: hash,
+            });
+            inlineIdx++;
+          }
+        }
+
+        if (scripts.length > 0) {
+          browser.runtime
+            .sendMessage({
+              type: "gyozai_cache_scripts",
+              tabId,
+              origin: window.location.origin,
+              scripts,
+            })
+            .catch(() => {});
+        }
+      } catch {
+        // Script collection is non-critical
+      }
+    }
+
+    // Collect scripts on load
+    collectPageScripts();
+
+    // Watch for dynamically added scripts
+    const scriptObserver = new MutationObserver((mutations) => {
+      let hasNewScripts = false;
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLScriptElement) hasNewScripts = true;
+        }
+      }
+      if (hasNewScripts) collectPageScripts();
+    });
+    scriptObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
     });
   },
 });
