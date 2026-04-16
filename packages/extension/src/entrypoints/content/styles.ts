@@ -338,6 +338,23 @@ export const WIDGET_STYLES = `
     display: none;
   }
 
+  /* ─── System Messages (Stopped, etc.) ────────────────────── */
+
+  .gyozai-msg-system {
+    align-self: center;
+    background: oklch(0.22 0.01 50 / 0.7);
+    color: oklch(0.65 0.02 50);
+    border: none;
+    border-radius: 10px;
+    font-size: 11px;
+    padding: 4px 12px;
+    max-width: 80%;
+    text-align: center;
+  }
+  .gyozai-msg-system::after {
+    display: none;
+  }
+
   /* ─── Typing Indicator ──────────────────────────────────── */
 
   .gyozai-typing {

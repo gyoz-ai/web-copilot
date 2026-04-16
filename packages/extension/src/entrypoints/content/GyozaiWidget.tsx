@@ -1914,6 +1914,7 @@ export function GyozaiWidget() {
       {
         id: crypto.randomUUID(),
         role: "assistant",
+        type: "system",
         content: tr.widget_stopped,
       },
     ]);
@@ -2319,20 +2320,26 @@ export function GyozaiWidget() {
                 .filter((m) => !m.content.includes("set_expression"))
                 .map((msg, idx) => {
                   const isToolStatus = msg.type === "tool-status";
+                  const isSystem = msg.type === "system";
                   const isLatestAssistant =
                     msg.role === "assistant" &&
                     !isToolStatus &&
+                    !isSystem &&
                     idx === messages.length - 1;
                   const msgClass = isToolStatus
                     ? "gyozai-msg gyozai-msg-status"
-                    : `gyozai-msg gyozai-msg-${msg.role}`;
+                    : isSystem
+                      ? "gyozai-msg gyozai-msg-system"
+                      : `gyozai-msg gyozai-msg-${msg.role}`;
                   return (
                     <div
                       key={msg.id}
                       className={msgClass}
-                      style={{ opacity: isToolStatus ? 1 : bubbleOpacity }}
+                      style={{
+                        opacity: isToolStatus || isSystem ? 1 : bubbleOpacity,
+                      }}
                     >
-                      {isToolStatus ? (
+                      {isToolStatus || isSystem ? (
                         msg.content
                       ) : msg.role === "assistant" ? (
                         typingAnimation &&

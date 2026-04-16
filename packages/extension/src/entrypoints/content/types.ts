@@ -2,8 +2,8 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  /** "tool-status" for action indicators, default is regular chat */
-  type?: "chat" | "tool-status";
+  /** "tool-status" for action indicators, "system" for system notices, default is regular chat */
+  type?: "chat" | "tool-status" | "system";
   /** IndexedDB image IDs attached to this message. */
   imageIds?: string[];
 }
