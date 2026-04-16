@@ -663,8 +663,7 @@ export function createBrowserTools(
             "Brief evaluation of what happened (e.g. 'scrolled to features section', 'click failed — element not found')",
         },
         message: {
-          type: "string",
-          nullable: true,
+          type: ["string", "null"],
           description: "Message to show the user, or null if no message needed",
         },
       },
