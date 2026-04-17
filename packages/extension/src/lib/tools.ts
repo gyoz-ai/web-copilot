@@ -137,15 +137,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: true,
     maxResultChars: 500,
   },
-  extract_table: {
-    name: "extract_table",
-    description: "Extract table data",
-    pageChange: false,
-    mutatesPage: false,
-    requiresFreshContext: false,
-    isConcurrencySafe: true,
-    maxResultChars: 10_000,
-  },
   task_complete: {
     name: "task_complete",
     description: "Signal task completion",
@@ -202,6 +193,21 @@ export interface ToolExecContext {
   lastPageContext?: string;
   /** Screenshot data URL captured by page_screenshot tool — consumed by prepareStep */
   pendingScreenshotDataUrl?: string | null;
+  /** Number of search_page calls so far — used to cap discovery loops */
+  searchPageCallCount?: number;
+  /**
+   * Dual-model phase tag. When dual mode is on:
+   *   • "execution" — worker model grinds through the page (search, click,
+   *                    fill, …). Ends its run via task_complete, which in
+   *                    this phase does NOT push a summary message (the chat
+   *                    model narrates next).
+   *   • "chat"      — narrator model. Only tool available is show_message.
+   *                    Reads what execution did and reports to the user in
+   *                    the user's language.
+   * Undefined in single-model mode (BYOK) — task_complete pushes summary
+   * directly as before.
+   */
+  phase?: "execution" | "chat";
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -740,8 +746,14 @@ export function createBrowserTools(
           };
         }
       }
-      ctx.messages.push(summary);
-      ctx.onStreamEvent?.({ kind: "message", content: summary });
+      // In dual-mode execution phase, the chat model narrates next — do NOT
+      // push the summary here or the user sees two messages (the raw summary
+      // followed by the chat model's polished narration). In single-model
+      // mode, or when the chat model itself calls task_complete, push as usual.
+      if (ctx.phase !== "execution") {
+        ctx.messages.push(summary);
+        ctx.onStreamEvent?.({ kind: "message", content: summary });
+      }
       return { stopped: true };
     },
   });
@@ -1208,6 +1220,11 @@ export function createBrowserTools(
   tools.search_page = tool({
     description:
       "Search the current page's HTML and JavaScript for specific patterns. " +
+      "Matching is LITERAL case-insensitive substring — NOT regex. " +
+      "Do NOT use regex syntax like 'A|B', '(a|b)', 'A OR B', wildcards, or escapes. " +
+      "To search for multiple alternatives, pass an ARRAY of strings (e.g. ['S席', 'A席', '価格']) " +
+      "or a single pipe-delimited string which will be auto-split (e.g. 'S席|A席|価格'). " +
+      "Keep each pattern short and concrete — a single word, tag, or phrase that likely appears verbatim on the page. " +
       "Returns matching snippets with surrounding context. " +
       "Use this to find elements, text, forms, buttons, API endpoints, " +
       "function definitions, event handlers — anything on the page. " +
@@ -1223,8 +1240,11 @@ export function createBrowserTools(
       properties: {
         query: {
           description:
-            "Text pattern(s) to search for (case-insensitive). " +
-            "Examples: '<button', '/api/', 'addToCart', '<form'",
+            "Literal substring(s) to search for (case-insensitive). " +
+            "NOT regex. Use an array for multiple alternatives: ['button', 'form']. " +
+            "Pipe-delimited strings are auto-split into alternatives ('S席|A席' → ['S席','A席']). " +
+            "Do NOT write 'A OR B' or 'A|B|C' expecting regex — use an array instead. " +
+            "Examples: '<button', '/api/', 'addToCart', '<form', ['S席', 'A席'].",
         },
         scope: {
           type: "string",
@@ -1260,7 +1280,15 @@ export function createBrowserTools(
         content: tr?.status_reading_page || "Searching page",
       });
 
-      const patterns = Array.isArray(query) ? query : [query];
+      // Normalize patterns — models often try to use regex-style OR syntax
+      // even though we do literal substring matching. Split pipes + " OR ".
+      // Turns "A|B|C" → ["A","B","C"] and "A OR B" → ["A","B"].
+      const rawPatterns = Array.isArray(query) ? query : [query];
+      const patterns = rawPatterns
+        .flatMap((p) => String(p).split(/\s+OR\s+|\|/i))
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+
       const htmlMatches: Array<{ match: string; position: number }> = [];
       const jsMatches: Array<{
         source: string;
@@ -1270,6 +1298,8 @@ export function createBrowserTools(
       let htmlSize = 0;
       let jsFiles = 0;
       let jsTotalSize = 0;
+      let bodyTextPreview = "";
+      let bodyTextLength = 0;
 
       // HTML search — runs in content script
       if (scope === "all" || scope === "html") {
@@ -1283,6 +1313,10 @@ export function createBrowserTools(
           if (result?.matches) {
             htmlMatches.push(...result.matches);
             htmlSize = result.htmlSize || 0;
+          }
+          if (typeof result?.bodyTextPreview === "string") {
+            bodyTextPreview = result.bodyTextPreview;
+            bodyTextLength = result.bodyTextLength || 0;
           }
         } catch {
           // Content script not reachable
@@ -1314,14 +1348,49 @@ export function createBrowserTools(
         }
       }
 
+      // Increment call counter + build guidance for the model so it doesn't
+      // spin forever re-searching instead of answering the user.
+      ctx.searchPageCallCount = (ctx.searchPageCallCount ?? 0) + 1;
+      const callNo = ctx.searchPageCallCount;
+      const MAX_SEARCH_CALLS = 3;
+      const totalMatches = htmlMatches.length + jsMatches.length;
+
+      let next_action_hint: string;
+      if (totalMatches === 0) {
+        next_action_hint =
+          callNo >= MAX_SEARCH_CALLS
+            ? `No matches after ${callNo} searches. Stop searching — call show_message to tell the user you could not find this information on the page, or clarify if you need more info.`
+            : `No matches for this query. Try different keywords, or if the info genuinely isn't on this page call show_message to tell the user.`;
+      } else {
+        next_action_hint =
+          callNo >= MAX_SEARCH_CALLS
+            ? `You have gathered enough context (${callNo} searches, ${totalMatches} total matches). DO NOT call search_page again — answer the user now via show_message, or call task_complete. Use the snippets above verbatim.`
+            : callNo === MAX_SEARCH_CALLS - 1
+              ? `Snippets found (${totalMatches} matches). You have budget for at most 1 more search. Prefer to answer the user now with show_message using these snippets verbatim.`
+              : `Snippets found (${totalMatches} matches). If these answer the user's question, call show_message now using the snippet text verbatim. Only call search_page again if you truly need a different part of the page.`;
+      }
+
       return {
         html_matches: htmlMatches,
         js_matches: jsMatches,
+        patterns_used: patterns,
         stats: {
           html_size: htmlSize,
           js_files: jsFiles,
           js_total_size: jsTotalSize,
+          body_text_length: bodyTextLength,
         },
+        // Only surface the preview when 0 matches — helps the model (and the
+        // developer via logs) understand what's actually on the page when
+        // none of the patterns matched. When matches exist, the snippets
+        // already tell the story.
+        body_text_preview:
+          htmlMatches.length + jsMatches.length === 0
+            ? bodyTextPreview
+            : undefined,
+        search_calls_used: callNo,
+        search_calls_remaining: Math.max(0, MAX_SEARCH_CALLS - callNo),
+        next_action_hint,
       };
     },
   });
@@ -1988,126 +2057,6 @@ export function createBrowserTools(
       ctx,
       tools.submit_form.execute!,
     );
-  }
-
-  // ── extract_table ─────────────────────────────────────────────────────
-  if (caps.click) {
-    tools.extract_table = tool({
-      description: "Extract data from a <table> element as JSON.",
-      inputSchema: jsonSchema<{ selector?: string; near_text?: string }>({
-        type: "object" as const,
-        properties: {
-          selector: {
-            type: "string",
-            description: "CSS selector for the table",
-          },
-          near_text: {
-            type: "string",
-            description: "Text near the table to identify it (e.g. a heading)",
-          },
-        },
-      }),
-      execute: async ({
-        selector,
-        near_text,
-      }: {
-        selector?: string;
-        near_text?: string;
-      }) => {
-        ctx.onStreamEvent?.({
-          kind: "tool-status",
-          content: tr?.status_extracting || "Extracting table",
-        });
-        try {
-          const result = await execInPage(
-            ctx.tabId,
-            ((sel: string | null, nearTxt: string | null) => {
-              let table: HTMLTableElement | null = null;
-              if (sel) {
-                table = document.querySelector(sel) as HTMLTableElement | null;
-              }
-              if (!table && nearTxt) {
-                // Find a heading/text near the table
-                const tables = Array.from(document.querySelectorAll("table"));
-                for (const t of tables) {
-                  const prev = t.previousElementSibling;
-                  if (
-                    prev?.textContent
-                      ?.toLowerCase()
-                      .includes(nearTxt.toLowerCase())
-                  ) {
-                    table = t;
-                    break;
-                  }
-                  // Check parent for heading
-                  const heading = t
-                    .closest("section, div, article")
-                    ?.querySelector("h1, h2, h3, h4, h5");
-                  if (
-                    heading?.textContent
-                      ?.toLowerCase()
-                      .includes(nearTxt.toLowerCase())
-                  ) {
-                    table = t;
-                    break;
-                  }
-                }
-              }
-              if (!table) {
-                table = document.querySelector(
-                  "table",
-                ) as HTMLTableElement | null;
-              }
-              if (!table) return { found: false };
-
-              // Extract headers
-              const headers: string[] = [];
-              const headerCells = table.querySelectorAll(
-                "thead th, thead td, tr:first-child th",
-              );
-              headerCells.forEach((cell) =>
-                headers.push((cell.textContent || "").trim()),
-              );
-
-              // Extract rows
-              const rows: string[][] = [];
-              const bodyRows = table.querySelectorAll("tbody tr, tr");
-              bodyRows.forEach((row, i) => {
-                if (i === 0 && headers.length > 0) return; // skip header row
-                const cells: string[] = [];
-                row
-                  .querySelectorAll("td, th")
-                  .forEach((cell) =>
-                    cells.push((cell.textContent || "").trim()),
-                  );
-                if (cells.length > 0) rows.push(cells);
-              });
-
-              return { found: true, headers, rows, rowCount: rows.length };
-            }) as (...args: never[]) => {
-              found: boolean;
-              headers?: string[];
-              rows?: string[][];
-              rowCount?: number;
-            },
-            [selector || null, near_text || null],
-          );
-          if (!result?.found)
-            return { success: false, error: "No table found" };
-          return {
-            success: true,
-            headers: result.headers,
-            rows: result.rows,
-            rowCount: result.rowCount,
-          };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
   }
 
   // ── page_screenshot — capture visible tab as image for visual analysis ──

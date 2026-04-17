@@ -102,7 +102,6 @@ export interface Translations {
   status_submitting: string; // "Submitting form"
   status_scrolling: string; // "Scrolling"
   status_searching: string; // "Searching page"
-  status_extracting: string; // "Extracting table"
 
   // Popup (App.tsx)
   popup_loading: string;
@@ -183,7 +182,6 @@ const en: Translations = {
   status_submitting: "Submitting form",
   status_scrolling: "Scrolling",
   status_searching: "Searching page",
-  status_extracting: "Extracting table",
   popup_loading: "Loading...",
   popup_provider: "Provider",
   popup_api_key: "API Key",
@@ -265,7 +263,6 @@ const ptBR: Translations = {
   status_submitting: "Enviando formulário",
   status_scrolling: "Rolando",
   status_searching: "Pesquisando na página",
-  status_extracting: "Extraindo tabela",
   popup_loading: "Carregando...",
   popup_provider: "Provedor",
   popup_api_key: "Chave de API",
@@ -366,7 +363,6 @@ const es: Translations = {
   status_submitting: "Enviando formulario",
   status_scrolling: "Desplazando",
   status_searching: "Buscando en p\u00e1gina",
-  status_extracting: "Extrayendo tabla",
   popup_loading: "Cargando...",
   popup_provider: "Proveedor",
   popup_api_key: "Clave de API",
@@ -448,7 +444,6 @@ const fr: Translations = {
   status_submitting: "Envoi du formulaire",
   status_scrolling: "D\u00e9filement",
   status_searching: "Recherche dans la page",
-  status_extracting: "Extraction du tableau",
   popup_loading: "Chargement...",
   popup_provider: "Fournisseur",
   popup_api_key: "Cl\u00e9 API",
@@ -531,7 +526,6 @@ const de: Translations = {
   status_submitting: "Formular wird gesendet",
   status_scrolling: "Scrollen",
   status_searching: "Seite durchsuchen",
-  status_extracting: "Tabelle extrahieren",
   popup_loading: "Laden...",
   popup_provider: "Anbieter",
   popup_api_key: "API-Schl\u00fcssel",
@@ -614,7 +608,6 @@ const it: Translations = {
   status_submitting: "Invio modulo",
   status_scrolling: "Scorrimento",
   status_searching: "Ricerca nella pagina",
-  status_extracting: "Estrazione tabella",
   popup_loading: "Caricamento...",
   popup_provider: "Provider",
   popup_api_key: "Chiave API",
@@ -696,7 +689,6 @@ const nl: Translations = {
   status_submitting: "Formulier verzenden",
   status_scrolling: "Scrollen",
   status_searching: "Pagina doorzoeken",
-  status_extracting: "Tabel extraheren",
   popup_loading: "Laden...",
   popup_provider: "Aanbieder",
   popup_api_key: "API-sleutel",
@@ -778,7 +770,6 @@ const pl: Translations = {
   status_submitting: "Wysy\u0142anie formularza",
   status_scrolling: "Przewijanie",
   status_searching: "Przeszukiwanie strony",
-  status_extracting: "Wyodr\u0119bnianie tabeli",
   popup_loading: "\u0141adowanie...",
   popup_provider: "Dostawca",
   popup_api_key: "Klucz API",
@@ -879,8 +870,6 @@ const ru: Translations = {
   status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
   status_searching:
     "\u041f\u043e\u0438\u0441\u043a \u043d\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435",
-  status_extracting:
-    "\u0418\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u0435 \u0442\u0430\u0431\u043b\u0438\u0446\u044b",
   popup_loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...",
   popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
   popup_api_key: "API-\u043a\u043b\u044e\u0447",
@@ -989,8 +978,6 @@ const uk: Translations = {
   status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
   status_searching:
     "\u041f\u043e\u0448\u0443\u043a \u043d\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u0446\u0456",
-  status_extracting:
-    "\u0412\u0438\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0442\u0430\u0431\u043b\u0438\u0446\u0456",
   popup_loading:
     "\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f...",
   popup_provider: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
@@ -1100,8 +1087,6 @@ const el: Translations = {
   status_scrolling: "\u039a\u03cd\u03bb\u03b9\u03c3\u03b7",
   status_searching:
     "\u0391\u03bd\u03b1\u03b6\u03ae\u03c4\u03b7\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1\u03c2",
-  status_extracting:
-    "\u0395\u03be\u03b1\u03b3\u03c9\u03b3\u03ae \u03c0\u03af\u03bd\u03b1\u03ba\u03b1",
   popup_loading: "\u03a6\u03cc\u03c1\u03c4\u03c9\u03c3\u03b7...",
   popup_provider: "\u03a0\u03ac\u03c1\u03bf\u03c7\u03bf\u03c2",
   popup_api_key: "\u039a\u03bb\u03b5\u03b9\u03b4\u03af API",
@@ -1198,7 +1183,6 @@ const tr: Translations = {
   status_submitting: "Form g\u00f6nderiliyor",
   status_scrolling: "Kayd\u0131r\u0131l\u0131yor",
   status_searching: "Sayfada aran\u0131yor",
-  status_extracting: "Tablo \u00e7\u0131kar\u0131l\u0131yor",
   popup_loading: "Y\u00fckleniyor...",
   popup_provider: "Sa\u011flay\u0131c\u0131",
   popup_api_key: "API Anahtar\u0131",
@@ -1298,8 +1282,6 @@ const ar: Translations = {
   status_scrolling: "\u0627\u0644\u062a\u0645\u0631\u064a\u0631",
   status_searching:
     "\u0627\u0644\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0635\u0641\u062d\u0629",
-  status_extracting:
-    "\u0627\u0633\u062a\u062e\u0631\u0627\u062c \u0627\u0644\u062c\u062f\u0648\u0644",
   popup_loading:
     "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...",
   popup_provider: "\u0627\u0644\u0645\u0632\u0648\u062f",
@@ -1410,8 +1392,6 @@ const hi: Translations = {
   status_scrolling:
     "\u0938\u094d\u0915\u094d\u0930\u094b\u0932\u093f\u0902\u0917",
   status_searching: "\u092a\u0947\u091c \u092e\u0947\u0902 \u0916\u094b\u091c",
-  status_extracting:
-    "\u091f\u0947\u092c\u0932 \u0928\u093f\u0915\u093e\u0932 \u0930\u0939\u093e \u0939\u0948",
   popup_loading:
     "\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...",
   popup_provider: "\u092a\u094d\u0930\u0926\u093e\u0924\u093e",
@@ -1506,7 +1486,6 @@ const ja: Translations = {
   status_submitting: "\u30d5\u30a9\u30fc\u30e0\u3092\u9001\u4fe1\u4e2d",
   status_scrolling: "\u30b9\u30af\u30ed\u30fc\u30eb\u4e2d",
   status_searching: "\u30da\u30fc\u30b8\u3092\u691c\u7d22\u4e2d",
-  status_extracting: "\u30c6\u30fc\u30d6\u30eb\u3092\u62bd\u51fa\u4e2d",
   popup_loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
   popup_provider: "\u30d7\u30ed\u30d0\u30a4\u30c0\u30fc",
   popup_api_key: "API\u30ad\u30fc",
@@ -1596,7 +1575,6 @@ const ko: Translations = {
   status_submitting: "\uc591\uc2dd \uc81c\ucd9c \uc911",
   status_scrolling: "\uc2a4\ud06c\ub864 \uc911",
   status_searching: "\ud398\uc774\uc9c0 \uac80\uc0c9 \uc911",
-  status_extracting: "\ud14c\uc774\ube14 \ucd94\ucd9c \uc911",
   popup_loading: "\ub85c\ub529 \uc911...",
   popup_provider: "\uc81c\uacf5\uc790",
   popup_api_key: "API \ud0a4",
@@ -1683,7 +1661,6 @@ const zhCN: Translations = {
   status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u5355",
   status_scrolling: "\u6b63\u5728\u6eda\u52a8",
   status_searching: "\u6b63\u5728\u641c\u7d22\u9875\u9762",
-  status_extracting: "\u6b63\u5728\u63d0\u53d6\u8868\u683c",
   popup_loading: "\u52a0\u8f7d\u4e2d...",
   popup_provider: "\u63d0\u4f9b\u5546",
   popup_api_key: "API\u5bc6\u94a5",
@@ -1757,7 +1734,6 @@ const zhTW: Translations = {
   status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u55ae",
   status_scrolling: "\u6b63\u5728\u6372\u52d5",
   status_searching: "\u6b63\u5728\u641c\u5c0b\u9801\u9762",
-  status_extracting: "\u6b63\u5728\u64f7\u53d6\u8868\u683c",
   popup_loading: "\u8f09\u5165\u4e2d...",
   popup_api_key: "API\u91d1\u9470",
   popup_api_key_placeholder: "\u8f38\u5165{provider} API\u91d1\u9470",
@@ -1857,8 +1833,6 @@ const th: Translations = {
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e40\u0e25\u0e37\u0e48\u0e2d\u0e19",
   status_searching:
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e04\u0e49\u0e19\u0e2b\u0e32\u0e2b\u0e19\u0e49\u0e32",
-  status_extracting:
-    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e36\u0e07\u0e15\u0e32\u0e23\u0e32\u0e07",
   popup_loading: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...",
   popup_provider:
     "\u0e1c\u0e39\u0e49\u0e43\u0e2b\u0e49\u0e1a\u0e23\u0e34\u0e01\u0e32\u0e23",
@@ -1955,7 +1929,6 @@ const vi: Translations = {
   status_submitting: "\u0110ang g\u1eedi bi\u1ec3u m\u1eabu",
   status_scrolling: "\u0110ang cu\u1ed9n",
   status_searching: "\u0110ang t\u00ecm ki\u1ebfm trang",
-  status_extracting: "\u0110ang tr\u00edch xu\u1ea5t b\u1ea3ng",
   popup_loading: "\u0110ang t\u1ea3i...",
   popup_provider: "Nh\u00e0 cung c\u1ea5p",
   popup_api_key: "Kh\u00f3a API",
@@ -2039,7 +2012,6 @@ const id: Translations = {
   status_submitting: "Mengirim formulir",
   status_scrolling: "Menggulir",
   status_searching: "Mencari di halaman",
-  status_extracting: "Mengekstrak tabel",
   popup_loading: "Memuat...",
   popup_provider: "Penyedia",
   popup_api_key: "Kunci API",

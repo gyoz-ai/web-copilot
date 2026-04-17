@@ -188,7 +188,19 @@ browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           if (matches.length >= maxResults) break;
         }
 
-        sendResponse({ matches, htmlSize: html.length });
+        // Preview = first 2KB of visible body text (not raw HTML) so the
+        // developer can see what content actually exists on the page when
+        // matches=0. Raw outerHTML is too noisy (mostly tags/attrs).
+        const bodyText = (document.body?.innerText || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 2000);
+        sendResponse({
+          matches,
+          htmlSize: html.length,
+          bodyTextPreview: bodyText,
+          bodyTextLength: document.body?.innerText?.length || 0,
+        });
       } catch (e) {
         sendResponse({
           matches: [],

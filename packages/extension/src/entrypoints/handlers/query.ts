@@ -13,7 +13,11 @@ import {
 import { createProvider } from "../../lib/providers";
 import { buildSystemPrompt, buildUserPrompt } from "../../lib/prompts";
 import { createBrowserTools, type ToolExecContext } from "../../lib/tools";
-import { getTranslations, type LocaleCode } from "../../lib/i18n";
+import {
+  getTranslations,
+  resolveLocale,
+  type LocaleCode,
+} from "../../lib/i18n";
 
 const PLATFORM_URL = "https://gyoz.ai";
 
@@ -52,11 +56,26 @@ export async function handleQuery(
 
   const caps = message.capabilities || {};
   const mode = message.manifestMode ? "manifest" : "no-manifest";
+  // Resolve the user's configured response language. Priority:
+  //   1. settings.language (explicit picker in popup) — unless "auto"
+  //   2. context.language from the content script (navigator.language)
+  //   3. English fallback
+  const ctxLang =
+    typeof message.context?.language === "string"
+      ? (message.context.language as string)
+      : undefined;
+  const responseLanguage: string =
+    settings.language && settings.language !== "auto"
+      ? resolveLocale(settings.language)
+      : ctxLang
+        ? resolveLocale(ctxLang)
+        : "en";
   const systemPrompt = buildSystemPrompt(
     mode as "manifest" | "no-manifest",
     caps,
     settings.yoloMode,
     settings.chatOnly,
+    responseLanguage,
   );
   const userPrompt = buildUserPrompt({
     query: message.query,
@@ -86,6 +105,11 @@ export async function handleQuery(
   );
   console.log("  Query:", message.query.slice(0, 100));
   console.log("  Manifest mode:", message.manifestMode);
+  console.log(
+    "  Response language:",
+    responseLanguage,
+    `(setting=${settings.language ?? "unset"}, ctx=${ctxLang ?? "unset"})`,
+  );
   console.log("  Conversation ID:", convId ?? "none");
   console.log(
     "  Conversation history:",
@@ -279,6 +303,35 @@ export async function handleQuery(
     const hasPageAction = () =>
       allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));
 
+    // Two-phase dual model tool split:
+    //
+    //   EXECUTION phase: everything EXCEPT show_message. The worker model
+    //     grinds through the page (search, click, fill, …) and finishes by
+    //     calling task_complete. task_complete in execution phase does NOT
+    //     push a user-facing message — chat takes over next.
+    //
+    //   CHAT phase: ONLY show_message. After execution's task_complete we
+    //     flip to chat; the narrator model reads the prior tool results and
+    //     issues one polished show_message in the user's language. That
+    //     call ends the stream.
+    const EXECUTION_PHASE_TOOLS = new Set([
+      "set_expression",
+      "navigate",
+      "click",
+      "highlight_ui",
+      "search_page",
+      "execute_page_function",
+      "fetch_url",
+      "clarify",
+      "fill_input",
+      "select_option",
+      "toggle_checkbox",
+      "submit_form",
+      "report_action_result",
+      "task_complete",
+      "page_screenshot",
+    ]);
+
     // Anthropic prompt caching — mark system prompt + tools for caching
     // so repeated requests get ~90% discount on those input tokens.
     const isAnthropicByok =
@@ -311,50 +364,39 @@ export async function handleQuery(
         ? providerResult.executionModel
         : providerResult.model;
 
-    // Tools that should be handled by the chat (user-facing) model.
-    // After one of these runs, the next step is talking → chat model.
-    const CHAT_TOOLS = new Set([
-      "show_message",
-      "report_action_result",
-      "clarify",
-      "task_complete",
-      "set_expression",
-    ]);
+    // Two-phase dual-model architecture (final split):
+    //
+    //   Step 0+ : EXECUTION phase (execution model, EXECUTION_PHASE_TOOLS).
+    //             The worker grinds through the page and wraps up via
+    //             task_complete. task_complete in this phase suppresses its
+    //             summary push so the user does NOT see raw execution text.
+    //
+    //   After execution calls task_complete → flip to CHAT phase.
+    //             Chat model sees ONLY show_message; it reads the prior
+    //             tool results from the transcript and narrates the outcome
+    //             in the user's language. show_message ends the stream.
+    //
+    // Rationale: the cheap/fast execution model (cerebras gpt-oss-120b)
+    // handles the loop; the smart chat model owns the single user-facing
+    // message. Keeps tokens on the chat model minimal while preserving
+    // voice quality.
+    let phase: "execution" | "chat" = isDual ? "execution" : "chat";
+    if (isDual) ctx.phase = "execution";
 
-    // Decide which model owns the next step based on the last tool used.
-    // First step always starts on the chat model — it understands intent
-    // and decides whether to talk or to start executing on the page.
     const pickModelForStep = (
-      steps: ReadonlyArray<{
+      _steps: ReadonlyArray<{
         toolCalls?: ReadonlyArray<{ toolName: string }>;
       }>,
     ) => {
       if (!isDual) return chatModel;
-      if (steps.length === 0) return chatModel;
-      const lastStep = steps[steps.length - 1];
-      const lastToolCalls = lastStep?.toolCalls || [];
-      if (lastToolCalls.length === 0) return chatModel;
-      // Any page-action tool in last step → keep grinding with execution model
-      const ranPageAction = lastToolCalls.some((tc) =>
-        PAGE_ACTION_TOOLS.has(tc.toolName),
-      );
-      if (ranPageAction) return executionModel;
-      // search_page is the discovery tool — execution model handles the
-      // search → analyze → execute pipeline without user-facing chat.
-      const ranSearch = lastToolCalls.some(
-        (tc) => tc.toolName === "search_page",
-      );
-      if (ranSearch) return executionModel;
-      // Last tool was conversational (show_message etc.) → chat model
-      const ranChat = lastToolCalls.some((tc) => CHAT_TOOLS.has(tc.toolName));
-      if (ranChat) return chatModel;
-      return executionModel;
+      return phase === "execution" ? executionModel : chatModel;
     };
 
     const stream = streamText({
-      // Initial model — chat model handles step 0 (understand intent).
-      // prepareStep swaps to executionModel as soon as page actions begin.
-      model: chatModel,
+      // Initial model — in dual mode the execution model owns step 0 and
+      // grinds until task_complete; chat model takes over afterwards to
+      // narrate. In single-model mode, always use the sole model.
+      model: isDual ? executionModel : chatModel,
       system: systemParam,
       messages: aiMessages,
       tools,
@@ -364,29 +406,52 @@ export async function handleQuery(
       abortSignal: abortController.signal,
       stopWhen: ({ steps }) => {
         if (steps.length >= 100) return true;
-        // Stop when the model calls task_complete
         const lastStep = steps[steps.length - 1];
-        const calledTaskComplete = lastStep?.toolCalls?.some(
-          (tc) => tc.toolName === "task_complete",
-        );
+        const lastToolNames =
+          lastStep?.toolCalls?.map((tc) => tc.toolName) ?? [];
+        const calledTaskComplete = lastToolNames.includes("task_complete");
+        const calledShowMessage = lastToolNames.includes("show_message");
+
+        // ── Dual-mode phase machine ──────────────────────────────
+        if (isDual) {
+          if (phase === "execution") {
+            if (!calledTaskComplete) return false;
+            // task_complete may return {stopped:false} to reject itself
+            // (e.g. claimed success with 0 actions, or hallucinated
+            // page_evidence). In that case we must NOT flip phase — the
+            // execution model needs to retry.
+            const lastToolResults = (lastStep?.toolResults ?? []) as Array<{
+              toolName: string;
+              output?: { stopped?: boolean };
+            }>;
+            const tcResult = lastToolResults.find(
+              (r) => r.toolName === "task_complete",
+            );
+            if (tcResult?.output?.stopped === false) return false;
+            // Accepted completion — flip to chat so narrator speaks.
+            phase = "chat";
+            ctx.phase = "chat";
+            return false;
+          }
+          // phase === "chat" — terminate once narration happens.
+          if (calledShowMessage) return true;
+          if (calledTaskComplete) return true;
+          // Chat had nothing to say (empty step) — stop to avoid burning.
+          if (lastToolNames.length === 0) return true;
+          return false;
+        }
+
+        // ── Single-model legacy path (BYOK) ──────────────────────
         if (!calledTaskComplete) return false;
-        // Chat-only mode: actions aren't possible, so always allow completion
         if (settings.chatOnly) return true;
-        // If the AI performed actions OR is reporting failure, stop normally.
-        // If it claims success without any actions, the tool itself returns
-        // a warning (stopped: false) — let the model continue working.
         if (ctx.actionCount > 0) return true;
-        // Check if it was a failure report (always allowed)
         const tcCall = allToolCalls[allToolCalls.length - 1];
         if (
           tcCall?.tool === "task_complete" &&
           (tcCall.args as { success?: boolean })?.success === false
         )
           return true;
-        // Conversational completions — no page-action tools were attempted,
-        // so the model was just chatting (greeting, explanation, etc.).
         if (!hasPageAction()) return true;
-        // Had page actions attempted but actionCount still 0 → tool rejected, keep going
         return false;
       },
       prepareStep: ({ steps, messages: stepMessages }) => {
@@ -397,16 +462,35 @@ export async function handleQuery(
           const modelLabel =
             stepModel === executionModel ? "execution" : "chat";
           console.log(
-            `%c  [gyoza] step #${steps.length} → ${modelLabel} model`,
+            `%c  [gyoza] step #${steps.length} → ${modelLabel} model (phase=${phase})`,
             modelLabel === "execution"
               ? "color: #06b6d4; font-weight: bold"
               : "color: #f59e0b; font-weight: bold",
           );
         }
 
+        // In dual-mode CHAT phase, the narrator sees ONLY show_message and
+        // must use it. This is true at any step — whether we just flipped
+        // or are reentering chat. Force the tool set regardless of the
+        // step-count shortcut so execution-tool remnants never leak in.
+        if (isDual && phase === "chat") {
+          return {
+            model: stepModel,
+            toolChoice: "required" as const,
+            activeTools: ["show_message"] as (keyof typeof tools)[],
+          };
+        }
+
         if (steps.length === 0) {
-          // First step → chat model already set as streamText default.
-          // Returning model explicitly is fine but not required.
+          // First step — dual mode uses execution model and must restrict
+          // to EXECUTION_PHASE_TOOLS so show_message cannot be called by
+          // the worker. Single mode: no restriction.
+          if (isDual && phase === "execution") {
+            const active = Object.keys(tools).filter((t) =>
+              EXECUTION_PHASE_TOOLS.has(t),
+            ) as (keyof typeof tools)[];
+            return { model: stepModel, activeTools: active };
+          }
           return { model: stepModel };
         }
 
@@ -465,8 +549,25 @@ export async function handleQuery(
         const exclude = new Set<string>();
         if (usedTools.has("set_expression")) exclude.add("set_expression");
 
+        // Cap search_page at 3 calls total. After that, exclude it from the
+        // active tool set so the model is forced to commit — pick show_message
+        // / task_complete / clarify (in chat phase) or move to a DOM action
+        // (in execution phase) instead of looping on more searches. This
+        // matters most for weaker models (grok non-reasoning, gpt-oss-120b)
+        // that otherwise spin forever on discovery.
+        const searchPageCount = allToolCalls.filter(
+          (tc) => tc.tool === "search_page",
+        ).length;
+        if (searchPageCount >= 3) exclude.add("search_page");
+
+        // In dual-mode execution phase, restrict the tool set to worker
+        // tools only — show_message is reserved for the chat/narrator
+        // model after task_complete flips phase.
+        const phaseFilter = (t: string) =>
+          isDual && phase === "execution" ? EXECUTION_PHASE_TOOLS.has(t) : true;
+
         const active = Object.keys(tools).filter(
-          (t) => !exclude.has(t),
+          (t) => !exclude.has(t) && phaseFilter(t),
         ) as (keyof typeof tools)[];
 
         return {
@@ -490,7 +591,7 @@ export async function handleQuery(
           );
         }
       },
-      onStepFinish: ({ text, toolCalls }) => {
+      onStepFinish: ({ text, toolCalls, toolResults }) => {
         if (toolCalls?.length) {
           for (const tc of toolCalls) {
             const tcInput = (tc.input ?? {}) as Record<string, unknown>;
@@ -502,6 +603,91 @@ export async function handleQuery(
               "color: #a855f7; font-weight: bold",
               "color: #9ca3af",
             );
+          }
+        }
+        // Log tool results — especially useful for search_page so we can see
+        // what snippets the model got back and understand why it chose to
+        // call another tool vs. commit to an answer.
+        if (toolResults?.length) {
+          for (const tr of toolResults as ReadonlyArray<{
+            toolName: string;
+            output?: unknown;
+          }>) {
+            if (tr.toolName === "search_page") {
+              const out = (tr.output ?? {}) as {
+                html_matches?: Array<{ match: string }>;
+                js_matches?: Array<{ match: string; source?: string }>;
+                patterns_used?: string[];
+                stats?: {
+                  html_size?: number;
+                  js_files?: number;
+                  js_total_size?: number;
+                  body_text_length?: number;
+                };
+                body_text_preview?: string;
+                search_calls_used?: number;
+                search_calls_remaining?: number;
+                next_action_hint?: string;
+              };
+              const htmlN = out.html_matches?.length ?? 0;
+              const jsN = out.js_matches?.length ?? 0;
+              console.groupCollapsed(
+                `%c  [gyoza] ↳ search_page result: ${htmlN} html + ${jsN} js matches (call ${out.search_calls_used ?? "?"}/${(out.search_calls_used ?? 0) + (out.search_calls_remaining ?? 0)})`,
+                "color: #22c55e; font-weight: bold",
+              );
+              if (out.patterns_used) {
+                console.log(
+                  `%c  patterns (after normalization):%c ${JSON.stringify(out.patterns_used)}`,
+                  "color: #8b5cf6; font-weight: bold",
+                  "color: #e5e7eb",
+                );
+              }
+              if (out.next_action_hint) {
+                console.log(
+                  `%c  hint:%c ${out.next_action_hint}`,
+                  "color: #f59e0b; font-weight: bold",
+                  "color: #e5e7eb",
+                );
+              }
+              if (out.stats) {
+                console.log("  stats:", out.stats);
+              }
+              if (out.body_text_preview) {
+                console.groupCollapsed(
+                  `%c  body_text_preview (page content model sees when 0 matches)`,
+                  "color: #ef4444; font-weight: bold",
+                );
+                console.log(out.body_text_preview);
+                console.groupEnd();
+              }
+              if (htmlN > 0) {
+                console.groupCollapsed(
+                  `%c  html_matches (${htmlN})`,
+                  "color: #9ca3af",
+                );
+                for (let i = 0; i < htmlN; i++) {
+                  const m = out.html_matches![i];
+                  console.log(
+                    `  [${i}] ${m.match.slice(0, 200).replace(/\n/g, " ")}${m.match.length > 200 ? "…" : ""}`,
+                  );
+                }
+                console.groupEnd();
+              }
+              if (jsN > 0) {
+                console.groupCollapsed(
+                  `%c  js_matches (${jsN})`,
+                  "color: #9ca3af",
+                );
+                for (let i = 0; i < jsN; i++) {
+                  const m = out.js_matches![i];
+                  console.log(
+                    `  [${i}] ${m.source ?? ""} → ${m.match.slice(0, 200).replace(/\n/g, " ")}${m.match.length > 200 ? "…" : ""}`,
+                  );
+                }
+                console.groupEnd();
+              }
+              console.groupEnd();
+            }
           }
         }
         // Stream text from steps that didn't already show a message.
