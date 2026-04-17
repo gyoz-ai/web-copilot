@@ -99,7 +99,6 @@ export interface Translations {
   status_filling: string; // "Filling input"
   status_selecting: string; // "Selecting option"
   status_toggling: string; // "Toggling checkbox"
-  status_submitting: string; // "Submitting form"
   status_scrolling: string; // "Scrolling"
   status_searching: string; // "Searching page"
 
@@ -179,7 +178,6 @@ const en: Translations = {
   status_filling: "Filling input",
   status_selecting: "Selecting option",
   status_toggling: "Toggling checkbox",
-  status_submitting: "Submitting form",
   status_scrolling: "Scrolling",
   status_searching: "Searching page",
   popup_loading: "Loading...",
@@ -260,7 +258,6 @@ const ptBR: Translations = {
   status_filling: "Preenchendo campo",
   status_selecting: "Selecionando opção",
   status_toggling: "Alternando checkbox",
-  status_submitting: "Enviando formulário",
   status_scrolling: "Rolando",
   status_searching: "Pesquisando na página",
   popup_loading: "Carregando...",
@@ -360,7 +357,6 @@ const es: Translations = {
   status_filling: "Rellenando campo",
   status_selecting: "Seleccionando opci\u00f3n",
   status_toggling: "Alternando casilla",
-  status_submitting: "Enviando formulario",
   status_scrolling: "Desplazando",
   status_searching: "Buscando en p\u00e1gina",
   popup_loading: "Cargando...",
@@ -441,7 +437,6 @@ const fr: Translations = {
   status_filling: "Remplissage du champ",
   status_selecting: "S\u00e9lection d'option",
   status_toggling: "Basculement de case",
-  status_submitting: "Envoi du formulaire",
   status_scrolling: "D\u00e9filement",
   status_searching: "Recherche dans la page",
   popup_loading: "Chargement...",
@@ -523,7 +518,6 @@ const de: Translations = {
   status_filling: "Feld wird ausgef\u00fcllt",
   status_selecting: "Option wird ausgew\u00e4hlt",
   status_toggling: "Kontrollk\u00e4stchen umschalten",
-  status_submitting: "Formular wird gesendet",
   status_scrolling: "Scrollen",
   status_searching: "Seite durchsuchen",
   popup_loading: "Laden...",
@@ -605,7 +599,6 @@ const it: Translations = {
   status_filling: "Compilazione campo",
   status_selecting: "Selezione opzione",
   status_toggling: "Cambio casella",
-  status_submitting: "Invio modulo",
   status_scrolling: "Scorrimento",
   status_searching: "Ricerca nella pagina",
   popup_loading: "Caricamento...",
@@ -686,7 +679,6 @@ const nl: Translations = {
   status_filling: "Veld invullen",
   status_selecting: "Optie selecteren",
   status_toggling: "Selectievakje wisselen",
-  status_submitting: "Formulier verzenden",
   status_scrolling: "Scrollen",
   status_searching: "Pagina doorzoeken",
   popup_loading: "Laden...",
@@ -767,7 +759,6 @@ const pl: Translations = {
   status_filling: "Wype\u0142nianie pola",
   status_selecting: "Wybieranie opcji",
   status_toggling: "Prze\u0142\u0105czanie pola wyboru",
-  status_submitting: "Wysy\u0142anie formularza",
   status_scrolling: "Przewijanie",
   status_searching: "Przeszukiwanie strony",
   popup_loading: "\u0141adowanie...",
@@ -865,8 +856,6 @@ const ru: Translations = {
     "\u0412\u044b\u0431\u043e\u0440 \u043e\u043f\u0446\u0438\u0438",
   status_toggling:
     "\u041f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0444\u043b\u0430\u0436\u043a\u0430",
-  status_submitting:
-    "\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430 \u0444\u043e\u0440\u043c\u044b",
   status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
   status_searching:
     "\u041f\u043e\u0438\u0441\u043a \u043d\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435",
@@ -973,8 +962,6 @@ const uk: Translations = {
     "\u0412\u0438\u0431\u0456\u0440 \u043e\u043f\u0446\u0456\u0457",
   status_toggling:
     "\u041f\u0435\u0440\u0435\u043c\u0438\u043a\u0430\u043d\u043d\u044f \u043f\u0440\u0430\u043f\u043e\u0440\u0446\u044f",
-  status_submitting:
-    "\u0412\u0456\u0434\u043f\u0440\u0430\u0432\u043a\u0430 \u0444\u043e\u0440\u043c\u0438",
   status_scrolling: "\u041f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430",
   status_searching:
     "\u041f\u043e\u0448\u0443\u043a \u043d\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u0446\u0456",
@@ -1082,8 +1069,6 @@ const el: Translations = {
   status_selecting: "\u0395\u03c0\u03b9\u03bb\u03bf\u03b3\u03ae",
   status_toggling:
     "\u0395\u03bd\u03b1\u03bb\u03bb\u03b1\u03b3\u03ae \u03c0\u03bb\u03b1\u03b9\u03c3\u03af\u03bf\u03c5",
-  status_submitting:
-    "\u03a5\u03c0\u03bf\u03b2\u03bf\u03bb\u03ae \u03c6\u03cc\u03c1\u03bc\u03b1\u03c2",
   status_scrolling: "\u039a\u03cd\u03bb\u03b9\u03c3\u03b7",
   status_searching:
     "\u0391\u03bd\u03b1\u03b6\u03ae\u03c4\u03b7\u03c3\u03b7 \u03c3\u03b5\u03bb\u03af\u03b4\u03b1\u03c2",
@@ -1180,7 +1165,6 @@ const tr: Translations = {
   status_filling: "Alan dolduruluyor",
   status_selecting: "Se\u00e7enek se\u00e7iliyor",
   status_toggling: "Onay kutusu de\u011fi\u015ftiriliyor",
-  status_submitting: "Form g\u00f6nderiliyor",
   status_scrolling: "Kayd\u0131r\u0131l\u0131yor",
   status_searching: "Sayfada aran\u0131yor",
   popup_loading: "Y\u00fckleniyor...",
@@ -1277,8 +1261,6 @@ const ar: Translations = {
     "\u0627\u062e\u062a\u064a\u0627\u0631 \u062e\u064a\u0627\u0631",
   status_toggling:
     "\u062a\u0628\u062f\u064a\u0644 \u0645\u0631\u0628\u0639 \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631",
-  status_submitting:
-    "\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0646\u0645\u0648\u0630\u062c",
   status_scrolling: "\u0627\u0644\u062a\u0645\u0631\u064a\u0631",
   status_searching:
     "\u0627\u0644\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0635\u0641\u062d\u0629",
@@ -1387,8 +1369,6 @@ const hi: Translations = {
     "\u0935\u093f\u0915\u0932\u094d\u092a \u091a\u0941\u0928 \u0930\u0939\u093e \u0939\u0948",
   status_toggling:
     "\u091a\u0947\u0915\u092c\u0949\u0915\u094d\u0938 \u091f\u0949\u0917\u0932",
-  status_submitting:
-    "\u092b\u0949\u0930\u094d\u092e \u0938\u092c\u092e\u093f\u091f \u0915\u0930 \u0930\u0939\u093e \u0939\u0948",
   status_scrolling:
     "\u0938\u094d\u0915\u094d\u0930\u094b\u0932\u093f\u0902\u0917",
   status_searching: "\u092a\u0947\u091c \u092e\u0947\u0902 \u0916\u094b\u091c",
@@ -1483,7 +1463,6 @@ const ja: Translations = {
   status_selecting: "\u30aa\u30d7\u30b7\u30e7\u30f3\u3092\u9078\u629e\u4e2d",
   status_toggling:
     "\u30c1\u30a7\u30c3\u30af\u30dc\u30c3\u30af\u30b9\u3092\u5207\u308a\u66ff\u3048",
-  status_submitting: "\u30d5\u30a9\u30fc\u30e0\u3092\u9001\u4fe1\u4e2d",
   status_scrolling: "\u30b9\u30af\u30ed\u30fc\u30eb\u4e2d",
   status_searching: "\u30da\u30fc\u30b8\u3092\u691c\u7d22\u4e2d",
   popup_loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
@@ -1572,7 +1551,6 @@ const ko: Translations = {
   status_filling: "\uc785\ub825 \uc911",
   status_selecting: "\uc635\uc158 \uc120\ud0dd \uc911",
   status_toggling: "\uccb4\ud06c\ubc15\uc2a4 \uc804\ud658",
-  status_submitting: "\uc591\uc2dd \uc81c\ucd9c \uc911",
   status_scrolling: "\uc2a4\ud06c\ub864 \uc911",
   status_searching: "\ud398\uc774\uc9c0 \uac80\uc0c9 \uc911",
   popup_loading: "\ub85c\ub529 \uc911...",
@@ -1658,7 +1636,6 @@ const zhCN: Translations = {
   status_filling: "\u6b63\u5728\u586b\u5199\u8f93\u5165",
   status_selecting: "\u6b63\u5728\u9009\u62e9\u9009\u9879",
   status_toggling: "\u6b63\u5728\u5207\u6362\u590d\u9009\u6846",
-  status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u5355",
   status_scrolling: "\u6b63\u5728\u6eda\u52a8",
   status_searching: "\u6b63\u5728\u641c\u7d22\u9875\u9762",
   popup_loading: "\u52a0\u8f7d\u4e2d...",
@@ -1731,7 +1708,6 @@ const zhTW: Translations = {
   status_filling: "\u6b63\u5728\u586b\u5beb\u8f38\u5165",
   status_selecting: "\u6b63\u5728\u9078\u64c7\u9078\u9805",
   status_toggling: "\u6b63\u5728\u5207\u63db\u6838\u53d6\u65b9\u584a",
-  status_submitting: "\u6b63\u5728\u63d0\u4ea4\u8868\u55ae",
   status_scrolling: "\u6b63\u5728\u6372\u52d5",
   status_searching: "\u6b63\u5728\u641c\u5c0b\u9801\u9762",
   popup_loading: "\u8f09\u5165\u4e2d...",
@@ -1827,8 +1803,6 @@ const th: Translations = {
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e15\u0e31\u0e27\u0e40\u0e25\u0e37\u0e2d\u0e01",
   status_toggling:
     "\u0e2a\u0e25\u0e31\u0e1a\u0e0a\u0e48\u0e2d\u0e07\u0e17\u0e33\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e2b\u0e21\u0e32\u0e22",
-  status_submitting:
-    "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e48\u0e07\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21",
   status_scrolling:
     "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e40\u0e25\u0e37\u0e48\u0e2d\u0e19",
   status_searching:
@@ -1926,7 +1900,6 @@ const vi: Translations = {
   status_filling: "\u0110ang \u0111i\u1ec1n d\u1eef li\u1ec7u",
   status_selecting: "\u0110ang ch\u1ecdn t\u00f9y ch\u1ecdn",
   status_toggling: "Chuy\u1ec3n \u0111\u1ed5i h\u1ed9p ki\u1ec3m",
-  status_submitting: "\u0110ang g\u1eedi bi\u1ec3u m\u1eabu",
   status_scrolling: "\u0110ang cu\u1ed9n",
   status_searching: "\u0110ang t\u00ecm ki\u1ebfm trang",
   popup_loading: "\u0110ang t\u1ea3i...",
@@ -2009,7 +1982,6 @@ const id: Translations = {
   status_filling: "Mengisi input",
   status_selecting: "Memilih opsi",
   status_toggling: "Mengubah kotak centang",
-  status_submitting: "Mengirim formulir",
   status_scrolling: "Menggulir",
   status_searching: "Mencari di halaman",
   popup_loading: "Memuat...",

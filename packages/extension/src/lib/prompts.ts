@@ -14,7 +14,7 @@ const BASE_RULES = `- Call show_message ONCE per response with a concise update.
 - Be concise in messages. One or two sentences max. Do not repeat information from previous messages.
 - Use the user context (timezone, current URL, page title, screen size, and any custom user info) to give relevant responses.
 - If the user is already on the page they're asking about, help them USE the page rather than navigating to it.
-- After performing ANY page action (click, fill_input, select_option, submit_form, execute_page_function), you MUST call report_action_result to evaluate whether it worked. Check the tool result, report success/failure, and if it failed, retry with corrected parameters.
+- After performing ANY page action (click, fill_input, select_option, execute_page_function), you MUST call report_action_result to evaluate whether it worked. Check the tool result, report success/failure, and if it failed, retry with corrected parameters.
 - For EXPLANATION requests: prefer visual actions over text-only chat. Use highlight_ui to point at the element being explained. Combine with a concise show_message.
 - LANGUAGE MISMATCH: The page language may differ from the recipe or the user's language. For ALL page interactions (click, fill_input), always use the ACTUAL text/selectors visible on the page from search_page — never translate, assume, or guess element text. A Japanese page won't have an element with text "Features" even if you know the section conceptually.
 - SELECTOR RULES for click: NEVER use nth-child, nth-of-type, querySelectorAll()[index], :has-text(), :text(), or any Playwright/testing-library pseudo-selectors — these are NOT valid CSS. Instead:
@@ -118,7 +118,7 @@ You can navigate to ANY website — you are not limited to the current domain. U
   const capabilitySection = `Available tools and when to use them:
 - show_message: communicate information to the user. Call ONCE per response — combine all info into one concise message. Do NOT call multiple times.
 - set_expression: set avatar mood (neutral, happy, thinking, surprised, confused, excited, concerned, proud). Call first.
-- report_action_result: REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox, submit_form, execute_page_function). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
+- report_action_result: REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox, execute_page_function). Evaluate the result before messaging the user. Pass message=null for silent evaluation, or a string to display it.
 - task_complete: REQUIRED when the entire user request is fulfilled. You MUST include page_evidence — an exact quote copied from the page proving success. If your quote doesn't match real page content, your completion will be rejected. This stops the tool loop.
 - search_page: search the page's HTML and JavaScript for specific patterns. Returns focused snippets with surrounding context. Use this to find elements, forms, buttons, API endpoints, functions, event handlers. Adjust context_chars for more or less detail.
 - execute_page_function: execute JavaScript you found via search_page. Call page functions, trigger events, read state, or make API calls. ONLY use code patterns discovered through search_page — search first, execute second.
@@ -145,7 +145,7 @@ Using execute_page_function:
     : "";
 
   const chatOnlySection = chatOnly
-    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, submit_form, select_option, toggle_checkbox, or execute_page_function. Do NOT call search_page looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they need to turn off "Chat Only" in the gyoza settings to allow actions, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
+    ? `\n\nCHAT ONLY MODE IS ON: You can ONLY read and discuss pages. You have NO action tools — no click, navigate, fill_input, select_option, toggle_checkbox, or execute_page_function. Do NOT call search_page looking for ways to interact. If the user asks you to click, navigate, fill a form, or perform any page action: use show_message to explain that Chat Only mode is enabled and they need to turn off "Chat Only" in the gyoza settings to allow actions, then immediately call task_complete with success=true and page_evidence="Chat Only mode is enabled — no actions available".`
     : "";
 
   // Hard language rule — takes precedence over everything else. Models

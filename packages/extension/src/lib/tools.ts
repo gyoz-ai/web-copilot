@@ -119,15 +119,6 @@ export const TOOL_DESCRIPTORS: ToolRegistry = {
     isConcurrencySafe: false,
     maxResultChars: 500,
   },
-  submit_form: {
-    name: "submit_form",
-    description: "Submit a form",
-    pageChange: true,
-    mutatesPage: true,
-    requiresFreshContext: true,
-    isConcurrencySafe: false,
-    maxResultChars: 500,
-  },
   report_action_result: {
     name: "report_action_result",
     description: "Evaluate action result",
@@ -651,7 +642,7 @@ export function createBrowserTools(
     { acknowledged: boolean }
   >({
     description:
-      "REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox, submit_form). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
+      "REQUIRED after every page action (click, fill_input, select_option, toggle_checkbox). Evaluate whether the action achieved what you intended. Check the tool result, then report here. If the action failed, explain why and retry. Pass message=null when no user-facing message is needed (e.g. mid-batch), or a string to display it to the user.",
     inputSchema: jsonSchema<{
       success: boolean;
       summary: string;
@@ -1955,107 +1946,6 @@ export function createBrowserTools(
     tools.toggle_checkbox.execute = withVerification(
       ctx,
       tools.toggle_checkbox.execute!,
-    );
-  }
-
-  // ── submit_form ───────────────────────────────────────────────────────
-  if (caps.click) {
-    tools.submit_form = tool({
-      description:
-        "Submit a form on the page. This may cause a page navigation.",
-      inputSchema: jsonSchema<{ selector?: string; button_text?: string }>({
-        type: "object" as const,
-        properties: {
-          selector: {
-            type: "string",
-            description: "CSS selector for the form",
-          },
-          button_text: {
-            type: "string",
-            description: "Text of the submit button to click",
-          },
-        },
-      }),
-      execute: async ({
-        selector,
-        button_text,
-      }: {
-        selector?: string;
-        button_text?: string;
-      }) => {
-        ctx.onStreamEvent?.({
-          kind: "tool-status",
-          content: tr?.status_submitting || "Submitting form",
-        });
-        try {
-          const result = await execInPage(
-            ctx.tabId,
-            ((sel: string | null, btnText: string | null) => {
-              let form: HTMLFormElement | null = null;
-              if (sel) {
-                form = document.querySelector(sel) as HTMLFormElement | null;
-              }
-              if (!form && btnText) {
-                // Find submit button by text, then get its form
-                const buttons = Array.from(
-                  document.querySelectorAll(
-                    'button, input[type="submit"], [role="button"]',
-                  ),
-                ) as HTMLElement[];
-                const btn = buttons.find((b) =>
-                  b.textContent
-                    ?.trim()
-                    .toLowerCase()
-                    .includes(btnText.toLowerCase()),
-                );
-                if (btn) {
-                  form = btn.closest("form") as HTMLFormElement | null;
-                  if (!form) {
-                    // Just click the button directly
-                    btn.click();
-                    return { found: true, method: "button_click" };
-                  }
-                }
-              }
-              if (!form) {
-                form = document.querySelector("form") as HTMLFormElement | null;
-              }
-              if (!form) return { found: false };
-
-              form.requestSubmit();
-              return {
-                found: true,
-                method: "form_submit",
-                action: form.action || "",
-              };
-            }) as (...args: never[]) => {
-              found: boolean;
-              method?: string;
-              action?: string;
-            },
-            [selector || null, button_text || null],
-          );
-          if (!result?.found) return { success: false, error: "No form found" };
-          return { success: true, method: result.method };
-        } catch (e) {
-          return {
-            success: false,
-            error: e instanceof Error ? e.message : String(e),
-          };
-        }
-      },
-    });
-    if (!yoloMode) {
-      tools.submit_form.execute = withConfirmation(
-        ctx,
-        (args: { selector?: string }) =>
-          `Submit form "${args.selector || "on page"}"`,
-        tools.submit_form.execute!,
-      );
-    }
-    tools.submit_form.execute = withVerification(
-      ctx,
-      tools.submit_form.execute!,
     );
   }
 

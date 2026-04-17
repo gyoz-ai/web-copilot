@@ -297,7 +297,6 @@ export async function handleQuery(
       "fill_input",
       "select_option",
       "toggle_checkbox",
-      "submit_form",
       "execute_page_function",
     ]);
     const hasPageAction = () =>
@@ -326,7 +325,6 @@ export async function handleQuery(
       "fill_input",
       "select_option",
       "toggle_checkbox",
-      "submit_form",
       "report_action_result",
       "task_complete",
       "page_screenshot",
@@ -413,24 +411,49 @@ export async function handleQuery(
         const calledShowMessage = lastToolNames.includes("show_message");
 
         // ── Dual-mode phase machine ──────────────────────────────
+        //
+        // Option 1: auto-flip to chat on ANY natural execution end, not
+        // just task_complete. Catches the "model analyzed screenshot then
+        // silently stopped" case and ensures the user always gets a final
+        // narration from the chat model.
+        //
+        // Exceptions (don't flip — these own their own message path):
+        //   • clarify  — tool already shows its question to the user
+        //   • navigate — page is reloading, auto-continue handles next turn
         if (isDual) {
           if (phase === "execution") {
-            if (!calledTaskComplete) return false;
-            // task_complete may return {stopped:false} to reject itself
-            // (e.g. claimed success with 0 actions, or hallucinated
-            // page_evidence). In that case we must NOT flip phase — the
-            // execution model needs to retry.
-            const lastToolResults = (lastStep?.toolResults ?? []) as Array<{
-              toolName: string;
-              output?: { stopped?: boolean };
-            }>;
-            const tcResult = lastToolResults.find(
-              (r) => r.toolName === "task_complete",
-            );
-            if (tcResult?.output?.stopped === false) return false;
-            // Accepted completion — flip to chat so narrator speaks.
-            phase = "chat";
-            ctx.phase = "chat";
+            const calledClarify = lastToolNames.includes("clarify");
+            const calledNavigate = lastToolNames.includes("navigate");
+            if (calledClarify || calledNavigate) return true;
+
+            if (calledTaskComplete) {
+              // task_complete may return {stopped:false} to reject itself
+              // (e.g. claimed success with 0 actions, or hallucinated
+              // page_evidence). Must NOT flip — execution retries.
+              const lastToolResults = (lastStep?.toolResults ?? []) as Array<{
+                toolName: string;
+                output?: { stopped?: boolean };
+              }>;
+              const tcResult = lastToolResults.find(
+                (r) => r.toolName === "task_complete",
+              );
+              if (tcResult?.output?.stopped === false) return false;
+              // Accepted — flip to chat narrator.
+              phase = "chat";
+              ctx.phase = "chat";
+              return false;
+            }
+
+            // No tool calls → model gave up (no more moves, screenshot-
+            // analysis dead-end, etc.). Flip to chat so the user at least
+            // gets a narration instead of silence.
+            if (lastToolNames.length === 0) {
+              phase = "chat";
+              ctx.phase = "chat";
+              return false;
+            }
+
+            // Tool calls happened but not a terminator — keep grinding.
             return false;
           }
           // phase === "chat" — terminate once narration happens.
