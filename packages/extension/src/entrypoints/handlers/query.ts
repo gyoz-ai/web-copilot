@@ -313,6 +313,11 @@ export async function handleQuery(
     //     flip to chat; the narrator model reads the prior tool results and
     //     issues one polished show_message in the user's language. That
     //     call ends the stream.
+    // NOTE: page_screenshot is intentionally EXCLUDED from the execution set.
+    // The execution model (Cerebras gpt-oss-120b) is TEXT-ONLY — no vision.
+    // If it captures a screenshot, prepareStep injects the image as a user
+    // message, but the model can't see pixels, produces no tool calls, and
+    // the stream dies silently. Screenshots are a chat-model capability only.
     const EXECUTION_PHASE_TOOLS = new Set([
       "set_expression",
       "navigate",
@@ -327,7 +332,6 @@ export async function handleQuery(
       "toggle_checkbox",
       "report_action_result",
       "task_complete",
-      "page_screenshot",
     ]);
 
     // Anthropic prompt caching — mark system prompt + tools for caching
