@@ -313,11 +313,11 @@ export async function handleQuery(
     //     flip to chat; the narrator model reads the prior tool results and
     //     issues one polished show_message in the user's language. That
     //     call ends the stream.
-    // NOTE: page_screenshot is intentionally EXCLUDED from the execution set.
-    // The execution model (Cerebras gpt-oss-120b) is TEXT-ONLY — no vision.
-    // If it captures a screenshot, prepareStep injects the image as a user
-    // message, but the model can't see pixels, produces no tool calls, and
-    // the stream dies silently. Screenshots are a chat-model capability only.
+    // NOTE: page_screenshot is intentionally EXCLUDED from the execution set
+    // and moved to the chat phase. The execution model (Cerebras gpt-oss-120b)
+    // is TEXT-ONLY — no vision. Chat models (Grok, Claude, GPT) are vision-
+    // capable, so screenshots belong there. See the chat-phase prepareStep
+    // branch below for the injection path.
     const EXECUTION_PHASE_TOOLS = new Set([
       "set_expression",
       "navigate",
@@ -496,15 +496,40 @@ export async function handleQuery(
           );
         }
 
-        // In dual-mode CHAT phase, the narrator sees ONLY show_message and
-        // must use it. This is true at any step — whether we just flipped
-        // or are reentering chat. Force the tool set regardless of the
-        // step-count shortcut so execution-tool remnants never leak in.
+        // In dual-mode CHAT phase, the narrator has show_message (always) plus
+        // page_screenshot (optional — chat models Grok/Claude/GPT are vision-
+        // capable; the execution worker is not, so screenshots belong here).
+        // Force a tool call so the narrator can't just sit silent.
         if (isDual && phase === "chat") {
+          // If execution left a pending screenshot OR chat called one last
+          // step, inject it as a user image message so the chat model can
+          // actually see the pixels.
+          if (ctx.pendingScreenshotDataUrl) {
+            const screenshotDataUrl = ctx.pendingScreenshotDataUrl;
+            ctx.pendingScreenshotDataUrl = null;
+            console.log(
+              "%c[gyoza] prepareStep → injecting screenshot as user image message (chat)",
+              "color: #22c55e; font-weight: bold",
+            );
+            stepMessages.push({
+              role: "user",
+              content: [
+                { type: "image" as const, image: screenshotDataUrl },
+                {
+                  type: "text" as const,
+                  text: "Here is the screenshot of the current page. Use this visual context to narrate your answer via show_message.",
+                },
+              ],
+            });
+          }
+          const chatActive = ["show_message"] as string[];
+          if ((tools as Record<string, unknown>).page_screenshot) {
+            chatActive.push("page_screenshot");
+          }
           return {
             model: stepModel,
             toolChoice: "required" as const,
-            activeTools: ["show_message"] as (keyof typeof tools)[],
+            activeTools: chatActive as (keyof typeof tools)[],
           };
         }
 
