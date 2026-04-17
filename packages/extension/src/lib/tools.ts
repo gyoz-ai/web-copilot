@@ -710,7 +710,14 @@ export function createBrowserTools(
       // If the AI claims success but never performed any action, reject it
       // — UNLESS it already communicated via show_message (conversational
       // responses like greetings or explanations don't require page actions).
-      if (success && ctx.actionCount === 0) {
+      //
+      // In dual-mode execution phase, skip this check entirely: the execution
+      // model has NO access to show_message (that's the chat model's job), so
+      // messages.length will always be 0 here. For read-only queries ("tell me
+      // what's on this page"), the execution model gathers info via search_page
+      // and calls task_complete — the chat phase then narrates to the user.
+      // The chat phase has its own stopWhen that requires show_message.
+      if (success && ctx.actionCount === 0 && ctx.phase !== "execution") {
         if (ctx.messages.length > 0) {
           // Conversational completion — model already responded to the user
           return { stopped: true };
