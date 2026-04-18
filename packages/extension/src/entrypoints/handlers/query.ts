@@ -31,9 +31,9 @@ export async function handleQuery(
 ): Promise<void> {
   const settings = await getSettings();
 
-  let providerResult;
+  let model;
   try {
-    providerResult = createProvider(settings);
+    model = createProvider(settings);
   } catch (err) {
     const raw = err instanceof Error ? err.message : String(err);
     const isNotSignedIn =
@@ -91,8 +91,7 @@ export async function handleQuery(
     `%c[gyoza] BACKGROUND → LLM`,
     "color: #E8950A; font-weight: bold",
   );
-  const modelId =
-    (providerResult.model as { modelId?: string }).modelId || settings.model;
+  const modelId = (model as { modelId?: string }).modelId || settings.model;
   console.log(
     "  Provider:",
     settings.provider,
@@ -317,10 +316,6 @@ export async function handleQuery(
       : systemPrompt;
 
     let streamError: Error | null = null;
-    // Single model handles every step (tools + narration). The earlier
-    // dual-model split (Cerebras execution worker + chat narrator) was
-    // removed because the chat phase silently hung after task_complete.
-    const model = providerResult.model;
 
     const stream = streamText({
       model,
