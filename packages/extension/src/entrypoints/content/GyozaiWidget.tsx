@@ -472,32 +472,19 @@ export function GyozaiWidget() {
 
   const isMobileSafari = isSafariMobile();
 
-  // Proximity detection — open chatbox when cursor is near avatar
+  // Proximity detection is disabled — chatbox only opens/closes via
+  // explicit user intent (click avatar, Ctrl+Shift+E, ESC, X button).
+  // The hook call is kept as a disabled no-op in case we want to revive
+  // the behavior later, but its return values are intentionally unused.
   const proximityRadius = AVATAR_SIZES[agentSize] * 0.75;
   const panelRef = useRef<HTMLDivElement>(null);
   const speechBubbleRef = useRef<HTMLDivElement>(null);
-  const insidePanelRef = useRef(false);
   const dragDropGraceRef = useRef(false);
-  const { forceInside, startLeave } = useProximity({
+  useProximity({
     elementRef: avatarWrapperRef,
     radius: proximityRadius,
-    onEnter: () => {
-      hoverOpenRef.current = true;
-      setExpanded(true);
-    },
-    onLeave: () => {
-      // Don't close if sticky mode is on
-      if (stickyChatRef.current || chatFullscreenRef.current) return;
-      // Don't close if cursor is still inside the chatbox/input panel
-      // or if we just dropped the avatar (grace period)
-      if (
-        hoverOpenRef.current &&
-        !insidePanelRef.current &&
-        !dragDropGraceRef.current
-      ) {
-        setExpanded(false);
-      }
-    },
+    onEnter: () => {},
+    onLeave: () => {},
     leaveDelay: 50,
     disabled: true,
   });
@@ -988,63 +975,9 @@ export function GyozaiWidget() {
     }
   }, [expanded]);
 
-  // Safety net: periodically check if cursor is still near panel/avatar
-  // Shadow DOM onMouseLeave can miss fast exits — this catches them
-  // Disabled on Safari mobile (no cursor)
-  useEffect(() => {
-    if (isMobileSafari) return;
-    if (!expanded || !hoverOpenRef.current) return;
-    let lastX = 0;
-    let lastY = 0;
-    const trackMouse = (e: MouseEvent) => {
-      lastX = e.clientX;
-      lastY = e.clientY;
-    };
-    document.addEventListener("mousemove", trackMouse, { passive: true });
-
-    const isInRect = (x: number, y: number, r: DOMRect, margin: number) =>
-      x >= r.left - margin &&
-      x <= r.right + margin &&
-      y >= r.top - margin &&
-      y <= r.bottom + margin;
-
-    const interval = setInterval(() => {
-      if (stickyChatRef.current || chatFullscreenRef.current) return;
-      if (
-        !hoverOpenRef.current ||
-        !expanded ||
-        dragDropGraceRef.current ||
-        isResizingRef.current
-      )
-        return;
-      const panel = panelRef.current;
-      const avatar = avatarWrapperRef.current;
-      const bubble = speechBubbleRef.current;
-      if (!panel || !avatar) return;
-
-      const m = 40;
-      const inPanel = isInRect(lastX, lastY, panel.getBoundingClientRect(), m);
-      const inAvatar = isInRect(
-        lastX,
-        lastY,
-        avatar.getBoundingClientRect(),
-        m,
-      );
-      const inBubble =
-        bubble && isInRect(lastX, lastY, bubble.getBoundingClientRect(), m);
-
-      if (!inPanel && !inAvatar && !inBubble) {
-        insidePanelRef.current = false;
-        hoverOpenRef.current = false;
-        setExpanded(false);
-      }
-    }, 300);
-
-    return () => {
-      document.removeEventListener("mousemove", trackMouse);
-      clearInterval(interval);
-    };
-  }, [expanded]);
+  // NOTE: proximity auto-close removed. Chatbox now only closes on explicit
+  // user intent (X button, avatar click, ESC, new chat). The old safety-net
+  // polling interval that closed on cursor leave has been deleted.
 
   // Scroll to bottom only when NEW messages are added (not on restore)
   const lastMsgCountRef = useRef(0);
@@ -2083,7 +2016,7 @@ export function GyozaiWidget() {
               }}
               onMouseEnter={() => {
                 if (isMobileSafari) return;
-                hoverOpenRef.current = true;
+                // Expand on bubble hover, but don't arm proximity auto-close.
                 setExpanded(true);
               }}
             >
@@ -2147,19 +2080,6 @@ export function GyozaiWidget() {
             : {}),
         }}
         ref={panelRef}
-        onMouseEnter={() => {
-          if (isMobileSafari) return;
-          insidePanelRef.current = true;
-          forceInside();
-        }}
-        onMouseLeave={() => {
-          if (isMobileSafari) return;
-          if (chatFullscreen || isResizingRef.current) return;
-          insidePanelRef.current = false;
-          if (hoverOpenRef.current) {
-            startLeave();
-          }
-        }}
       >
         {/* Resize handle — top-right corner (hidden in fullscreen) */}
         {!chatFullscreen && (
@@ -2194,7 +2114,7 @@ export function GyozaiWidget() {
           </div>
         )}
 
-        {/* Fullscreen toggle — top-left corner */}
+        {/* Fullscreen toggle — second slot from the top-left (after close) */}
         <button
           className="gyozai-fullscreen-toggle"
           onClick={() => {
@@ -2256,7 +2176,7 @@ export function GyozaiWidget() {
           )}
         </button>
 
-        {/* Close button */}
+        {/* Close button — first slot at the top-left corner (rounded) */}
         <button
           className="gyozai-close-btn"
           onClick={() => {
@@ -2765,8 +2685,8 @@ export function GyozaiWidget() {
               setTimeout(() => {
                 dragDropGraceRef.current = false;
               }, 600);
-              hoverOpenRef.current = true;
-              forceInside();
+              // Open after drag. Proximity is disabled, so no need to
+              // sync with it via forceInside().
               setExpanded(true);
             }
           }}

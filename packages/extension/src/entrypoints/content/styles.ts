@@ -129,7 +129,7 @@ export const WIDGET_STYLES = `
   .gyozai-fullscreen-toggle {
     position: absolute;
     top: 0;
-    left: 0;
+    left: 32px;
     width: 32px;
     height: 32px;
     cursor: pointer;
@@ -143,7 +143,7 @@ export const WIDGET_STYLES = `
     border: none;
     background: var(--g-surface-2);
     padding: 0;
-    border-radius: 16px 0 8px 0;
+    border-radius: 0;
   }
 
   .gyozai-fullscreen-toggle:hover {
@@ -161,7 +161,7 @@ export const WIDGET_STYLES = `
   .gyozai-close-btn {
     position: absolute;
     top: 0;
-    left: 32px;
+    left: 0;
     width: 32px;
     height: 32px;
     cursor: pointer;

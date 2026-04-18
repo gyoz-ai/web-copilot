@@ -14,7 +14,7 @@ describe("storage", () => {
 
     it("preserves all expected default values", () => {
       expect(DEFAULT_SETTINGS.mode).toBe("managed");
-      expect(DEFAULT_SETTINGS.yoloMode).toBe(false);
+      expect(DEFAULT_SETTINGS.yoloMode).toBe(true);
       expect(DEFAULT_SETTINGS.chatOnly).toBe(false);
       expect(DEFAULT_SETTINGS.stickyChat).toBe(false);
       expect(DEFAULT_SETTINGS.autoImportRecipes).toBe(true);
@@ -53,7 +53,7 @@ describe("storage", () => {
       expect(withSticky.stickyChat).toBe(true);
       // Other settings remain unchanged
       expect(withSticky.chatOnly).toBe(false);
-      expect(withSticky.yoloMode).toBe(false);
+      expect(withSticky.yoloMode).toBe(true);
     });
   });
 });

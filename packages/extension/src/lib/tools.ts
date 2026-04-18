@@ -186,19 +186,6 @@ export interface ToolExecContext {
   pendingScreenshotDataUrl?: string | null;
   /** Number of search_page calls so far — used to cap discovery loops */
   searchPageCallCount?: number;
-  /**
-   * Dual-model phase tag. When dual mode is on:
-   *   • "execution" — worker model grinds through the page (search, click,
-   *                    fill, …). Ends its run via task_complete, which in
-   *                    this phase does NOT push a summary message (the chat
-   *                    model narrates next).
-   *   • "chat"      — narrator model. Only tool available is show_message.
-   *                    Reads what execution did and reports to the user in
-   *                    the user's language.
-   * Undefined in single-model mode (BYOK) — task_complete pushes summary
-   * directly as before.
-   */
-  phase?: "execution" | "chat";
 }
 
 // ─── Helper: execute script in page's MAIN world ─────────────────────────────
@@ -559,7 +546,9 @@ function withConfirmation<TArgs, TResult extends Record<string, unknown>>(
 ): typeof executeFn {
   return async (args: TArgs) => {
     const description = actionDescription(args);
-    ctx.onStreamEvent?.({ kind: "tool-status", content: description });
+    // NOTE: do NOT push a tool-status pill here. The wrapped tool's execute
+    // function pushes its own status pill. Pushing one here too would result
+    // in duplicate pills (once from the wrapper, once from the inner tool).
 
     try {
       const confirmed = await browser.tabs.sendMessage(ctx.tabId, {
@@ -710,14 +699,7 @@ export function createBrowserTools(
       // If the AI claims success but never performed any action, reject it
       // — UNLESS it already communicated via show_message (conversational
       // responses like greetings or explanations don't require page actions).
-      //
-      // In dual-mode execution phase, skip this check entirely: the execution
-      // model has NO access to show_message (that's the chat model's job), so
-      // messages.length will always be 0 here. For read-only queries ("tell me
-      // what's on this page"), the execution model gathers info via search_page
-      // and calls task_complete — the chat phase then narrates to the user.
-      // The chat phase has its own stopWhen that requires show_message.
-      if (success && ctx.actionCount === 0 && ctx.phase !== "execution") {
+      if (success && ctx.actionCount === 0) {
         if (ctx.messages.length > 0) {
           // Conversational completion — model already responded to the user
           return { stopped: true };
@@ -744,14 +726,8 @@ export function createBrowserTools(
           };
         }
       }
-      // In dual-mode execution phase, the chat model narrates next — do NOT
-      // push the summary here or the user sees two messages (the raw summary
-      // followed by the chat model's polished narration). In single-model
-      // mode, or when the chat model itself calls task_complete, push as usual.
-      if (ctx.phase !== "execution") {
-        ctx.messages.push(summary);
-        ctx.onStreamEvent?.({ kind: "message", content: summary });
-      }
+      ctx.messages.push(summary);
+      ctx.onStreamEvent?.({ kind: "message", content: summary });
       return { stopped: true };
     },
   });

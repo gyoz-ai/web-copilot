@@ -92,9 +92,7 @@ export async function handleQuery(
     "color: #E8950A; font-weight: bold",
   );
   const modelId =
-    providerResult.type === "model"
-      ? (providerResult.model as { modelId?: string }).modelId || settings.model
-      : `dual: chat=${settings.model} | exec=server-selected`;
+    (providerResult.model as { modelId?: string }).modelId || settings.model;
   console.log(
     "  Provider:",
     settings.provider,
@@ -302,38 +300,6 @@ export async function handleQuery(
     const hasPageAction = () =>
       allToolCalls.some((tc) => PAGE_ACTION_TOOLS.has(tc.tool));
 
-    // Two-phase dual model tool split:
-    //
-    //   EXECUTION phase: everything EXCEPT show_message. The worker model
-    //     grinds through the page (search, click, fill, …) and finishes by
-    //     calling task_complete. task_complete in execution phase does NOT
-    //     push a user-facing message — chat takes over next.
-    //
-    //   CHAT phase: ONLY show_message. After execution's task_complete we
-    //     flip to chat; the narrator model reads the prior tool results and
-    //     issues one polished show_message in the user's language. That
-    //     call ends the stream.
-    // NOTE: page_screenshot is intentionally EXCLUDED from the execution set
-    // and moved to the chat phase. The execution model (Cerebras gpt-oss-120b)
-    // is TEXT-ONLY — no vision. Chat models (Grok, Claude, GPT) are vision-
-    // capable, so screenshots belong there. See the chat-phase prepareStep
-    // branch below for the injection path.
-    const EXECUTION_PHASE_TOOLS = new Set([
-      "set_expression",
-      "navigate",
-      "click",
-      "highlight_ui",
-      "search_page",
-      "execute_page_function",
-      "fetch_url",
-      "clarify",
-      "fill_input",
-      "select_option",
-      "toggle_checkbox",
-      "report_action_result",
-      "task_complete",
-    ]);
-
     // Anthropic prompt caching — mark system prompt + tools for caching
     // so repeated requests get ~90% discount on those input tokens.
     const isAnthropicByok =
@@ -351,54 +317,13 @@ export async function handleQuery(
       : systemPrompt;
 
     let streamError: Error | null = null;
-    // Dual-model orchestration (managed mode):
-    //   • chat model       → user-facing reasoning & talking (greet, clarify,
-    //                         task_complete summary, conversational replies)
-    //   • execution model  → fast/cheap tool-execution loop on the page
-    // Single-model fallback (BYOK): same model used for everything.
-    const isDual = providerResult.type === "dual";
-    const chatModel =
-      providerResult.type === "dual"
-        ? providerResult.chatModel
-        : providerResult.model;
-    const executionModel =
-      providerResult.type === "dual"
-        ? providerResult.executionModel
-        : providerResult.model;
-
-    // Two-phase dual-model architecture (final split):
-    //
-    //   Step 0+ : EXECUTION phase (execution model, EXECUTION_PHASE_TOOLS).
-    //             The worker grinds through the page and wraps up via
-    //             task_complete. task_complete in this phase suppresses its
-    //             summary push so the user does NOT see raw execution text.
-    //
-    //   After execution calls task_complete → flip to CHAT phase.
-    //             Chat model sees ONLY show_message; it reads the prior
-    //             tool results from the transcript and narrates the outcome
-    //             in the user's language. show_message ends the stream.
-    //
-    // Rationale: the cheap/fast execution model (cerebras gpt-oss-120b)
-    // handles the loop; the smart chat model owns the single user-facing
-    // message. Keeps tokens on the chat model minimal while preserving
-    // voice quality.
-    let phase: "execution" | "chat" = isDual ? "execution" : "chat";
-    if (isDual) ctx.phase = "execution";
-
-    const pickModelForStep = (
-      _steps: ReadonlyArray<{
-        toolCalls?: ReadonlyArray<{ toolName: string }>;
-      }>,
-    ) => {
-      if (!isDual) return chatModel;
-      return phase === "execution" ? executionModel : chatModel;
-    };
+    // Single model handles every step (tools + narration). The earlier
+    // dual-model split (Cerebras execution worker + chat narrator) was
+    // removed because the chat phase silently hung after task_complete.
+    const model = providerResult.model;
 
     const stream = streamText({
-      // Initial model — in dual mode the execution model owns step 0 and
-      // grinds until task_complete; chat model takes over afterwards to
-      // narrate. In single-model mode, always use the sole model.
-      model: isDual ? executionModel : chatModel,
+      model,
       system: systemParam,
       messages: aiMessages,
       tools,
@@ -412,63 +337,7 @@ export async function handleQuery(
         const lastToolNames =
           lastStep?.toolCalls?.map((tc) => tc.toolName) ?? [];
         const calledTaskComplete = lastToolNames.includes("task_complete");
-        const calledShowMessage = lastToolNames.includes("show_message");
 
-        // ── Dual-mode phase machine ──────────────────────────────
-        //
-        // Option 1: auto-flip to chat on ANY natural execution end, not
-        // just task_complete. Catches the "model analyzed screenshot then
-        // silently stopped" case and ensures the user always gets a final
-        // narration from the chat model.
-        //
-        // Exceptions (don't flip — these own their own message path):
-        //   • clarify  — tool already shows its question to the user
-        //   • navigate — page is reloading, auto-continue handles next turn
-        if (isDual) {
-          if (phase === "execution") {
-            const calledClarify = lastToolNames.includes("clarify");
-            const calledNavigate = lastToolNames.includes("navigate");
-            if (calledClarify || calledNavigate) return true;
-
-            if (calledTaskComplete) {
-              // task_complete may return {stopped:false} to reject itself
-              // (e.g. claimed success with 0 actions, or hallucinated
-              // page_evidence). Must NOT flip — execution retries.
-              const lastToolResults = (lastStep?.toolResults ?? []) as Array<{
-                toolName: string;
-                output?: { stopped?: boolean };
-              }>;
-              const tcResult = lastToolResults.find(
-                (r) => r.toolName === "task_complete",
-              );
-              if (tcResult?.output?.stopped === false) return false;
-              // Accepted — flip to chat narrator.
-              phase = "chat";
-              ctx.phase = "chat";
-              return false;
-            }
-
-            // No tool calls → model gave up (no more moves, screenshot-
-            // analysis dead-end, etc.). Flip to chat so the user at least
-            // gets a narration instead of silence.
-            if (lastToolNames.length === 0) {
-              phase = "chat";
-              ctx.phase = "chat";
-              return false;
-            }
-
-            // Tool calls happened but not a terminator — keep grinding.
-            return false;
-          }
-          // phase === "chat" — terminate once narration happens.
-          if (calledShowMessage) return true;
-          if (calledTaskComplete) return true;
-          // Chat had nothing to say (empty step) — stop to avoid burning.
-          if (lastToolNames.length === 0) return true;
-          return false;
-        }
-
-        // ── Single-model legacy path (BYOK) ──────────────────────
         if (!calledTaskComplete) return false;
         if (settings.chatOnly) return true;
         if (ctx.actionCount > 0) return true;
@@ -482,68 +351,8 @@ export async function handleQuery(
         return false;
       },
       prepareStep: ({ steps, messages: stepMessages }) => {
-        // Decide which model handles THIS step (chat vs execution)
-        const stepModel = pickModelForStep(steps);
-
-        if (isDual) {
-          const modelLabel =
-            stepModel === executionModel ? "execution" : "chat";
-          console.log(
-            `%c  [gyoza] step #${steps.length} → ${modelLabel} model (phase=${phase})`,
-            modelLabel === "execution"
-              ? "color: #06b6d4; font-weight: bold"
-              : "color: #f59e0b; font-weight: bold",
-          );
-        }
-
-        // In dual-mode CHAT phase, the narrator has show_message (always) plus
-        // page_screenshot (optional — chat models Grok/Claude/GPT are vision-
-        // capable; the execution worker is not, so screenshots belong here).
-        // Force a tool call so the narrator can't just sit silent.
-        if (isDual && phase === "chat") {
-          // If execution left a pending screenshot OR chat called one last
-          // step, inject it as a user image message so the chat model can
-          // actually see the pixels.
-          if (ctx.pendingScreenshotDataUrl) {
-            const screenshotDataUrl = ctx.pendingScreenshotDataUrl;
-            ctx.pendingScreenshotDataUrl = null;
-            console.log(
-              "%c[gyoza] prepareStep → injecting screenshot as user image message (chat)",
-              "color: #22c55e; font-weight: bold",
-            );
-            stepMessages.push({
-              role: "user",
-              content: [
-                { type: "image" as const, image: screenshotDataUrl },
-                {
-                  type: "text" as const,
-                  text: "Here is the screenshot of the current page. Use this visual context to narrate your answer via show_message.",
-                },
-              ],
-            });
-          }
-          const chatActive = ["show_message"] as string[];
-          if ((tools as Record<string, unknown>).page_screenshot) {
-            chatActive.push("page_screenshot");
-          }
-          return {
-            model: stepModel,
-            toolChoice: "required" as const,
-            activeTools: chatActive as (keyof typeof tools)[],
-          };
-        }
-
         if (steps.length === 0) {
-          // First step — dual mode uses execution model and must restrict
-          // to EXECUTION_PHASE_TOOLS so show_message cannot be called by
-          // the worker. Single mode: no restriction.
-          if (isDual && phase === "execution") {
-            const active = Object.keys(tools).filter((t) =>
-              EXECUTION_PHASE_TOOLS.has(t),
-            ) as (keyof typeof tools)[];
-            return { model: stepModel, activeTools: active };
-          }
-          return { model: stepModel };
+          return { model };
         }
 
         // If page_screenshot was used, inject the image as a user message
@@ -579,18 +388,18 @@ export async function handleQuery(
           lastToolName === "task_complete" ||
           lastToolName === "navigate"
         )
-          return { model: stepModel };
+          return { model };
 
         // Chat-only mode: let the model stop after show_message since it
         // can't take actions and just needs to explain to the user.
         if (settings.chatOnly && lastToolName === "show_message")
-          return { model: stepModel };
+          return { model };
 
         // Conversational queries: if show_message was the last tool and no
         // page-action tools have been attempted yet, let the model stop
         // naturally — it's just responding to a greeting or question.
         if (lastToolName === "show_message" && !hasPageAction())
-          return { model: stepModel };
+          return { model };
 
         // Otherwise (show_message narration, search_page, etc.),
         // force tool use so the model keeps working instead of stopping
@@ -603,27 +412,20 @@ export async function handleQuery(
 
         // Cap search_page at 3 calls total. After that, exclude it from the
         // active tool set so the model is forced to commit — pick show_message
-        // / task_complete / clarify (in chat phase) or move to a DOM action
-        // (in execution phase) instead of looping on more searches. This
-        // matters most for weaker models (grok non-reasoning, gpt-oss-120b)
-        // that otherwise spin forever on discovery.
+        // / task_complete / clarify or move to a DOM action instead of
+        // looping on more searches. This matters most for weaker models
+        // (grok non-reasoning, etc.) that otherwise spin forever on discovery.
         const searchPageCount = allToolCalls.filter(
           (tc) => tc.tool === "search_page",
         ).length;
         if (searchPageCount >= 3) exclude.add("search_page");
 
-        // In dual-mode execution phase, restrict the tool set to worker
-        // tools only — show_message is reserved for the chat/narrator
-        // model after task_complete flips phase.
-        const phaseFilter = (t: string) =>
-          isDual && phase === "execution" ? EXECUTION_PHASE_TOOLS.has(t) : true;
-
         const active = Object.keys(tools).filter(
-          (t) => !exclude.has(t) && phaseFilter(t),
+          (t) => !exclude.has(t),
         ) as (keyof typeof tools)[];
 
         return {
-          model: stepModel,
+          model,
           toolChoice: "required" as const,
           activeTools: active,
         };
@@ -828,14 +630,14 @@ export async function handleQuery(
 
     // Update conversation history — append assistant response
     // (user message was already pushed before streaming to survive navigation)
-    const toolSummary = allToolCalls
-      .filter(
-        (tc) => tc.tool !== "show_message" && tc.tool !== "set_expression",
-      )
-      .map((tc) => `[${tc.tool}]`)
-      .join(" ");
-    const msgContent = ctx.messages.join("\n\n").slice(0, 150);
-    const historyEntry = [toolSummary, msgContent].filter(Boolean).join("\n");
+    //
+    // We intentionally store ONLY the user-visible message (ctx.messages),
+    // NOT a "[tool_a] [tool_b] …" prefix. Earlier we prepended the names of
+    // the tools the assistant called this turn, but the model would then
+    // mimic that format and start typing `[search_page] [clarify]\n…` as
+    // literal text in the next turn's reply. Tool history is already
+    // implicit in prior turns' effects; we don't need to spell it out.
+    const historyEntry = ctx.messages.join("\n\n").slice(0, 150);
     if (historyEntry) {
       history.push({ role: "assistant", content: historyEntry });
     }
