@@ -104,7 +104,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packages/extension/wxt.config.ts packages/extension/package.json
           git commit -m "release: v${{ steps.version.outputs.version }}"
-          git pull origin main --rebase
+          git pull origin main --rebase --autostash
           git tag "${{ steps.version.outputs.tag }}"
           git push origin main --tags
 
